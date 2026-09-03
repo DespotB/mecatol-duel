@@ -36,50 +36,51 @@ export interface PlanetSpot {
 }
 
 /**
- * Two-planet systems put one planet up on the left with its nameplate above it and the other down on the
- * right with its nameplate below, the way the printed tiles do, far enough apart that the two spheres never
- * touch. Single-planet systems centre their planet and hang the nameplate under it.
+ * Two-planet systems put one planet up on the left and the other down on the right, far enough apart that
+ * the two spheres never touch. Every nameplate hugs its own planet the way the printed tiles place it: the
+ * two value badges ride the planet's rim, upper left for the upper planet and lower left for the lower one,
+ * and the name banner runs off it to the right.
  */
 export const PLANET_SPOTS: Record<string, PlanetSpot> = {
   '000': {
-    ground: { left: 84, top: 96 }, structures: { left: 84, top: 56 },
-    art: { left: 68, top: 32, width: 96, height: 96 }, plate: { left: 52, top: 140 },
+    ground: { left: 92, top: 62 }, structures: { left: 92, top: 30 },
+    art: { left: 68, top: 32, width: 96, height: 96 }, plate: { left: 56, top: 112 },
   },
   bereg: {
-    ground: { left: 58, top: 86 }, structures: { left: 58, top: 54 },
-    art: { left: 44, top: 30, width: 78, height: 78 }, plate: { left: 60, top: 6 },
+    ground: { left: 64, top: 74 }, structures: { left: 64, top: 42 },
+    art: { left: 44, top: 30, width: 78, height: 78 }, plate: { left: 40, top: 34 },
   },
   'lirta-iv': {
-    ground: { left: 126, top: 152 }, structures: { left: 126, top: 120 },
-    art: { left: 114, top: 100, width: 70, height: 70 }, plate: { left: 52, top: 170 },
+    ground: { left: 130, top: 116 }, structures: { left: 130, top: 84 },
+    art: { left: 114, top: 100, width: 70, height: 70 }, plate: { left: 64, top: 148 },
   },
   sakulag: {
-    ground: { left: 84, top: 96 }, structures: { left: 84, top: 56 },
-    art: { left: 68, top: 32, width: 96, height: 96 }, plate: { left: 52, top: 140 },
+    ground: { left: 92, top: 62 }, structures: { left: 92, top: 30 },
+    art: { left: 68, top: 32, width: 96, height: 96 }, plate: { left: 56, top: 112 },
   },
   'mecatol-rex': {
-    ground: { left: 84, top: 92 }, structures: { left: 84, top: 52 },
-    art: { left: 64, top: 28, width: 104, height: 104 }, plate: { left: 48, top: 148 },
+    ground: { left: 92, top: 58 }, structures: { left: 92, top: 26 },
+    art: { left: 64, top: 28, width: 104, height: 104 }, plate: { left: 52, top: 116 },
   },
   quann: {
-    ground: { left: 84, top: 96 }, structures: { left: 84, top: 56 },
-    art: { left: 68, top: 32, width: 96, height: 96 }, plate: { left: 52, top: 140 },
+    ground: { left: 92, top: 62 }, structures: { left: 92, top: 30 },
+    art: { left: 68, top: 32, width: 96, height: 96 }, plate: { left: 56, top: 112 },
   },
   starpoint: {
-    ground: { left: 58, top: 86 }, structures: { left: 58, top: 54 },
-    art: { left: 44, top: 30, width: 78, height: 78 }, plate: { left: 60, top: 6 },
+    ground: { left: 64, top: 74 }, structures: { left: 64, top: 42 },
+    art: { left: 44, top: 30, width: 78, height: 78 }, plate: { left: 40, top: 34 },
   },
   centauri: {
-    ground: { left: 126, top: 152 }, structures: { left: 126, top: 120 },
-    art: { left: 114, top: 100, width: 70, height: 70 }, plate: { left: 52, top: 170 },
+    ground: { left: 130, top: 116 }, structures: { left: 130, top: 84 },
+    art: { left: 114, top: 100, width: 70, height: 70 }, plate: { left: 64, top: 148 },
   },
   'arc-prime': {
-    ground: { left: 58, top: 86 }, structures: { left: 58, top: 54 },
-    art: { left: 44, top: 30, width: 78, height: 78 }, plate: { left: 60, top: 6 },
+    ground: { left: 64, top: 74 }, structures: { left: 64, top: 42 },
+    art: { left: 44, top: 30, width: 78, height: 78 }, plate: { left: 40, top: 34 },
   },
   'wren-terra': {
-    ground: { left: 126, top: 152 }, structures: { left: 126, top: 120 },
-    art: { left: 114, top: 100, width: 70, height: 70 }, plate: { left: 52, top: 170 },
+    ground: { left: 130, top: 116 }, structures: { left: 130, top: 84 },
+    art: { left: 114, top: 100, width: 70, height: 70 }, plate: { left: 64, top: 148 },
   },
 }
 
@@ -128,11 +129,11 @@ export function pointInsideHex(x: number, y: number): boolean {
   return inside
 }
 
-/** The activation command token, bottom left inside the hexagon and above everything else on the tile. */
-export const ACTIVATION_SPOT: Point = { left: 44, top: 138 }
+/** The activation command token, on the wide left flank and above everything else on the tile. */
+export const ACTIVATION_SPOT: Point = { left: 20, top: 92 }
 export const ACTIVATION_SIZE = 34
-/** The faction emblem of a home system, top left inside the hexagon. */
-export const SIGIL_SPOT: Point = { left: 60, top: 10 }
+/** The faction emblem of a home system, top right inside the hexagon. */
+export const SIGIL_SPOT: Point = { left: 150, top: 20 }
 export const SIGIL_SIZE = 30
 export const WORMHOLE_SIZE = 26
 

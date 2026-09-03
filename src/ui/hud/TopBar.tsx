@@ -59,15 +59,15 @@ function StrategyStrip({ state, onPick }: { state: GameState; onPick?: (card: St
           >
             {/* a played card is turned face down, exactly as it is on the table */}
             <span className="card">
-              <img src={used ? MISC.strategyBack : strategyCardUrl(card)} alt={CARD_NAME[card]} />
+              <img className="face" src={used ? MISC.strategyBack : strategyCardUrl(card)} alt={CARD_NAME[card]} />
               {/* the trade goods ride on the card itself, as the tokens they are */}
               {bonus > 0 ? (
                 <span className="tgfan" data-testid={`strategy-bonus-${card}`}>
-                  {Array.from({ length: bonus }, (_, i) => <img key={i} src={MISC.tradeGood} alt="" width={20} height={20} />)}
+                  {Array.from({ length: bonus }, (_, i) => <img key={i} src={MISC.tradeGood} alt="" width={16} height={16} />)}
                 </span>
               ) : null}
               {owner !== null ? (
-                <img className="held" src={tokenUrl(state.players[owner].faction, 'command')} alt="" width={26} />
+                <img className="held" src={tokenUrl(state.players[owner].faction, 'command')} alt="" width={20} />
               ) : null}
             </span>
             <span className="vis" data-testid={`strategy-state-${card}`}>{label}</span>

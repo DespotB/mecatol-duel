@@ -14,7 +14,9 @@ button{font-family:inherit}
 /* space */
 /* space background: starfield, nebula veils, two galaxies and the planet limb at the bottom right */
 .space{position:fixed;inset:0;overflow:hidden;background:#05070f;z-index:0}
+.space.dim{background:#03050c}
 .space .base{position:absolute;inset:0;background:linear-gradient(180deg,#05070f 0%,#060a18 40%,#08102a 100%)}
+.space.dim .base{background:linear-gradient(180deg,#04060e 0%,#050814 40%,#060c20 100%)}
 .space .stars{position:absolute;inset:0;filter:none;opacity:.62;mix-blend-mode:screen;
   background:url(/assets/misc/starfield.png) center 38%/cover no-repeat}
 .space .veil{position:absolute;inset:0;background:
@@ -54,20 +56,14 @@ button{font-family:inherit}
   background:radial-gradient(circle at 27% 23%,rgba(130,165,255,.30) 0%,rgba(120,160,255,.08) 30%,transparent 55%);
   -webkit-mask:radial-gradient(circle,transparent 61.5%,#000 62%);mask:radial-gradient(circle,transparent 61.5%,#000 62%)}
 .space .vig{position:absolute;inset:0;background:radial-gradient(ellipse 78% 68% at 50% 44%,transparent 45%,rgba(3,5,12,.72) 100%)}
+/* the board sits in the middle, so behind the board the scenery has to give way */
+.space.dim .vig{background:radial-gradient(ellipse 76% 66% at 50% 46%,rgba(0,0,0,.3) 0%,rgba(0,0,0,.52) 55%,rgba(0,0,0,.74) 100%)}
 
 /* a real planet render for colour, the way the board's planets look, held far back in the mix */
 .space .bigplanet{position:absolute;left:-260px;bottom:-320px;width:820px;height:820px;
-  opacity:.42;filter:saturate(1.15) brightness(.85) blur(.4px);object-fit:contain;pointer-events:none}
+  opacity:.7;filter:saturate(1.15) brightness(.85) blur(.4px);object-fit:contain;pointer-events:none}
 .space .farplanet{position:absolute;right:6%;top:-90px;width:280px;height:280px;
-  opacity:.3;filter:saturate(1.2) brightness(.8) blur(.6px);object-fit:contain;pointer-events:none}
-/* ships crossing far away: slow, small, and never bright enough to be mistaken for a unit on the board */
-.space .drift img{position:absolute;opacity:.16;filter:brightness(1.5) blur(.3px);will-change:transform}
-.space .drift .d1{top:18%;width:46px;animation:drift 132s linear infinite}
-.space .drift .d2{top:62%;width:34px;animation:drift 168s linear infinite -40s}
-.space .drift .d3{top:81%;width:56px;animation:driftback 196s linear infinite -90s}
-@keyframes drift{from{transform:translateX(-12vw) rotate(6deg)}to{transform:translateX(112vw) rotate(6deg)}}
-@keyframes driftback{from{transform:translateX(112vw) scaleX(-1) rotate(-4deg)}to{transform:translateX(-12vw) scaleX(-1) rotate(-4deg)}}
-@media (prefers-reduced-motion: reduce){.space .drift img{animation:none;transform:translateX(40vw)}}
+  opacity:.5;filter:saturate(1.2) brightness(.8) blur(.6px);object-fit:contain;pointer-events:none}
 
 /* gold primitives */
 .cut{--c:10px;position:relative;padding:1px;
@@ -162,15 +158,17 @@ button{font-family:inherit}
 .sc{position:relative;width:62px;display:flex;flex-direction:column;align-items:center;background:none;border:0;padding:0;cursor:default}
 .sc.pick{cursor:pointer}
 .sc .card{position:relative;width:62px;height:78px;background:#000;border:1px solid transparent}
-.sc .card img{width:100%;height:100%;object-fit:cover}
+.sc .card>.face{width:100%;height:100%;object-fit:cover}
 /* nobody has taken it yet: no frame, dimmed, with whatever trade goods have piled up on it */
 .sc.free .card{filter:grayscale(.55) brightness(.62)}
 .sc.own-0 .card{border-color:var(--blue);box-shadow:0 0 0 1px rgba(61,123,232,.5)}
 .sc.own-1 .card{border-color:var(--red);box-shadow:0 0 0 1px rgba(214,59,59,.5)}
 .sc.played .card{filter:brightness(.8)}
-.sc .tgfan{position:absolute;left:0;right:0;bottom:5px;display:flex;align-items:center;justify-content:center}
+.sc .tgfan{position:absolute;left:0;right:0;bottom:4px;display:flex;align-items:center;justify-content:center}
+.sc .tgfan img{width:16px;height:16px}
 .sc .tgfan img{filter:drop-shadow(0 1px 2px rgba(0,0,0,.9))}
-.sc .tgfan img+img{margin-left:-7px}
+.sc .held{width:20px;height:auto}
+.sc .tgfan img+img{margin-left:-5px}
 .sc .held{position:absolute;right:-8px;top:-8px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.9))}
 /* the state is read out to assistive technology and to the tests, it is not printed under the card */
 .sc .vis{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
@@ -224,7 +222,13 @@ button{font-family:inherit}
 .tdot{width:9px;height:9px;transform:rotate(45deg);flex:none}
 .tdot.blue{background:#4f8ae8}.tdot.red{background:#d64a4a}.tdot.green{background:#49b06a}.tdot.yellow{background:#e0c04a}.tdot.none{background:#8d8877}
 .forces{display:grid;grid-template-columns:repeat(2,1fr);gap:4px 5px}
-.fc{display:flex;align-items:center;gap:6px;min-height:38px;border:1px solid rgba(201,162,77,.25);background:rgba(0,0,0,.28);padding:2px 4px}
+.fc{display:flex;align-items:center;gap:6px;min-height:38px;border:1px solid rgba(201,162,77,.25);background:rgba(0,0,0,.28);padding:2px 4px;
+  cursor:help;transition:border-color .12s ease,background .12s ease}
+.fc:hover,.fc:focus-visible{border-color:var(--gold-hi);background:rgba(201,162,77,.14);outline:none}
+/* the unit's own reference card, opened beside the column so nothing on the board is covered */
+.unitcard{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:340px;z-index:80;
+  border:1px solid var(--gold);background:#000;box-shadow:0 24px 60px rgba(0,0,0,.85);pointer-events:none}
+.unitcard img{display:block;width:100%}
 .fc.wide{grid-column:1/-1}
 .fc img{flex:none}
 .fc b{font:600 13px/1 var(--hud);color:#f1ead8;flex:none}
@@ -252,17 +256,17 @@ button{font-family:inherit}
  * shield, the two barely touching, and the name rides a thin outlined banner whose colour is the planet's
  * trait. The badge art is the printed one, the number is drawn on top.
  */
-.plate{position:absolute;display:flex;align-items:center;height:34px;--trait:#8fb4dd}
+.plate{position:absolute;display:flex;align-items:center;height:30px;--trait:#8fb4dd}
 .plate.hazardous{--trait:#e05a4a}
 .plate.cultural{--trait:#4fa3e8}
 .plate.industrial{--trait:#54b06a}
-.plate .vals{position:relative;width:40px;height:34px;flex:none;z-index:2}
-.plate .badge{position:absolute;width:24px;height:24px;font:700 13px/24px var(--body);color:#fff;
+.plate .vals{position:relative;width:36px;height:30px;flex:none;z-index:2}
+.plate .badge{position:absolute;width:22px;height:22px;font:700 12px/22px var(--body);color:#fff;
   text-shadow:0 1px 2px rgba(0,0,0,.9);filter:drop-shadow(0 1px 2px rgba(0,0,0,.8))}
-.plate .badge.res{left:0;top:10px}
-.plate .badge.inf{left:16px;top:0}
-.plate .nm{margin-left:-4px;height:20px;padding:0 16px 0 10px;
-  font:600 12px/19px var(--hud);letter-spacing:.13em;color:#fff;text-transform:uppercase;white-space:nowrap;
+.plate .badge.res{left:0;top:8px}
+.plate .badge.inf{left:14px;top:0}
+.plate .nm{margin-left:-4px;height:19px;padding:0 14px 0 9px;
+  font:600 11px/18px var(--hud);letter-spacing:.1em;color:#fff;text-transform:uppercase;white-space:nowrap;
   background:rgba(6,10,22,.72);border:1px solid var(--trait);border-left:0;
   clip-path:polygon(0 0,100% 0,calc(100% - 12px) 100%,0 100%);
   text-shadow:0 1px 2px rgba(0,0,0,.95)}
