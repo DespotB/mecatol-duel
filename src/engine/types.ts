@@ -119,7 +119,14 @@ export interface StrategicParams {
   objectiveId?: string              // Imperial primary: the public objective to score
   shareWithOpponent?: boolean       // Trade primary: the opponent replenishes without paying
 }
-export interface StatusParams { tokens: { tactic: number; fleet: number; strategy: number } }
+export interface StatusParams {
+  tokens: { tactic: number; fleet: number; strategy: number }
+  // R7: the objectives that cost something are scored only on request, each with what pays for it. The free
+  // ones score themselves; an unrequested or unpayable paid one simply is not scored.
+  score?: { objectiveId: string; planets?: string[]; tradeGoods?: number }[]
+}
+/** R7: one entry of `StatusParams.score`: the objective to buy, and the planets and trade goods that buy it. */
+export type ScoreRequest = NonNullable<StatusParams['score']>[number]
 
 export interface UnitStats {
   cost: number; producedPerCost: number

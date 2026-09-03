@@ -52,12 +52,14 @@ function invariants(state: GameState, landed: Map<string, Set<Seat>>): void {
 
 /**
  * What an applied move proves about coverage: the kind, plus the card for a strategic action or a secondary
- * answer (an accepted secondary is a different code path from a declined one) and the post for a trade.
+ * answer (an accepted secondary is a different code path from a declined one), the post for a trade, and
+ * whether a status move bought a paid objective (R7), which is a different code path from the bare one.
  */
 function signature(move: Move): string {
   if (move.type === 'strategic') return `strategic:${move.card}`
   if (move.type === 'secondary') return `secondary:${move.card}:${move.accept ? 'accept' : 'decline'}`
   if (move.type === 'tradePost') return `tradePost:${move.post}`
+  if (move.type === 'status' && move.params.score?.length) return 'status:paid'
   return move.type
 }
 
@@ -204,7 +206,9 @@ describe('legal moves in every phase', () => {
 // The seeds past the Fibonacci run are coverage ballast: every rules or flow change reshuffles these
 // deterministic playthroughs, so the tail is retuned whenever one of them stops reaching a rare move kind.
 // Two sessions have retuned it on the same day, which is why the list is longer than it looks it should be.
-const SEEDS: readonly number[] = [1, 2, 3, 5, 8, 13, 21, 34, 40, 55, 71, 89]
+// 6 is the odd one in the middle: after the objectives became a drawn pool it was the only seed under 40 that
+// still reached a ground combat.
+const SEEDS: readonly number[] = [1, 2, 3, 5, 6, 8, 13, 21, 34, 40, 55, 71, 89]
 const RUNS = new Map<number, GameRun>()
 
 /** The smoke games are shared by the tests below, so each seed is actually played only once. */
@@ -290,6 +294,9 @@ describe('R3.1 to R3.3 full game', () => {
       expect([...union], `${card} was never played as a primary`).toContain(`strategic:${card}`)
       expect([...union], `${card} was never accepted as a secondary`).toContain(`secondary:${card}:accept`)
     }
+    // R7: the bare status move and the one that buys a paid objective are two different code paths
+    expect([...union], 'no seeded game ever paid for an objective').toContain('status:paid')
+    expect([...union], 'no seeded game ever submitted a bare status move').toContain('status')
     for (const [name] of COUNTERS) expect(counters.get(name) ?? 0, `${name} never happened`).toBeGreaterThanOrEqual(1)
     // the two template kinds must mostly fill in, otherwise the run only looks like it moves ships and produces
     expect(templateAttempts).toBeGreaterThan(0)

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { applyMove } from './index'
+import { applyMove, legalMoves } from './index'
 import { decideWinner, tokensGained } from './statusPhase'
-import { deepFreeze, toActionPhase, toStatusPhase, withPlanetOwner, withPlayer, withTechs } from './testUtils'
+import { deepFreeze, toActionPhase, toStatusPhase, withExhausted, withPlanetOwner, withPlayer, withTechs } from './testUtils'
 import type { GameState, Result, StatusParams } from './types'
 
 const value = (r: Result<GameState>): GameState => {
@@ -187,5 +187,70 @@ describe('R3.3 status phase', () => {
     expect(done.players[0].scoredObjectives).toEqual([])
     expect(done.players[0].vp).toBe(0)
     expect(done.players[0].tradeGoods).toBe(6)                        // nothing was taken either
+  })
+  it('R7: pay 6 resources on request, and the planets that paid for it are exhausted', () => {
+    // the home planet is 5 resources, Sakulag another 2: seven ready, six of them spent
+    const owned = withPlanetOwner({ ...toActionPhase(), publicObjectives: ['pay_6_resources'] }, 'sakulag', 'sakulag', 0)
+    const s = toStatusPhase(owned)
+    const done = value(submit(s, { ...plain(5), score: [{ objectiveId: 'pay_6_resources', planets: ['000', 'sakulag'] }] }))
+    expect(done.players[0].vp).toBe(1)
+    expect(done.players[0].scoredObjectives).toEqual(['pay_6_resources'])
+    expect(done.systems['home-n'].planets[0].exhausted).toBe(true)
+    expect(done.systems.sakulag.planets[0].exhausted).toBe(true)
+    // R7: overpay is lost, as everywhere else
+    expect(done.players[0].tradeGoods).toBe(0)
+  })
+  it('R7: a payment that falls short is rejected, and so is a second helping of the same objective', () => {
+    let s = { ...toActionPhase(), publicObjectives: ['pay_6_resources'] }
+    s = withPlayer(withExhausted(s, ['000']), 0, { tradeGoods: 2 })    // 4 resources of planets, 2 trade goods
+    s = withPlanetOwner(withPlanetOwner(s, 'sakulag', 'sakulag', 0), 'quann', 'quann', 0)
+    const status = toStatusPhase(s)
+    const short = submit(status, { ...plain(5), score: [{ objectiveId: 'pay_6_resources', planets: ['sakulag', 'quann'] }] })
+    expect(short.ok).toBe(false)
+    if (!short.ok) expect(short.error).toMatch(/paid 4 of 6/)
+    const full = submit(status, { ...plain(5), score: [{ objectiveId: 'pay_6_resources', planets: ['sakulag', 'quann'], tradeGoods: 2 }] })
+    expect(full.ok).toBe(true)
+    const twice = submit(status, {
+      ...plain(5),
+      score: [{ objectiveId: 'pay_6_resources', planets: ['sakulag', 'quann'], tradeGoods: 2 }, { objectiveId: 'pay_6_resources' }],
+    })
+    expect(twice.ok).toBe(false)
+  })
+  it('R7: a score request is refused when the objective is unrevealed, already scored, unfulfilled or free', () => {
+    const base = { ...toActionPhase(), publicObjectives: ['pay_6_resources', 'trade_three_times'] }
+    const rich = withPlayer(base, 0, { tradeGoods: 6, trades: 3 })
+    const s = toStatusPhase(rich)
+    const ask = (objectiveId: string) => submit(s, { ...plain(5), score: [{ objectiveId, tradeGoods: 6 }] })
+    expect(ask('pay_time_20').ok).toBe(false)                         // not revealed
+    expect(ask('trade_three_times').ok).toBe(false)                   // free, so it scores itself
+    expect(ask('first_strike').ok).toBe(false)                        // a mandate is never bought
+    const already = toStatusPhase(withPlayer(rich, 0, { scoredObjectives: ['pay_6_resources'] }))
+    expect(submit(already, { ...plain(5), score: [{ objectiveId: 'pay_6_resources', tradeGoods: 6 }] }).ok).toBe(false)
+    const broke = toStatusPhase(withPlayer(withExhausted(base, ['000']), 0, { tradeGoods: 1 }))
+    const poor = submit(broke, { ...plain(5), score: [{ objectiveId: 'pay_6_resources', tradeGoods: 1 }] })
+    expect(poor.ok).toBe(false)
+    if (!poor.ok) expect(poor.error).toMatch(/not fulfilled/)
+  })
+  it('R7: the time objective is granted and logged by the engine, which never touches a clock', () => {
+    const s = toStatusPhase({ ...toActionPhase(), publicObjectives: ['pay_time_20'] })
+    const done = value(submit(s, { ...plain(5), score: [{ objectiveId: 'pay_time_20' }] }))
+    expect(done.players[0].vp).toBe(1)
+    expect(done.players[0].scoredObjectives).toEqual(['pay_time_20'])
+    expect(done.log.some(e => e.t === 'info' && /pays a fifth of the time/.test(e.text))).toBe(true)
+    // it is paid in time, so resources named alongside it are a mistake, not a donation
+    expect(submit(s, { ...plain(5), score: [{ objectiveId: 'pay_time_20', planets: ['000'] }] }).ok).toBe(false)
+    expect(submit(s, { ...plain(5), score: [{ objectiveId: 'pay_time_20', tradeGoods: 1 }] }).ok).toBe(false)
+  })
+  it('R3.3: the status template is playable as it stands, paid objectives included', () => {
+    const owned = withPlanetOwner({ ...toActionPhase(), publicObjectives: ['pay_6_resources', 'pay_time_20'] }, 'sakulag', 'sakulag', 0)
+    const s = toStatusPhase(owned)
+    const moves = legalMoves(s)
+    expect(moves).toHaveLength(2)                                     // the bare submission, and the one that buys
+    const paying = moves.find(m => m.type === 'status' && m.params.score?.length)
+    expect(paying).toBeTruthy()
+    if (!paying || paying.type !== 'status') throw new Error('no paying status move')
+    expect(paying.params.score?.map(r => r.objectiveId)).toEqual(['pay_6_resources', 'pay_time_20'])
+    for (const move of moves) expect(applyMove(s, move, 5).ok).toBe(true)
+    expect(value(applyMove(s, paying, 5)).players[0].vp).toBe(2)
   })
 })

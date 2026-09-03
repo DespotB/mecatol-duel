@@ -1,18 +1,18 @@
 import { ACTION_SPENT, activatableSystems, canPass } from './actionPhase'
 import { canMunitions, defaultAssignment, pendingFor, retreatTargets } from './combat'
 import { SHIPYARD_COST, canInheritance, canShipyard, inheritanceTechs, shipyardPlanets, tradePostOptions } from './componentActions'
-import { cheapestPlanets, productionCost, productionLimit, readyInfluence } from './economy'
+import { cheapestPayment, cheapestPlanets, payCost, productionCost, productionLimit, readyInfluence } from './economy'
 import { PRODUCIBLE } from './production'
 import { bombardablePlanets, groundCombatPending, landablePlanets } from './invasion'
 import { movableShips } from './movement'
-import { fulfils } from './objectives'
+import { fulfils, paidScoreable } from './objectives'
 import { researchable } from './research'
 import { FACTIONS } from '../data/factions'
 import { homeSystemId } from '../data/map'
-import { isPaidObjective } from '../data/objectives'
+import { isPaidObjective, objectiveCost } from '../data/objectives'
 import { cardOwner, diplomacySystems, secondaryTokenCost, unusedCards, warfareTokenSystems } from './strategicActions'
 import { tokensGained } from './statusPhase'
-import type { GameState, Move, Result, Seat, StrategicParams, StrategyCardId } from './types'
+import type { GameState, Move, Result, ScoreRequest, Seat, StatusParams, StrategicParams, StrategyCardId } from './types'
 
 function tacticalMoves(state: GameState): Move[] {
   const tac = state.tactical
@@ -140,6 +140,27 @@ function secondaryMoves(state: GameState, seat: Seat, card: StrategyCardId): Mov
   }
 }
 
+/**
+ * R7: one payable request per paid objective the seat could score, priced in the order they are listed so a
+ * second resource cost sees the planets the first one exhausted. An objective it cannot cover is left out.
+ */
+function paidRequests(state: GameState, seat: Seat): ScoreRequest[] {
+  const out: ScoreRequest[] = []
+  let after = state
+  for (const objectiveId of paidScoreable(state, seat)) {
+    const cost = objectiveCost(objectiveId)
+    if (!cost) continue
+    if (cost.kind !== 'resources') { out.push({ objectiveId }); continue }
+    const payment = cheapestPayment(after, seat, cost.amount)
+    if (!payment) continue
+    const paid = payCost(after, seat, cost.amount, payment.planets, payment.tradeGoods)
+    if (!paid.ok) continue
+    out.push({ objectiveId, ...payment })
+    after = paid.value
+  }
+  return out
+}
+
 export function legalMoves(state: GameState): Move[] {
   if (state.winner !== null || state.phase === 'ended') return []
   // R4.1 step 4: queued hits block everything else, and the offer is a complete pick so it can be played as it is
@@ -152,7 +173,11 @@ export function legalMoves(state: GameState): Move[] {
   if (state.phase === 'status') {
     const seat = state.active
     const tokens = state.players[seat].tokens
-    return [{ type: 'status', params: { tokens: { ...tokens, tactic: tokens.tactic + tokensGained(state, seat) } } }]
+    const params: StatusParams = { tokens: { ...tokens, tactic: tokens.tactic + tokensGained(state, seat) } }
+    // R7: paying is a choice, so the bare submission comes first and the one that buys everything payable
+    // second; the UI edits the second one down to what the player actually wants
+    const score = paidRequests(state, seat)
+    return score.length ? [{ type: 'status', params }, { type: 'status', params: { ...params, score } }] : [{ type: 'status', params }]
   }
   if (state.phase !== 'action') return []
   const seat = state.active
