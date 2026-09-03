@@ -113,6 +113,7 @@ export type Move =
   | { type: 'research'; techId: string; via: 'inheritance' }   // component action; the Technology card carries its technologies in StrategicParams
   | { type: 'shipyard'; planetId: string; planets: string[]; tradeGoods: number }
   | { type: 'tradePost'; post: 'west' | 'east'; commodities: number }
+  | { type: 'postAbility'; post: 'west' | 'east'; params: PostAbilityParams }   // R8: the post's own ability, a free move like the sale
   | { type: 'pass' }
   | { type: 'status'; params: StatusParams }             // one move per player: token distribution, then the engine finishes the phase when both are in
 export interface StrategicParams {
@@ -126,6 +127,17 @@ export interface StrategicParams {
   shareWithOpponent?: boolean       // Trade primary: the opponent replenishes without paying
 }
 export interface StatusParams { tokens: { tactic: number; fleet: number; strategy: number } }
+
+/**
+ * R8: the parameters of a `postAbility` move. Which of them matter is decided by the ability of the post
+ * actually in play on that side, never by which fields the caller filled in.
+ */
+export interface PostAbilityParams {
+  techId?: string; takeTechId?: string              // techExchange: the one returned, the one taken
+  planets?: string[]; influencePlanets?: string[]   // clearingHouse: planets paying resources, planets paying influence
+  pool?: 'tactic' | 'fleet' | 'strategy'            // charter, layover
+  give?: number[]; take?: UnitType                  // refit: unit ids returned, unit type taken
+}
 
 export interface UnitStats {
   cost: number; producedPerCost: number
