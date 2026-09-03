@@ -243,7 +243,7 @@ git commit -m "feat(engine): objective predicates, scoring and victory point boo
 
 **Files:**
 - Modify: `src/engine/types.ts` (three new `StrategicParams` fields, narrowed `research.via`)
-- Modify: `src/engine/economy.ts` (`exhaustPlanets`, `readyInfluence`, `distributeTokens`, `payCost` rewritten on top of `exhaustPlanets`)
+- Modify: `src/engine/economy.ts` (`exhaustPlanets`, `distributeTokens`, `payCost` rewritten on top of `exhaustPlanets`)
 - Modify: `src/engine/actionPhase.ts` (`startTactical` and `pass` are blocked while a secondary window is open)
 - Create: `src/engine/strategicActions.ts`
 - Modify: `src/engine/index.ts` (dispatcher cases `strategic`, `secondary`)
@@ -269,7 +269,6 @@ git commit -m "feat(engine): objective predicates, scoring and victory point boo
 - Produces in `economy.ts`:
   ```ts
   export function exhaustPlanets(state: GameState, seat: Seat, planets: string[]): Result<{ state: GameState; resources: number; influence: number }>
-  export function readyInfluence(state: GameState, seat: Seat): number
   export function distributeTokens(state: GameState, seat: Seat, wanted: Player['tokens'] | undefined, gained: number, redistribute?: boolean): Result<GameState>
   ```
   `distributeTokens` takes the **resulting** command sheet: every pool must be a non-negative integer, the three pools must sum to the current total plus `gained`, and without `redistribute` no pool may fall below its current value (R3.3 and Leadership hand out new tokens, only Warfare may move existing ones). `wanted === undefined` means "all new tokens into the tactic pool", which makes the enumerator's templates directly playable.
@@ -278,12 +277,14 @@ git commit -m "feat(engine): objective predicates, scoring and victory point boo
   export function cardOwner(state: GameState, card: StrategyCardId): Seat | null
   export function unusedCards(state: GameState, seat: Seat): StrategyCardId[]
   export function secondaryTokenCost(card: StrategyCardId): number     // 0 for Leadership, 1 otherwise
+  export function diplomacySystems(state: GameState, seat: Seat): string[]
+  export function warfareTokenSystems(state: GameState, seat: Seat): string[]
   export function readyPlanets(state: GameState, seat: Seat, planets: string[], max: number): Result<GameState>
   export function grantTech(state: GameState, seat: Seat, techId: string, ignorePrereqs: boolean): Result<GameState>
   export function strategic(state: GameState, card: StrategyCardId, params: StrategicParams | undefined): Result<GameState>
   export function secondary(state: GameState, card: StrategyCardId, accept: boolean, params: StrategicParams | undefined): Result<GameState>
   ```
-  R3.2 flow: `strategic` resolves the primary, marks the card used, sets `pendingSecondary` to the card and hands `active` to the opponent. The opponent answers with exactly one `secondary` move, `accept` true or false; only then does the turn pass on (`passTurn` from the card holder, so the opponent keeps the turn unless they have already passed). While `pendingSecondary` is set no other move is legal, which is why `startTactical` and `pass` grow a guard. `grantTech` is exported because task 4 researches through Inheritance Systems with `ignorePrereqs`.
+  R3.2 flow: `strategic` resolves the primary, marks the card used, sets `pendingSecondary` to the card and hands `active` to the opponent. The opponent answers with exactly one `secondary` move, `accept` true or false; only then does the turn pass on (`passTurn` from the card holder, so the opponent keeps the turn unless they have already passed). While `pendingSecondary` is set no other move is legal, which is why `startTactical` and `pass` grow a guard. `grantTech` is exported because task 4 researches through Inheritance Systems with `ignorePrereqs`, and `diplomacySystems`/`warfareTokenSystems` because both the handlers and the enumerator of task 6 need exactly the same eligibility rule.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -380,12 +381,21 @@ describe('R3.2 strategic actions', () => {
     expect(play(s, 'diplomacy', { systemId: 'home-n', planets: ['000', '000', '000'] }).ok).toBe(false)
     expect(play(withExhausted(s, ['000'], false), 'diplomacy', { systemId: 'home-n', planets: ['000'] }).ok).toBe(false)
   })
+  it('R3.2/R6 Diplomacy: with no eligible system the primary is still playable', () => {
+    let s = withExhausted(holder('diplomacy'), ['000'])
+    s = withPlanetOwner(s, 'home-n', '000', null)                 // seat 0 controls nothing but Mecatol Rex
+    s = withPlanetOwner(s, 'mecatol', 'mecatol-rex', 0)
+    const played = value(play(s, 'diplomacy', {}))
+    expect(played.pendingSecondary).toBe('diplomacy')
+    expect(played.systems.mecatol.activatedBy).toEqual([])        // Mecatol Rex is never chosen
+    expect(play(s, 'diplomacy', { systemId: 'mecatol' }).ok).toBe(false)
+  })
   it('R6 Diplomacy secondary: a strategy token readies up to 2 exhausted planets you control', () => {
     const s = withExhausted(holder('diplomacy'), ['000', 'arc-prime', 'wren-terra'])
     const played = value(play(s, 'diplomacy', { systemId: 'home-n' }))
     const answered = value(answer(played, 'diplomacy', true, { planets: ['arc-prime', 'wren-terra'] }))
     expect(answered.players[1].tokens.strategy).toBe(1)
-    expect(answered.systems['home-s'].planets.every(p => p.exhausted)).toBe(false)
+    expect(answered.systems['home-s'].planets.map(p => p.exhausted)).toEqual([false, false])   // both named planets
     expect(answer(withPlayer(played, 1, { tokens: { tactic: 3, fleet: 3, strategy: 0 } }), 'diplomacy', true, { planets: ['arc-prime'] }).ok).toBe(false)
   })
   it('R6 Trade primary: 3 trade goods, commodities replenished, the opponent may replenish too', () => {
@@ -478,12 +488,6 @@ export function payCost(state: GameState, seat: Seat, cost: number, planets: str
   return { ok: true, value: { ...spent.value.state, players } }
 }
 
-export function readyInfluence(state: GameState, seat: Seat): number {
-  let sum = 0
-  for (const sys of Object.values(state.systems)) for (const p of sys.planets) if (p.owner === seat && !p.exhausted) sum += p.influence
-  return sum
-}
-
 const TOKEN_POOLS = ['tactic', 'fleet', 'strategy'] as const
 
 /**
@@ -541,7 +545,7 @@ export function withExhausted(state: GameState, planetIds: string[], exhausted =
 ```ts
 // src/engine/strategicActions.ts
 import { FACTIONS } from '../data/factions'
-import { MECATOL_ID } from '../data/map'
+import { MECATOL_ID, SYSTEM_IDS } from '../data/map'
 import { otherSeat, passTurn } from './actionPhase'
 import { distributeTokens, exhaustPlanets } from './economy'
 import { canResearch } from './research'
@@ -569,6 +573,16 @@ function spendStrategyTokens(state: GameState, seat: Seat, cost: number): Result
   const players = [...state.players] as GameState['players']
   players[seat] = { ...player, tokens: { ...player.tokens, strategy: player.tokens.strategy - cost } }
   return { ok: true, value: { ...state, players } }
+}
+
+/** R6 Diplomacy: every system but Mecatol Rex in which the seat controls a planet. */
+export function diplomacySystems(state: GameState, seat: Seat): string[] {
+  return SYSTEM_IDS.filter(id => id !== MECATOL_ID && state.systems[id].planets.some(p => p.owner === seat))
+}
+
+/** R6 Warfare: every system that holds a command token of the seat. */
+export function warfareTokenSystems(state: GameState, seat: Seat): string[] {
+  return SYSTEM_IDS.filter(id => state.systems[id].activatedBy.includes(seat))
 }
 
 /** R6 Diplomacy: readies up to `max` exhausted planets the seat controls. */
@@ -615,10 +629,16 @@ function leadership(state: GameState, seat: Seat, params: StrategicParams, base:
   return distributeTokens(spent.value.state, seat, params.tokens, base + Math.floor(spent.value.influence / 3))
 }
 
-/** R6 Diplomacy, errata text: the opponent places a command token, then up to 2 of your planets ready. */
+/**
+ * R6 Diplomacy, errata text: the opponent places a command token, then up to 2 of your planets ready.
+ * R3.2: a card must always be playable, so with no eligible system only the readying half resolves.
+ */
 function diplomacyPrimary(state: GameState, seat: Seat, params: StrategicParams): Result<GameState> {
   const systemId = params.systemId
-  if (systemId === undefined) return { ok: false, error: 'R6: Diplomacy needs a system' }
+  if (systemId === undefined) {
+    if (diplomacySystems(state, seat).length > 0) return { ok: false, error: 'R6: Diplomacy needs a system' }
+    return readyPlanets(state, seat, params.planets ?? [], 2)
+  }
   const sys = state.systems[systemId]
   if (!sys) return { ok: false, error: `unknown system ${systemId}` }
   if (systemId === MECATOL_ID) return { ok: false, error: 'R6: not the Mecatol Rex system' }
@@ -706,7 +726,7 @@ In `src/engine/index.ts` add `import { secondary, strategic } from './strategicA
 - [ ] **Step 8: Run the tests to verify they pass**
 
 Run: `npm test -- src/engine/strategicActions.test.ts src/engine/economy.test.ts src/engine/actionPhase.test.ts`
-Expected: PASS, 12 new tests plus the untouched economy and action-phase suites.
+Expected: PASS, 13 new tests plus the untouched economy and action-phase suites.
 
 - [ ] **Step 9: Type-check, lint and commit**
 
@@ -728,6 +748,7 @@ git commit -m "feat(engine): strategic action framework with Leadership, Diploma
 
 **Interfaces:**
 - Produces in `data/map.ts`: `export function homeSystemId(seat: Seat): string`.
+- R6 Warfare primary: `params.systemId` is **required** while the seat has a command token on the board; the card then takes that token off the board and the seat gains one. With no token on the board the card is pure redistribution, gains nothing and stays playable, so a player can always discharge it (R3.2).
 - `primary` and `secondaryEffect` in `strategicActions.ts` become exhaustive over `StrategyCardId`; the `default` branches disappear, so a future card cannot be forgotten silently.
 - Warfare's secondary reuses `production.produce` unchanged: the state is staged with `tactical = { systemId: homeSystemId(seat), step: 'production' }`, `produce` runs with the full R4.4 rule set (limit, cost with Sarween Tools, reinforcements, fleet pool, trimmed fighters) and the original `tactical` is put back afterwards. The strategy token is already spent by `secondary`, so `warfareSecondary` only produces.
 - Technology resolves both technologies in order, so the first may be the prerequisite of the second; the second one costs 6 resources through `payCost`. The secondary costs the strategy token plus 4 resources. Both go through `canResearch`, so faction restrictions and the missing Dreadnought II for L1Z1X hold.
@@ -735,7 +756,7 @@ git commit -m "feat(engine): strategic action framework with Leadership, Diploma
 
 - [ ] **Step 1: Write the failing test**
 
-Append to `src/engine/strategicActions.test.ts`; its `testUtils` import grows by `withTechs`, everything else is already there:
+Append to `src/engine/strategicActions.test.ts`; its `testUtils` import grows by `withTechs` and the file imports `warfareTokenSystems` from `./strategicActions`, everything else is already there:
 
 ```ts
 describe('R3.2 strategic actions, the remaining three cards', () => {
@@ -746,9 +767,11 @@ describe('R3.2 strategic actions, the remaining three cards', () => {
     expect(played.systems.bereg.activatedBy).toEqual([])
     expect(played.players[0].tokens).toEqual({ tactic: 2, fleet: 5, strategy: 2 })   // 8 + 1, freely moved
     expect(play(s, 'warfare', { systemId: 'quann' }).ok).toBe(false)                  // no token of yours there
+    expect(play(s, 'warfare', {}).ok).toBe(false)                                     // a token is on the board, name it
   })
-  it('R6 Warfare primary: without a token on the board it only redistributes', () => {
+  it('R6 Warfare primary: without a token on the board it only redistributes and gains nothing', () => {
     const s = holder('warfare')
+    expect(warfareTokenSystems(s, 0)).toEqual([])
     expect(play(s, 'warfare', { tokens: { tactic: 1, fleet: 4, strategy: 3 } }).ok).toBe(true)
     expect(play(s, 'warfare', { tokens: { tactic: 2, fleet: 4, strategy: 3 } }).ok).toBe(false)   // 9, not 8
     expect(value(play(s, 'warfare')).players[0].tokens).toEqual({ tactic: 3, fleet: 3, strategy: 2 })
@@ -809,7 +832,7 @@ describe('R3.2 strategic actions, the remaining three cards', () => {
 - [ ] **Step 2: Run the test to verify it fails, then commit it**
 
 Run: `npm test -- src/engine/strategicActions.test.ts`
-Expected: FAIL, eight new tests, `no primary implemented for warfare` and friends.
+Expected: FAIL, eight new tests, `no primary implemented for warfare` and friends, and `warfareTokenSystems` is not exported yet.
 
 ```bash
 git add src/engine/strategicActions.test.ts
@@ -844,18 +867,23 @@ import { produce } from './production'
 Add the three card functions above `primary`:
 
 ```ts
-/** R6 Warfare: one of your command tokens leaves the board, you gain one and may move any of them. */
+/**
+ * R6 Warfare: one of your command tokens leaves the board and you gain one, then you may move any of them.
+ * With a token on the board the system must be named; with none the card is pure redistribution and gains
+ * nothing, so it stays playable (R3.2).
+ */
 function warfarePrimary(state: GameState, seat: Seat, params: StrategicParams): Result<GameState> {
-  let next = state
-  let gained = 0
-  if (params.systemId !== undefined) {
-    const sys = state.systems[params.systemId]
-    if (!sys) return { ok: false, error: `unknown system ${params.systemId}` }
-    if (!sys.activatedBy.includes(seat)) return { ok: false, error: `R6: no command token of yours in ${params.systemId}` }
-    next = { ...state, systems: { ...state.systems, [params.systemId]: { ...sys, activatedBy: sys.activatedBy.filter(s => s !== seat) } } }
-    gained = 1
+  const onBoard = warfareTokenSystems(state, seat)
+  const systemId = params.systemId
+  if (systemId === undefined) {
+    if (onBoard.length > 0) return { ok: false, error: 'R6: name the system your command token comes from' }
+    return distributeTokens(state, seat, params.tokens, 0, true)
   }
-  return distributeTokens(next, seat, params.tokens, gained, true)
+  const sys = state.systems[systemId]
+  if (!sys) return { ok: false, error: `unknown system ${systemId}` }
+  if (!sys.activatedBy.includes(seat)) return { ok: false, error: `R6: no command token of yours in ${systemId}` }
+  const next = { ...state, systems: { ...state.systems, [systemId]: { ...sys, activatedBy: sys.activatedBy.filter(s => s !== seat) } } }
+  return distributeTokens(next, seat, params.tokens, 1, true)
 }
 
 /** R6 Warfare secondary: the R4.4 production of a space dock in your own home system. */
@@ -951,7 +979,7 @@ function secondaryEffect(state: GameState, seat: Seat, card: StrategyCardId, par
 - [ ] **Step 5: Run the tests to verify they pass**
 
 Run: `npm test -- src/engine/strategicActions.test.ts src/engine/production.test.ts`
-Expected: PASS, 20 tests in the strategic suite, production untouched.
+Expected: PASS, 21 tests in the strategic suite, production untouched.
 
 - [ ] **Step 6: Type-check, lint and commit**
 
@@ -999,7 +1027,7 @@ git commit -m "feat(engine): Warfare, Technology and Imperial strategy cards"
 import { describe, expect, it } from 'vitest'
 import { canShipyard, tradePostOptions } from './componentActions'
 import { applyMove } from './index'
-import { deepFreeze, toActionPhase, withCards, withPlanetOwner, withPlayer, withTechs } from './testUtils'
+import { deepFreeze, toActionPhase, withCards, withExhausted, withPlanetOwner, withPlayer, withTechs } from './testUtils'
 import type { GameState, Result } from './types'
 
 const value = (r: Result<GameState>): GameState => {
@@ -1028,13 +1056,15 @@ describe('R6/R8 component actions', () => {
     expect(done.players[0].inheritanceExhausted).toBe(true)
     expect(done.systems['home-n'].planets[0].exhausted).toBe(true)  // [0.0.0] is the only ready planet
     expect(done.active).toBe(1)
-    expect(inherit(done, 'sarween_tools').ok).toBe(false)           // exhausted
+    expect(inherit({ ...done, active: 0 }, 'sarween_tools').ok).toBe(false)   // the card stays exhausted this round
   })
   it('R6: without the technology, without resources or with a known technology the action is illegal', () => {
-    expect(inherit(toActionPhase(), 'war_sun').ok).toBe(false)
-    const poor = withTechs(withPlayer(toActionPhase(), 0, {}), 0, ['inheritance_systems'])
-    expect(inherit(poor, 'plasma_scoring').ok).toBe(false)          // already owned
-    expect(inherit(poor, 'dreadnought_ii').ok).toBe(false)          // never available to L1Z1X
+    expect(inherit(toActionPhase(), 'war_sun').ok).toBe(false)      // seat 0 does not own the card
+    const rich = withTechs(toActionPhase(), 0, ['inheritance_systems'])
+    expect(inherit(rich, 'plasma_scoring').ok).toBe(false)          // already owned
+    expect(inherit(rich, 'dreadnought_ii').ok).toBe(false)          // never available to L1Z1X
+    const broke = withExhausted(rich, ['000'])                      // [0.0.0] is the only planet seat 0 controls
+    expect(inherit(broke, 'sarween_tools').ok).toBe(false)          // no ready planet pays the 2 resources
   })
   it('R6: the emergency shipyard needs no space dock, a strategy token and 4 resources, once per game', () => {
     const s = withoutDocks(toActionPhase(), 0)
@@ -1306,7 +1336,7 @@ git commit -m "feat(engine): Inheritance Systems research, emergency shipyard an
   export function finishStatusPhase(state: GameState, seed: number): GameState
   export function status(state: GameState, params: StatusParams, seed: number): Result<GameState>
   ```
-  R3.3: each player submits one `status` move, the speaker first, then the other seat; the move carries only the token distribution, everything a player may score is scored automatically because the duel has no reason to decline a point. The second move finishes the phase: reveal the next public objective (rounds 1 to 5), ready every planet, ready the exhausted cards (`inheritanceExhausted`), return both strategy cards to a pool with bonus 0, take every command token off the map, reset the per-round flags (`passed`, `mandateEarnedThisRound`, `spentInOneProductionThisRound`, `tradedThisRound`), roll a new guardian fleet while Mecatol Rex is uncontrolled, run the victory check, pass the speaker token and start the next round in the strategy phase with a fresh snake draft.
+  R3.3: each player submits one `status` move, the speaker first, then the other seat; the move carries only the token distribution, everything a player may score is scored automatically because the duel has no reason to decline a point. The second move finishes the phase: reveal the next public objective (rounds 1 to 5), ready every planet, ready the exhausted cards (`inheritanceExhausted`), return the played strategy cards to the pool with bonus 0 while the unpicked cards keep the trade goods they have collected (R3.1), take every command token off the map, reset the per-round flags (`passed`, `mandateEarnedThisRound`, `spentInOneProductionThisRound`, `tradedThisRound`), roll a new guardian fleet while Mecatol Rex is uncontrolled, run the victory check, pass the speaker token and start the next round in the strategy phase with a fresh snake draft.
   R7 victory: the check fires when a player has 7 or more VP, and unconditionally after the round 6 status phase. `decideWinner` is higher VP, then the Mecatol Rex controller, then more planets, then the opponent of the speaker of the finished round, so it is called before the speaker token moves.
 
 - [ ] **Step 1: Write the failing test**
@@ -1315,7 +1345,7 @@ git commit -m "feat(engine): Inheritance Systems research, emergency shipyard an
 // src/engine/statusPhase.test.ts
 import { describe, expect, it } from 'vitest'
 import { applyMove } from './index'
-import { decideWinner } from './statusPhase'
+import { decideWinner, tokensGained } from './statusPhase'
 import { deepFreeze, toActionPhase, toStatusPhase, withPlanetOwner, withPlayer, withTechs, withUnits } from './testUtils'
 import type { GameState, Result, StatusParams } from './types'
 
@@ -1326,21 +1356,27 @@ const value = (r: Result<GameState>): GameState => {
 const submit = (state: GameState, params: StatusParams, seed = 7) => applyMove(deepFreeze(state), { type: 'status', params }, seed)
 const plain = (tactic: number, fleet = 3, strategy = 2): StatusParams => ({ tokens: { tactic, fleet, strategy } })
 
-/** Both players through the status phase, speaker first. */
+/** Both players through the status phase, speaker first; the new tokens all go into the tactic pool. */
 function bothSubmit(state: GameState, seed = 7): GameState {
-  const first = value(submit(state, plain(state.players[state.speaker].tokens.tactic + 2), seed))
-  return value(submit(first, plain(first.players[first.active].tokens.tactic + 2), seed))
+  const step = (s: GameState): GameState => {
+    const seat = s.active
+    const tokens = s.players[seat].tokens
+    return value(submit(s, { tokens: { ...tokens, tactic: tokens.tactic + tokensGained(s, seat) } }, seed))
+  }
+  return step(step(state))
 }
 
 describe('R3.3 status phase', () => {
   it('R3.3 step 3: two command tokens, three with Hyper Metabolism, distributed but never moved', () => {
     const s = toStatusPhase(toActionPhase())
-    expect(submit(s, plain(4)).ok).toBe(true)                        // 3 + 2 into the tactic pool
-    expect(submit(s, plain(3, 4, 3)).ok).toBe(true)
-    expect(submit(s, plain(5)).ok).toBe(false)                       // three tokens, not two
-    expect(submit(s, plain(2, 4, 3)).ok).toBe(false)                 // the tactic pool shrinks
+    expect(s.players[0].tokens).toEqual({ tactic: 3, fleet: 3, strategy: 2 })   // 8 on the sheet, 2 to come
+    expect(submit(s, plain(5)).ok).toBe(true)                        // 5 + 3 + 2 = 10, both into the tactic pool
+    expect(submit(s, plain(3, 4, 3)).ok).toBe(true)                  // 10, one into each of the other pools
+    expect(submit(s, plain(4)).ok).toBe(false)                       // 9, one token unassigned
+    expect(submit(s, plain(6)).ok).toBe(false)                       // 11, one token too many
+    expect(submit(s, plain(2, 5, 3)).ok).toBe(false)                 // 10, but the tactic pool shrinks
     const hyper = toStatusPhase(withTechs(toActionPhase(), 0, ['hyper_metabolism']))
-    expect(submit(hyper, plain(6)).ok).toBe(true)
+    expect(submit(hyper, plain(6)).ok).toBe(true)                    // 11, three tokens
     expect(submit(hyper, plain(5)).ok).toBe(false)
   })
   it('R3.3 step 1: fulfilled objectives, the Mandate and Mecatol Rex score, each only once', () => {
@@ -1363,7 +1399,7 @@ describe('R3.3 status phase', () => {
     expect(late.publicObjectives).toHaveLength(6)
     expect(late.phase).toBe('ended')
   })
-  it('R3.3 step 4: planets and cards ready, the cards return with bonus 0, the map is cleared', () => {
+  it('R3.3 step 4/R3.1: planets and cards ready, played cards return at 0, unpicked keep their bonus', () => {
     const base = toActionPhase()
     const dirty = deepFreeze({
       ...base,
@@ -1378,8 +1414,13 @@ describe('R3.3 status phase', () => {
     expect(done.systems.bereg.planets.every(p => !p.exhausted)).toBe(true)
     expect(done.players[0]).toMatchObject({ inheritanceExhausted: false, spentInOneProductionThisRound: 0, passed: false, mandateEarnedThisRound: false, tradedThisRound: { west: false, east: false } })
     expect(done.players.every(p => p.strategyCards.length === 0)).toBe(true)
-    expect(done.strategyPool.map(c => c.bonus)).toEqual([0, 0, 0, 0, 0, 0])
-    expect(done.strategyPool).toHaveLength(6)
+    // R3.1: warfare, leadership, imperial and technology were played and come back at 0; the two unpicked
+    // cards keep the trade good each of them collected at the end of the draft
+    expect(done.strategyPool.map(c => c.id)).toEqual(['leadership', 'diplomacy', 'trade', 'warfare', 'technology', 'imperial'])
+    expect(done.strategyPool.map(c => c.bonus)).toEqual([0, 1, 1, 0, 0, 0])
+    const picked = applyMove(done, { type: 'pickStrategyCard', card: 'diplomacy' }, 0)
+    if (!picked.ok) throw new Error(picked.error)
+    expect(picked.value.players[1].tradeGoods).toBe(done.players[1].tradeGoods + 1)
   })
   it('R3.3 step 5 / R4.2: a new guardian fleet only while Mecatol Rex is uncontrolled', () => {
     const s = toStatusPhase(toActionPhase())
@@ -1493,8 +1534,8 @@ export function scoreAll(state: GameState, seat: Seat): GameState {
 export function decideWinner(state: GameState): Seat {
   const [a, b] = state.players
   if (a.vp !== b.vp) return a.vp > b.vp ? 0 : 1
-  const mecatol = state.systems[MECATOL_ID].planets[0].owner
-  if (mecatol !== null) return mecatol
+  if (controlsMecatol(state, 0)) return 0
+  if (controlsMecatol(state, 1)) return 1
   const planets: [number, number] = [controlledPlanets(state, 0).length, controlledPlanets(state, 1).length]
   if (planets[0] !== planets[1]) return planets[0] > planets[1] ? 0 : 1
   return otherSeat(state.speaker)
@@ -1524,7 +1565,9 @@ export function finishStatusPhase(state: GameState, seed: number): GameState {
     ...p, strategyCards: [], passed: false, inheritanceExhausted: false,
     mandateEarnedThisRound: false, spentInOneProductionThisRound: 0, tradedThisRound: { west: false, east: false },
   })) as GameState['players']
-  next = { ...next, systems, players, tactical: null, pendingSecondary: null, strategyPool: ALL_STRATEGY_CARDS.map(id => ({ id, bonus: 0 })) }
+  // R3.1: the played cards come back with bonus 0, the unpicked ones keep the trade goods they collected
+  const strategyPool = ALL_STRATEGY_CARDS.map(id => ({ id, bonus: next.strategyPool.find(c => c.id === id)?.bonus ?? 0 }))
+  next = { ...next, systems, players, strategyPool, tactical: null, pendingSecondary: null }
   // R3.3 step 5 / R4.2: a fresh guardian fleet as long as nobody controls Mecatol Rex
   if (!next.systems[MECATOL_ID].planets.some(p => p.owner !== null)) next = rollGuardianFleet(next, deriveSeed(seed, 91))
   const winner = victoryCheck(next)
@@ -1566,7 +1609,7 @@ In `docs/spec/engine-design.md` replace the `src/engine/statusPhase.ts` row with
 - [ ] **Step 6: Run the tests to verify they pass**
 
 Run: `npm test -- src/engine/statusPhase.test.ts`
-Expected: PASS, 9 tests.
+Expected: PASS, 10 tests.
 
 - [ ] **Step 7: Type-check, lint and commit**
 
@@ -1584,19 +1627,18 @@ git commit -m "feat(engine): status phase with scoring, readying, victory check 
 **Files:**
 - Modify: `src/engine/legalMoves.ts` (strategic, secondary, component, trade post and status branches; structural `validateMove`)
 - Modify: `src/engine/testUtils.ts` (`shuffle`, `fillTemplate`)
-- Modify: `src/engine/tacticalFlow.test.ts` (use the shared helpers instead of its local copies)
 - Modify: `docs/spec/engine-design.md` (the `legalMoves` contract bullet)
 - Test: `src/engine/fullGame.test.ts`
 
 **Interfaces:**
-- `legalMoves` covers all four phases. In the action phase it offers, for the active seat: every activatable system, one `strategic` move per unused card with directly playable parameters (one per eligible system for Diplomacy, one per researchable technology for Technology, one per scoreable objective for Imperial), one `research` move per technology Inheritance Systems can reach, one `shipyard` move per controlled planet, one `tradePost` move per usable post, and `pass` when R3.2 allows it. While `pendingSecondary` is set, the answering seat gets exactly `accept: false` plus, when it is affordable and useful, `accept: true` with a payable template; that branch runs **before** the `passed` check, because the response is not a turn. In the status phase the active seat gets one `status` template with all new tokens in the tactic pool.
+- `legalMoves` covers all four phases. In the action phase it offers, for the active seat: every activatable system, one `strategic` move per unused card with directly playable parameters (one per eligible system for Diplomacy and for Warfare, the bare card when there is none, one per researchable technology for Technology, one per scoreable objective for Imperial), one `research` move per technology Inheritance Systems can reach, one `shipyard` move per controlled planet, one `tradePost` move per usable post, and `pass` when R3.2 allows it. While `pendingSecondary` is set, the answering seat gets exactly `accept: false` plus, when it is affordable and useful, `accept: true` with a payable template; that branch runs **before** the `passed` check, because the response is not a turn. In the status phase the active seat gets one `status` template with all new tokens in the tactic pool.
 - `validateMove` no longer compares JSON. It matches by kind: the fields that identify a move are compared, the parameter payloads that the UI fills in are not.
   ```ts
   export function legalMoves(state: GameState): Move[]
   export function validateMove(state: GameState, move: Move): Result<true>
   ```
-  `TEMPLATE_KINDS` disappears; the structural matcher covers what it did. Run `grep -rn "TEMPLATE_KINDS" src` first: if something still imports it, keep the export.
-- Produces in `testUtils.ts`: `shuffle<T>(list: T[], rng: () => number): T[]` and `fillTemplate(state: GameState, move: Move, rng: () => number): Move`, the shared version of the local helpers of `tacticalFlow.test.ts`; only `moveShips` and `produce` need filling, every other enumerated move is already concrete.
+  The eligibility helpers are not duplicated here: `diplomacySystems`, `warfareTokenSystems` and `research.researchable` are the same functions the handlers use, so an enumerated move can never be refused for a reason the enumerator did not know about. `TEMPLATE_KINDS` disappears; the structural matcher covers what it did. Run `grep -rn "TEMPLATE_KINDS" src` first: if something still imports it, keep the export.
+- Produces in `testUtils.ts`: `shuffle<T>(list: T[], rng: () => number): T[]` and `fillTemplate(state: GameState, move: Move, rng: () => number): Move`, used by `fullGame.test.ts` only; `tacticalFlow.test.ts` keeps its own local `fill` and is not touched by this plan. Only `moveShips` and `produce` need filling, every other enumerated move is already concrete.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1604,6 +1646,7 @@ git commit -m "feat(engine): status phase with scoring, readying, victory check 
 // src/engine/fullGame.test.ts
 import { describe, expect, it } from 'vitest'
 import { homeSystemId } from '../data/map'
+import { otherSeat } from './actionPhase'
 import { capacity } from './economy'
 import { applyMove, legalMoves, validateMove } from './index'
 import { createGame, unitsOf } from './setup'
@@ -1731,19 +1774,27 @@ describe('legal moves in every phase', () => {
 
 describe('R3.1 to R3.3 full game', () => {
   it('plays ten seeded games to the end and keeps every invariant', () => {
-    let finishedEarly = 0
+    let byPoints = 0
+    let byRound6 = 0
     for (const seed of [1, 2, 3, 5, 8, 13, 21, 34, 55, 89]) {
       const { state, moves, attempts, rejected } = playGame(seed)
       expect(state.phase).toBe('ended')
-      expect(state.winner).not.toBeNull()
       expect(moves).toBeLessThan(MAX_MOVES)
       expect(state.round).toBeLessThanOrEqual(6)
       expect(rejected).toBeLessThanOrEqual(Math.ceil(attempts * 0.05))
       expect(state.log.filter(e => e.t === 'move').length).toBe(moves)
-      if (state.round < 6) finishedEarly++
-      expect(state.players[0].vp + state.players[1].vp).toBeGreaterThanOrEqual(0)
+      const winner = state.winner
+      expect(winner).not.toBeNull()
+      if (winner === null) continue
+      // R7: a game ends either because someone reached 7 VP or because the round 6 status phase decided it
+      if (state.players[winner].vp >= 7) byPoints++
+      else {
+        expect(state.round).toBe(6)
+        expect(state.players[winner].vp).toBeGreaterThanOrEqual(state.players[otherSeat(winner)].vp)
+        byRound6++
+      }
     }
-    expect(finishedEarly).toBeGreaterThanOrEqual(0)
+    expect(byPoints + byRound6).toBe(10)
   })
 })
 ```
@@ -1819,8 +1870,6 @@ import { movableShips } from './movement'
 
 with `Move` added to the type import list.
 
-Then, in `src/engine/tacticalFlow.test.ts`, delete the local `shuffle` and `fill` definitions and import the shared ones instead (`fill(...)` becomes `fillTemplate(...)`); nothing else in that file changes. If that file no longer defines them, skip this edit.
-
 - [ ] **Step 4: Complete the enumerator and the structural validator**
 
 Replace the imports of `src/engine/legalMoves.ts` with:
@@ -1829,14 +1878,13 @@ Replace the imports of `src/engine/legalMoves.ts` with:
 import { activatableSystems, canPass } from './actionPhase'
 import { canMunitions, retreatTargets } from './combat'
 import { canInheritance, canShipyard, inheritanceTechs, shipyardPlanets, tradePostOptions } from './componentActions'
-import { cheapestPlanets, productionLimit } from './economy'
+import { cheapestPlanets, productionCost, productionLimit } from './economy'
 import { bombardablePlanets, groundCombatPending, landablePlanets } from './invasion'
 import { movableShips } from './movement'
 import { fulfils } from './objectives'
-import { canResearch } from './research'
-import { homeSystemId, MECATOL_ID, SYSTEM_IDS } from '../data/map'
-import { TECHS } from '../data/techs'
-import { cardOwner, secondaryTokenCost, unusedCards } from './strategicActions'
+import { researchable } from './research'
+import { homeSystemId } from '../data/map'
+import { cardOwner, diplomacySystems, secondaryTokenCost, unusedCards, warfareTokenSystems } from './strategicActions'
 import { tokensGained } from './statusPhase'
 import type { GameState, Move, Result, Seat, StrategicParams, StrategyCardId } from './types'
 ```
@@ -1844,22 +1892,23 @@ import type { GameState, Move, Result, Seat, StrategicParams, StrategyCardId } f
 Leave `tacticalMoves` exactly as it is. Add these helpers above `legalMoves`:
 
 ```ts
-function researchable(state: GameState, seat: Seat): string[] {
-  return TECHS.map(t => t.id).filter(id => canResearch(state.players[seat], id))
-}
-
-/** R6: the systems Diplomacy may choose, every system but Mecatol Rex with a planet you control. */
-function diplomacySystems(state: GameState, seat: Seat): string[] {
-  return SYSTEM_IDS.filter(id => id !== MECATOL_ID && state.systems[id].planets.some(p => p.owner === seat))
-}
-
 /** One directly playable primary per card; the UI may fill in richer parameters, the handler checks them. */
 function primaryMoves(state: GameState, seat: Seat, card: StrategyCardId): Move[] {
   switch (card) {
-    case 'diplomacy':
-      return diplomacySystems(state, seat).map((systemId): Move => ({ type: 'strategic', card, params: { systemId, planets: [] } }))
+    case 'diplomacy': {
+      // R6: with no eligible system the card is played bare, which is what the handler allows
+      const systems = diplomacySystems(state, seat)
+      if (!systems.length) return [{ type: 'strategic', card, params: {} }]
+      return systems.map((systemId): Move => ({ type: 'strategic', card, params: { systemId, planets: [] } }))
+    }
+    case 'warfare': {
+      // R6: a token on the board must be named, so the bare variant is offered only when there is none
+      const systems = warfareTokenSystems(state, seat)
+      if (!systems.length) return [{ type: 'strategic', card, params: {} }]
+      return systems.map((systemId): Move => ({ type: 'strategic', card, params: { systemId } }))
+    }
     case 'technology': {
-      const techs = researchable(state, seat)
+      const techs = researchable(state.players[seat])
       if (!techs.length) return [{ type: 'strategic', card, params: {} }]
       return techs.map((techId): Move => ({ type: 'strategic', card, params: { techId } }))
     }
@@ -1893,7 +1942,8 @@ function secondaryMoves(state: GameState, seat: Seat, card: StrategyCardId): Mov
       const home = state.systems[homeSystemId(seat)]
       const dock = home.planets.some(p => p.structures.some(u => u.type === 'spacedock' && u.owner === seat))
       if (!dock || player.reinforcements.infantry < 1 || productionLimit(state, seat, home.id) < 1) return []
-      const cost = player.techs.includes('sarween_tools') ? 0 : 1
+      const stats = { faction: player.faction, techs: player.techs }
+      const cost = productionCost({ infantry: 1 }, stats, player.techs.includes('sarween_tools'))
       const planets = cheapestPlanets(state, seat, cost)
       if (!planets) return []
       return [{ type: 'secondary', card, accept: true, params: { units: { infantry: 1 }, planets, tradeGoods: 0 } }]
@@ -1901,7 +1951,7 @@ function secondaryMoves(state: GameState, seat: Seat, card: StrategyCardId): Mov
     case 'technology': {
       const planets = cheapestPlanets(state, seat, 4)
       if (!planets) return []
-      return researchable(state, seat).map((techId): Move => ({ type: 'secondary', card, accept: true, params: { techId, planets } }))
+      return researchable(state.players[seat]).map((techId): Move => ({ type: 'secondary', card, accept: true, params: { techId, planets } }))
     }
     case 'imperial':
       return [{ type: 'secondary', card, accept: true, params }]
@@ -2012,7 +2062,7 @@ Expected: PASS, every suite (units, rng, adjacency, research, setup, economy, st
 Run: `npx tsc -p tsconfig.app.json --noEmit && npm run lint`
 
 ```bash
-git add src/engine/legalMoves.ts src/engine/testUtils.ts src/engine/tacticalFlow.test.ts src/engine/fullGame.test.ts docs/spec/engine-design.md
+git add src/engine/legalMoves.ts src/engine/testUtils.ts src/engine/fullGame.test.ts docs/spec/engine-design.md
 git commit -m "feat(engine): legal moves for every phase, structural validation and a full-game smoke test"
 ```
 
@@ -2024,7 +2074,7 @@ git commit -m "feat(engine): legal moves for every phase, structural validation 
 
 | Rule | Where | Notes |
 | --- | --- | --- |
-| R3.1 strategy phase | `strategyPhase.ts` (plan 1), `statusPhase.finishStatusPhase`, task 5 | the draft itself is unchanged; the status phase returns both cards to a pool with bonus 0 and sets a fresh snake draft `[speaker, other, other, speaker]` for the new speaker, so initiative is recomputed every round |
+| R3.1 strategy phase | `strategyPhase.ts` (plan 1), `statusPhase.finishStatusPhase`, task 5 | the draft itself is unchanged; the status phase rebuilds the pool in `ALL_STRATEGY_CARDS` order, played cards with bonus 0 and unpicked cards with the trade goods they carry, and sets a fresh snake draft `[speaker, other, other, speaker]` for the new speaker, so initiative is recomputed every round |
 | R3.2 strategic action | `strategicActions.ts`, tasks 2 and 3 | primary, card marked used, `pendingSecondary` window, exactly one `secondary` answer with `accept` true or false, only then does the turn pass; `startTactical` and `pass` are blocked while the window is open |
 | R3.2 component action | `componentActions.ts`, task 4 | Inheritance Systems and the emergency shipyard are whole turns and end with `passTurn`; the trade post is free and the turn goes on |
 | R3.3 status phase | `statusPhase.ts`, task 5 | one move per player, speaker first: scoring, 2 or 3 command tokens distributed without moving old ones, reveal, ready planets and the exhausted card, cards back to the pool, tokens off the map, per-round flags reset, guardian reroll, victory check, speaker swap, round advance |
@@ -2041,28 +2091,31 @@ git commit -m "feat(engine): legal moves for every phase, structural validation 
 - `economy.payCost` is rewritten on top of the new `exhaustPlanets` and keeps its signature, its error strings and its behaviour, so `production.ts` and its tests are unaffected.
 - `production.produce` is reused unchanged by the Warfare secondary through a staged `tactical` context; the original context (always `null` during a strategic action) is restored afterwards, so no caller can observe the staging.
 - New modules export only what other modules use: `objectives.ts` feeds Imperial, the status phase, `componentActions.shipyardPlanets` and the enumerator; `strategicActions.grantTech` and `readyPlanets` are exported for task 4 and for symmetry between primary and secondary; `TEMPLATE_KINDS` is deleted because the structural matcher replaces it.
-- Every new fixture helper lives in `src/engine/testUtils.ts` and returns `deepFreeze(...)`, and `fillTemplate`/`shuffle` replace the local copies in `tacticalFlow.test.ts`, so there is one implementation of the random driver's plumbing.
+- Every new fixture helper lives in `src/engine/testUtils.ts` and returns `deepFreeze(...)`. `fillTemplate` and `shuffle` are added there for `fullGame.test.ts`; the tactical plan's `tacticalFlow.test.ts` keeps its own local copies and no file of that plan is edited here.
 
 ### Resolved ambiguities and v1 policies
 
 1. **The secondary window is a response, not a turn.** After a primary, `active` moves to the opponent, who owes exactly one `secondary` move. A player who has already passed still answers (the enumerator checks `pendingSecondary` before `passed`), and afterwards the turn resumes from the card holder through `passTurn`, so a passed answerer hands it straight back.
-2. **Every primary can always be played.** All parameters are optional: Technology may research nothing, Imperial may score nothing, Warfare may take no token off the board, Diplomacy still needs a system but a player always controls a home planet. Without this a player could hold an unplayable card, be unable to pass (R3.2) and deadlock the action phase.
+2. **Every primary can always be played** (controller ruling). Technology may research nothing, Imperial may score nothing. Diplomacy needs a system while the seat controls a planet in one, and may be played bare when it controls none outside Mecatol Rex; Warfare needs the system while the seat has a command token on the board, and is pure redistribution when it has none. Both handlers and the enumerator ask the same helpers (`diplomacySystems`, `warfareTokenSystems`), so the enumerated variant is always the legal one. Without this a player could hold an unplayable card, be unable to pass (R3.2) and deadlock the action phase.
 3. **Leadership overpay is lost.** Influence works like resources: exhausted planets pay in full, remainders below 3 give no token.
-4. **Diplomacy places a token, not a pool token.** The duel does not model a reinforcement pool of command tokens, so the opponent's token costs them nothing; it is an entry in `system.activatedBy`, which by the existing rules both blocks their activation of that system (R3.2) and freezes their ships there (the movement rule about your own token). If their seat is already listed, nothing happens (LRR 30.2).
-5. **The Warfare token goes to reinforcements.** The removed token leaves the board and the card's "then gain 1 command token" is the compensation, so the sheet grows by exactly one; the redistribution may then move any token, which is the only place where `distributeTokens` allows a pool to shrink.
+4. **Diplomacy places a token, not a pool token** (controller ruling). The duel models no reinforcement pool of command tokens in v1, so the opponent's token costs them nothing; it is an entry in `system.activatedBy`. That entry blocks their activation of the system (R3.2) and also freezes their ships there, which is the TI4 rule that ships cannot move out of a system holding your own command token, and is intended. If their seat is already listed, nothing happens (LRR 30.2).
+5. **The Warfare token goes to reinforcements.** The removed token leaves the board and the card's "then gain 1 command token" is the compensation, so the sheet grows by exactly one; with no token on the board nothing is gained. The redistribution may then move any token, the only place where `distributeTokens` allows a pool to shrink.
 6. **Warfare secondary produces under the full R4.4 rules**, including the production limit of the home dock, Sarween Tools, reinforcements, the fleet pool and the fighter trim, because it literally calls `produce`.
 7. **Technology resolves in order.** The second technology may use the first as a prerequisite, and it may not be researched without the first.
 8. **Imperial scores immediately but does not end the game.** R7 makes victory a check, and the checks happen in the status phase, so `winner` is only ever set there; a player who passes 7 VP through Imperial wins at the end of the same round unless the opponent catches up.
 9. **The `research` move is the component action only.** The Technology card carries its technologies in `StrategicParams`, so `via: 'technology' | 'technologySecond'` would have been dead branches; the union is narrowed instead of leaving them to be rejected at runtime.
 10. **Inheritance Systems pays automatically.** The move carries no payment parameters, so the engine exhausts the cheapest set of ready planets that covers 2 resources (`cheapestPlanets`: least total, then fewest planets, then map order) and never spends trade goods unasked; if no set of ready planets reaches 2, the action is illegal.
 11. **The emergency shipyard needs no dock anywhere**, not merely none in one system, and `shipyardUsed` keeps it to once per game even if the dock is lost again later.
-12. **Trading needs a clean turn.** R8 says "during your own turn", and the engine reads that as: your turn in the action phase, no tactical action running, no secondary window open. That keeps the enumerator's tactical branch untouched, at the price of not allowing a sale in the middle of an activation.
-13. **Scoring in the status phase is automatic.** R3.3 says a player "may" score; in v1 there is never a reason to decline, so `scoreAll` takes everything and `StatusParams` stays as designed, carrying only the token distribution.
+12. **Trading needs a clean turn** (controller ruling). R8 says "during your own turn", and the engine reads that as: your turn in the action phase, no tactical action running, no secondary window open, so there is no sale in the middle of an activation or of a card response. That keeps the enumerator's tactical branch untouched, at the price of not allowing a sale in the middle of an activation.
+13. **Scoring in the status phase is automatic** (controller ruling). R3.3 says a player "may" score; in v1 there is never a reason to decline, so `scoreAll` takes everything and `StatusParams` stays as designed, carrying only the token distribution.
 14. **The speaker submits the status move first**, and the second submission closes the phase. That derives "who has already submitted" from `active` and `speaker` without a new state field, and `pass` already leaves `active` on the speaker when the phase begins.
-15. **Starting technologies count.** Objective 1 asks to own 3 technologies and both factions start with 2, so one research fulfils it; objective 6 counts only coloured technologies, unit upgrades have no colour.
-16. **The tie-break speaker is the speaker of the finished round.** `decideWinner` runs before the speaker token moves, so "the speaker's opponent" means the opponent of the player who was speaker during the round that just ended.
-17. **A guardian fleet is rolled while Mecatol Rex is uncontrolled**, including in the status phase that ends the game; the roll is seeded through `deriveSeed(seed, 91)` so replays stay deterministic.
-18. **The smoke test biases towards closing moves after half its budget.** Uniform random play alone would not guarantee that six rounds fit into 3000 moves; the bias only changes which legal move is picked, never which moves are legal, and every game still passes through complete rounds. Up to 5 percent rejected attempts are tolerated, exactly as in the tactical plan, because a template can be filled in a way its handler refuses.
+15. **Scoring and the token distribution happen per player, before the reveal** (controller ruling). Both players score and take their tokens on their own `status` move, and only the second move runs R3.3 steps 2 and 4 to 6, so the objective revealed for the next round can never be scored in the status phase that revealed it.
+16. **Unpicked strategy cards keep their trade goods across rounds** (R3.1). `finishStatusPhase` rebuilds the pool in `ALL_STRATEGY_CARDS` order: the four played cards come back at bonus 0, the two that nobody picked keep the bonus they carry, and the next player to pick one of them collects it.
+17. **`validateMove` is structural, and loose only where the UI fills parameters** (controller ruling). It compares the fields that identify a move (system, planet, card, technology, post, accept, munitions) and ignores only the payloads a UI fills in: `moveShips.moves`, `produce`'s order and payment, the infantry subset of `land`, the `params` of `strategic` and `secondary`, the payment of `shipyard` and the distribution of `status`. Everything else is matched field by field, so a wrong system or card is rejected.
+18. **Starting technologies count.** Objective 1 asks to own 3 technologies and both factions start with 2, so one research fulfils it; objective 6 counts only coloured technologies, unit upgrades have no colour.
+19. **The tie-break speaker is the speaker of the finished round.** `decideWinner` runs before the speaker token moves, so "the speaker's opponent" means the opponent of the player who was speaker during the round that just ended.
+20. **A guardian fleet is rolled while Mecatol Rex is uncontrolled**, including in the status phase that ends the game; the roll is seeded through `deriveSeed(seed, 91)` so replays stay deterministic.
+21. **The smoke test biases towards closing moves after half its budget.** Uniform random play alone would not guarantee that six rounds fit into 3000 moves; the bias only changes which legal move is picked, never which moves are legal, and every game still passes through complete rounds. Up to 5 percent rejected attempts are tolerated, exactly as in the tactical plan, because a template can be filled in a way its handler refuses.
 
 ### Deferred
 
