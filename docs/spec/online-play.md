@@ -78,7 +78,7 @@ Supabase gives all of this with anonymous keys and row-level security; no accoun
 ## 4. Order of work
 
 1. **The seat claim, offline.** The mode question, the claim in localStorage, the controls locked to the
-   claim, the handoff only for a both-seats claim. Hot-seat behaves exactly as today. Nothing else changes.
+   claim, and the handoff worded from the claim. Hot-seat behaves exactly as today. Nothing else changes.
    This is small and is worth shipping on its own.
 2. **The transport.** A Supabase project, the two tables, the append function, the realtime subscription and
    the replay-on-join, behind an interface the store talks to, so a hot-seat game keeps running with no
