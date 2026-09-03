@@ -1,7 +1,8 @@
 import { MECATOL_ID, homeSystemId, systemDef } from '../data/map'
-import { MANDATE_IDS, objectiveDef } from '../data/objectives'
+import { MANDATE_IDS, isPaidObjective, objectiveDef } from '../data/objectives'
 import { isShip } from '../data/units'
 import { otherSeat } from './actionPhase'
+import { readyResources } from './economy'
 import type { GameState, Seat } from './types'
 
 export function controlledPlanets(state: GameState, seat: Seat): { systemId: string; planetId: string }[] {
@@ -32,8 +33,14 @@ export function fulfils(state: GameState, seat: Seat, objectiveId: string): bool
       return player.spaceCombatWins >= 1
     case 'control_4_outside_home':
       return controlledPlanets(state, seat).filter(p => systemDef(p.systemId).home !== seat).length >= 4
-    case 'spend_6_resources':
-      return player.resourcesSpentThisRound >= 6
+    // R7: a paid objective's condition is that the seat can actually cover the cost right now
+    case 'pay_6_resources':
+      return readyResources(state, seat) + player.tradeGoods >= 6
+    case 'own_5_techs':
+      return player.techs.length >= 5
+    // R7: a fifth of a clock is always payable, so the only gate is "revealed and not yet scored"
+    case 'pay_time_20':
+      return true
     case 'trade_three_times':
       return player.trades >= 3
     case 'more_ships':
@@ -55,6 +62,16 @@ export function scoreable(state: GameState, seat: Seat): string[] {
     if (!player.scoredMandates.includes(id) && fulfils(state, seat, id)) out.push(id)
   }
   return out
+}
+
+/** R7: the ones the status phase scores by itself, because they cost nothing beyond being fulfilled. */
+export function freeScoreable(state: GameState, seat: Seat): string[] {
+  return scoreable(state, seat).filter(id => !isPaidObjective(id))
+}
+
+/** R7: the ones the player has to ask for and pay for; an unrequested one simply is not scored. */
+export function paidScoreable(state: GameState, seat: Seat): string[] {
+  return scoreable(state, seat).filter(id => isPaidObjective(id))
 }
 
 export function addVp(state: GameState, seat: Seat, points: number, reason: string): GameState {

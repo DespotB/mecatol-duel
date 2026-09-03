@@ -1,7 +1,7 @@
 import { objectiveDef } from '../data/objectives'
 import { otherSeat } from './actionPhase'
 import { distributeTokens } from './economy'
-import { addVp, controlledPlanets, controlsMecatol, scoreObjective, scoreable } from './objectives'
+import { addVp, controlledPlanets, controlsMecatol, freeScoreable, scoreObjective } from './objectives'
 import { deriveSeed } from './rng'
 import { ALL_STRATEGY_CARDS, rollGuardianFleet } from './setup'
 import type { GameState, Result, Seat, StatusParams, System } from './types'
@@ -14,10 +14,13 @@ export function tokensGained(state: GameState, seat: Seat): number {
   return state.players[seat].techs.includes('hyper_metabolism') ? 3 : 2
 }
 
-/** R3.3 step 1: every objective the seat may score, plus 1 VP for Mecatol Rex. */
+/**
+ * R3.3 step 1: every objective the seat scores for free, plus 1 VP for Mecatol Rex. The paid ones are not in
+ * here: they cost something, so they are scored only where the player asked for them and covered the cost.
+ */
 export function scoreAll(state: GameState, seat: Seat): GameState {
   let next = state
-  for (const id of scoreable(state, seat)) next = scoreObjective(next, seat, id)
+  for (const id of freeScoreable(state, seat)) next = scoreObjective(next, seat, id)
   if (controlsMecatol(next, seat)) next = addVp(next, seat, 1, 'Mecatol Rex')
   return next
 }

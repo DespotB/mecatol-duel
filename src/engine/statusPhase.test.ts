@@ -180,11 +180,12 @@ describe('R3.3 status phase', () => {
     expect(second.phase).toBe('strategy')
     expect(second.players[0].tokens.tactic).toBe(5)                   // seat 0's own submission was applied
   })
-  it('R7: the round objective is scored from the round it was fulfilled in, then its counter resets', () => {
-    let s = { ...toActionPhase(), round: 4, publicObjectives: ['control_4_outside_home', 'spend_6_resources'] }
-    s = withPlayer(s, 0, { resourcesSpentThisRound: 6 })
-    const done = bothSubmit(toStatusPhase(s))
-    expect(done.players[0].scoredObjectives).toEqual(['spend_6_resources'])
-    expect(done.players[0].resourcesSpentThisRound).toBe(0)
+  it('R7: an objective you pay for is never scored by the automatic pass, however fulfillable it is', () => {
+    const s = { ...toActionPhase(), round: 4, publicObjectives: ['pay_6_resources', 'pay_time_20'] }
+    const rich = withPlayer(s, 0, { tradeGoods: 6 })
+    const done = bothSubmit(toStatusPhase(rich))
+    expect(done.players[0].scoredObjectives).toEqual([])
+    expect(done.players[0].vp).toBe(0)
+    expect(done.players[0].tradeGoods).toBe(6)                        // nothing was taken either
   })
 })

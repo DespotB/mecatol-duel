@@ -43,8 +43,7 @@ export function payCost(state: GameState, seat: Seat, cost: number, planets: str
   const paid = tradeGoods + spent.value.resources
   if (paid < cost) return { ok: false, error: `paid ${paid} of ${cost}` }
   const players = [...spent.value.state.players] as GameState['players']
-  // R7: the "spend 6 resources in a single round" objective counts what the payment actually cost, so an
-  // overpaid planet does not inflate it
+  // the round's ledger counts what the payment actually cost, so an overpaid planet does not inflate it
   const me = spent.value.state.players[seat]
   players[seat] = {
     ...me, tradeGoods: me.tradeGoods - tradeGoods,

@@ -63,7 +63,7 @@ export { capacity, cheapestPlanets, fleetPoolLimit, productionCost, productionLi
 export { bombardablePlanets, groundCombatPending, landablePlanets } from './invasion'
 export { movableShips, movementObstacle, shipsThatCanReach } from './movement'
 export type { MovementObstacle } from './movement'
-export { controlledPlanets, controlsMecatol, scoreable } from './objectives'
+export { controlledPlanets, controlsMecatol, freeScoreable, paidScoreable, scoreable } from './objectives'
 export { PRODUCIBLE } from './production'
 export { researchable } from './research'
 export { deriveSeed } from './rng'

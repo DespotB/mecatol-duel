@@ -1,9 +1,10 @@
 // src/engine/objectives.test.ts
 import { describe, expect, it } from 'vitest'
 import { FIRST_STRIKE, FOOTHOLD, PUBLIC_OBJECTIVES } from '../data/objectives'
+import { readyResources } from './economy'
 import { createGame } from './setup'
-import { addVp, controlsMecatol, fulfils, scoreObjective, scoreable } from './objectives'
-import { DUEL_CONFIG, deepFreeze, toActionPhase, withPlanetOwner, withPlayer, withUnits } from './testUtils'
+import { addVp, controlsMecatol, freeScoreable, fulfils, paidScoreable, scoreObjective, scoreable } from './objectives'
+import { DUEL_CONFIG, deepFreeze, toActionPhase, withExhausted, withPlanetOwner, withPlayer, withTechs, withUnits } from './testUtils'
 import type { GameState } from './types'
 
 /** Gives seat 0 the four neutral ring planets used by the control objectives. */
@@ -26,10 +27,40 @@ describe('R7 objectives', () => {
     expect(fulfils(withRing(s), 0, 'control_4_outside_home')).toBe(true)
     expect(fulfils(withRing(s), 1, 'control_4_outside_home')).toBe(false)
   })
-  it('R7: spend 6 resources in a single round, however they were spent', () => {
+  it('R7: pay 6 resources, scoreable only while the seat can actually raise them', () => {
     const s = toActionPhase()
-    expect(fulfils(withPlayer(s, 0, { resourcesSpentThisRound: 5 }), 0, 'spend_6_resources')).toBe(false)
-    expect(fulfils(withPlayer(s, 0, { resourcesSpentThisRound: 6 }), 0, 'spend_6_resources')).toBe(true)
+    expect(readyResources(s, 0)).toBe(5)                                            // the home planet alone
+    expect(fulfils(s, 0, 'pay_6_resources')).toBe(false)                            // 5 resources, no trade goods
+    expect(fulfils(withPlayer(s, 0, { tradeGoods: 1 }), 0, 'pay_6_resources')).toBe(true)
+    expect(fulfils(withPlanetOwner(s, 'sakulag', 'sakulag', 0), 0, 'pay_6_resources')).toBe(true)
+    // exhausted planets do not count, trade goods alone can still cover it
+    const spent = withExhausted(s, ['000'])
+    expect(fulfils(withPlayer(spent, 0, { tradeGoods: 5 }), 0, 'pay_6_resources')).toBe(false)
+    expect(fulfils(withPlayer(spent, 0, { tradeGoods: 6 }), 0, 'pay_6_resources')).toBe(true)
+  })
+  it('R7: own 5 technologies, unit upgrades and faction technologies included', () => {
+    const s = toActionPhase()
+    expect(s.players[0].techs).toHaveLength(2)                                      // the two starting technologies
+    expect(fulfils(withTechs(s, 0, ['sarween_tools', 'antimass_deflectors']), 0, 'own_5_techs')).toBe(false)
+    expect(fulfils(withTechs(s, 0, ['sarween_tools', 'antimass_deflectors', 'fighter_ii']), 0, 'own_5_techs')).toBe(true)
+  })
+  it('R7: a fifth of the time left is always payable, so the objective is always scoreable', () => {
+    const s = toActionPhase()
+    expect(fulfils(s, 0, 'pay_time_20')).toBe(true)
+    expect(fulfils(s, 1, 'pay_time_20')).toBe(true)
+    // revealed and unscored is the whole gate: the clock itself lives outside the engine
+    const revealed = deepFreeze({ ...s, publicObjectives: ['pay_time_20'] })
+    expect(scoreable(revealed, 0)).toContain('pay_time_20')
+    expect(scoreable(withPlayer(revealed, 0, { scoredObjectives: ['pay_time_20'] }), 0)).not.toContain('pay_time_20')
+  })
+  it('R7: the paid objectives are kept apart from the ones that score themselves', () => {
+    const s = deepFreeze({
+      ...withPlayer(toActionPhase(), 0, { trades: 3, tradeGoods: 1 }),
+      publicObjectives: ['trade_three_times', 'pay_6_resources', 'pay_time_20'],
+    })
+    expect(freeScoreable(s, 0)).toEqual(['trade_three_times'])
+    expect(paidScoreable(s, 0)).toEqual(['pay_6_resources', 'pay_time_20'])
+    expect(scoreable(s, 0)).toEqual(['trade_three_times', 'pay_6_resources', 'pay_time_20'])
   })
   it('R7: trade three times, at the posts or with the opponent', () => {
     const s = toActionPhase()
