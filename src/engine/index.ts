@@ -1,10 +1,10 @@
 import { endTactical, pass, startTactical } from './actionPhase'
+import { combatRound, retreat } from './combat'
 import { endMovement, moveShips } from './movement'
 import { pickStrategyCard } from './strategyPhase'
 import type { GameState, Move, Result } from './types'
 
 export function applyMove(state: GameState, move: Move, seed: number): Result<GameState> {
-  void seed   // used by later plans for dice
   if (state.winner !== null) return { ok: false, error: 'game over' }
   try {
     let result: Result<GameState>
@@ -15,6 +15,8 @@ export function applyMove(state: GameState, move: Move, seed: number): Result<Ga
       case 'endTactical': result = endTactical(state); break
       case 'moveShips': result = moveShips(state, move.moves); break
       case 'endMovement': result = endMovement(state); break
+      case 'combatRound': result = combatRound(state, move.munitions ?? false, seed); break
+      case 'retreat': result = retreat(state, move.to); break
       default: result = { ok: false, error: `not implemented: ${move.type}` }
     }
     if (!result.ok) return result
