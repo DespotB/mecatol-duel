@@ -10,13 +10,17 @@ export interface TokenSheetProps {
   onChange: (next: Player['tokens']) => void
 }
 
-/** Edits the resulting command sheet, exactly as economy.distributeTokens reads it. */
+/**
+ * Edits the resulting command sheet, exactly as economy.distributeTokens reads it. New tokens start
+ * unplaced, so the player adds each one where they want it instead of taking it back out of the tactic
+ * pool the engine would otherwise have guessed.
+ */
 export function TokenSheet({ current, gained, redistribute = false, value, onChange }: TokenSheetProps) {
   const target = current.tactic + current.fleet + current.strategy + gained
   const placed = value.tactic + value.fleet + value.strategy
   return (
     <div className="rowline" data-testid="token-sheet">
-      <span className="lbl">Command tokens, {gained} new</span>
+      <span className="lbl">Command tokens</span>
       {POOLS.map(pool => (
         <span className="pay" key={pool}>
           {pool}
@@ -29,7 +33,9 @@ export function TokenSheet({ current, gained, redistribute = false, value, onCha
             onClick={() => onChange({ ...value, [pool]: value[pool] + 1 })}>+</button>
         </span>
       ))}
-      <span className="sub" data-testid="token-total">{placed} of {target}</span>
+      <span className="sub" data-testid="token-total">
+        {target - placed > 0 ? `${target - placed} of ${gained} still to place` : `all ${gained} placed`}
+      </span>
     </div>
   )
 }

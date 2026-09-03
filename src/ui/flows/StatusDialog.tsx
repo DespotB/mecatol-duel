@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { PUBLIC_OBJECTIVES } from '../../data/objectives'
 import { scoreable, tokensGained } from '../../engine'
-import { statusTemplate } from '../moveOptions'
 import { TokenSheet } from './TokenSheet'
 import { useGame } from '../store'
 import type { Player } from '../../engine/types'
@@ -13,9 +12,9 @@ export function StatusDialog() {
   const state = session.state
   const seat = state.active
   const player = state.players[seat]
-  const template = statusTemplate(legal)
   const gained = tokensGained(state, seat)
-  const sheet = tokens ?? template?.tokens ?? { ...player.tokens, tactic: player.tokens.tactic + gained }
+  // the new tokens start unplaced: the player adds them pool by pool
+  const sheet = tokens ?? { ...player.tokens }
   const scoring = scoreable(state, seat)
   // Mirrors TokenSheet's own target/placed math: the confirm move needs the sheet to land on exactly
   // `target`, so block the click while it doesn't rather than let distributeTokens reject it after the fact.
