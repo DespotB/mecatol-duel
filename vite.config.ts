@@ -4,6 +4,9 @@ import { defineConfig } from 'vitest/config'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  // the sprite renderers under tools/render are standalone pages that import three from a CDN; without this
+  // the dev server's dependency scan follows them, fails to resolve three and serves a broken page
+  optimizeDeps: { entries: ['index.html'] },
   test: {
     // the engine suite runs in node; UI test files opt into jsdom with a `@vitest-environment` docblock
     environment: 'node',
