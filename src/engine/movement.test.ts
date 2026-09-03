@@ -104,7 +104,7 @@ describe('R3.2 movement', () => {
     const r = applyMove(empty, { type: 'endMovement' }, 0)
     if (!r.ok) throw new Error(r.error)
     expect(r.value.tactical?.step).toBe('invasion')
-    expect(r.value.tactical?.invasion).toEqual({ planetId: null, landed: [], bombarded: [] })
+    expect(r.value.tactical?.invasion).toEqual({ planetId: null, landed: [], bombarded: [], round: 0 })
     const mecatol = activate(withUnits(toActionPhase(), 'home-n', 0, ['destroyer']), 0, 'mecatol')
     const moved = move(mecatol, shipId(mecatol, 'home-n', 'destroyer'), 'home-n')
     if (!moved.ok) throw new Error(moved.error)

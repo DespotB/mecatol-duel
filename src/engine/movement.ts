@@ -125,5 +125,5 @@ export function endMovement(state: GameState, seed: number): Result<GameState> {
   // R4.1 step 1: a defending PDS still fires even when there are no enemy ships to trigger a full space combat.
   const enemyPds = mine.length > 0 && sys.planets.some(p => p.structures.some(u => u.owner !== seat && unitStats(u.type, statsOwner(state, u.owner)).spaceCannon))
   const next = enemyPds ? spaceCannonOffense(state, tac.systemId, seat, seed) : state
-  return { ok: true, value: { ...next, tactical: { ...tac, step: 'invasion', invasion: { planetId: null, landed: [], bombarded: [] } } } }
+  return { ok: true, value: { ...next, tactical: { ...tac, step: 'invasion', invasion: { planetId: null, landed: [], bombarded: [], round: 0 } } } }
 }

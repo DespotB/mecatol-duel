@@ -46,7 +46,7 @@ export interface TacticalContext {
   invasion?: InvasionState
 }
 export interface CombatState { round: number; attacker: Seat; defender: Owner; retreating: Seat | null; retreatTo: string | null; lastRolls: DieRoll[] }
-export interface InvasionState { planetId: string | null; landed: number[]; bombarded: string[] }
+export interface InvasionState { planetId: string | null; landed: number[]; bombarded: string[]; round: number }
 export interface DieRoll { owner: Owner; unit: UnitType; value: number; hit: boolean }
 export interface GameState {
   version: 1

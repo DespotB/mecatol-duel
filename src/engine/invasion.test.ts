@@ -10,7 +10,7 @@ function invasion(systemId: string, ships: UnitType[], carried: number, seat: Se
   const cleared: GameState = { ...base, systems: { ...base.systems, [systemId]: { ...base.systems[systemId], space: [] } } }
   const troops: UnitType[] = Array.from({ length: carried }, () => 'infantry')
   const s = withUnits(cleared, systemId, seat, [...ships, ...troops])
-  return withTactical(s, { systemId, step: 'invasion', invasion: { planetId: null, landed: [], bombarded: [] } })
+  return withTactical(s, { systemId, step: 'invasion', invasion: { planetId: null, landed: [], bombarded: [], round: 0 } })
 }
 
 const apply = (state: GameState, move: Move, seed = 5) => {

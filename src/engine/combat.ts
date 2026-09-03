@@ -257,7 +257,7 @@ function finish(state: GameState, ctx: Ctx, rolls: DieRoll[]): GameState {
   if (!defenderShips) {
     let won = markMandate(state, ctx)
     won = { ...won, log: [...won.log, { t: 'info', text: `space combat in ${ctx.systemId} won by seat ${ctx.attacker}` }] }
-    return endCombat({ ...won, tactical: { ...tac, step: 'invasion', combat, invasion: { planetId: null, landed: [], bombarded: [] } } }, ctx)
+    return endCombat({ ...won, tactical: { ...tac, step: 'invasion', combat, invasion: { planetId: null, landed: [], bombarded: [], round: 0 } } }, ctx)
   }
   if (combat.retreating === ctx.attacker && combat.retreatTo) return withdraw({ ...state, tactical: { ...tac, combat } }, ctx, combat.retreatTo)
   return { ...state, tactical: { ...tac, combat } }
