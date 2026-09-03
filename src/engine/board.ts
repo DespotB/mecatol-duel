@@ -1,6 +1,6 @@
 import { isShip, type StatsOwner } from '../data/units'
 import { capacity, fleetPoolLimit, nonFighterShips } from './economy'
-import { rollDice, type Rng } from './rng'
+import { deriveSeed, mulberry32, rollDice, type Rng } from './rng'
 import type { DieRoll, GameState, Owner, Result, Seat, System, Unit, UnitType } from './types'
 
 export function statsOwner(state: GameState, owner: Owner): StatsOwner {
@@ -56,6 +56,27 @@ export function returnToReinforcements(state: GameState, units: Unit[]): GameSta
 export function destroyUnits(state: GameState, systemId: string, units: Unit[]): GameState {
   if (!units.length) return state
   return returnToReinforcements(removeUnits(state, systemId, units.map(u => u.id)), units)
+}
+
+/**
+ * R4.3 step 4: every destroyed infantry of a player with Infantry II rolls once, a 6 or higher makes it
+ * return at the start of that player's next turn. One log entry per seat, so the hits can be counted from
+ * the log; a seat without the technology rolls nothing.
+ */
+export function rollRevival(state: GameState, destroyed: Unit[], seed: number): GameState {
+  let next = state
+  for (const seat of [0, 1] as Seat[]) {
+    const lost = destroyed.filter(u => u.owner === seat && u.type === 'infantry')
+    if (!lost.length || !state.players[seat].techs.includes('infantry_ii')) continue
+    const { rolls, hits } = rollHits(mulberry32(deriveSeed(seed, seat)), lost.length, 6, false)
+    const players = [...next.players] as GameState['players']
+    players[seat] = { ...players[seat], pendingInfantry: players[seat].pendingInfantry + hits }
+    next = {
+      ...next, players,
+      log: [...next.log, { t: 'roll', owner: seat, rolls: dieRolls(seat, 'infantry', rolls, 6), context: 'Infantry II revival' }],
+    }
+  }
+  return next
 }
 
 /** R4.4: Space Dock II lets up to 3 fighters in the system ignore capacity. */

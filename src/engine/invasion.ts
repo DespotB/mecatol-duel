@@ -1,5 +1,5 @@
 import { isShip, unitStats } from '../data/units'
-import { destroyUnits, dieRolls, hasTech, removeUnits, rollHits, statsOwner } from './board'
+import { destroyUnits, dieRolls, hasTech, removeUnits, rollHits, rollRevival, statsOwner } from './board'
 import { deriveSeed, mulberry32, type Rng } from './rng'
 import type { DieRoll, GameState, Owner, Planet, Result, Seat, Unit, UnitType } from './types'
 
@@ -17,6 +17,16 @@ import type { DieRoll, GameState, Owner, Planet, Result, Seat, Unit, UnitType } 
 const BOMBARD_SALT_BASE = 10
 const LANDING_DEFENSE_SALT = 2
 const GROUND_SALT_BASE = 20
+
+/**
+ * R4.3 step 4: the revival roll hangs off the salt of the step that killed the infantry, as a derived child
+ * seed, so it never enters the salt space of the invasion itself.
+ */
+const REVIVAL_SALT = 1
+
+function destroyGround(state: GameState, systemId: string, units: Unit[], seed: number, salt: number): GameState {
+  return rollRevival(destroyUnits(state, systemId, units), units, deriveSeed(deriveSeed(seed, salt), REVIVAL_SALT))
+}
 
 function planetOf(state: GameState, systemId: string, planetId: string): Planet | undefined {
   return state.systems[systemId].planets.find(p => p.id === planetId)
@@ -63,7 +73,7 @@ function bombardment(state: GameState, systemId: string, planetId: string, seat:
   const logged: GameState = { ...state, log: [...state.log, { t: 'roll', owner: seat, rolls, context }] }
   const planet = planetOf(logged, systemId, planetId)
   if (!planet) return logged
-  return destroyUnits(logged, systemId, planet.ground.filter(u => u.owner !== seat).slice(0, hits))
+  return destroyGround(logged, systemId, planet.ground.filter(u => u.owner !== seat).slice(0, hits), seed, salt)
 }
 
 export function bombardablePlanets(state: GameState): string[] {
@@ -186,7 +196,7 @@ export function land(state: GameState, planetId: string, infantryIds: number[], 
     const extraDie = hasTech(state, defender, 'plasma_scoring')
     const { rolls, hits } = rollGroup(rng, pds, defender, type => unitStats(type, sOwner).spaceCannon, extraDie)
     next = { ...next, log: [...next.log, { t: 'roll', owner: defender, rolls, context: `space cannon defense on ${planetId}` }] }
-    next = destroyUnits(next, tac.systemId, survivors.slice(0, hits))
+    next = destroyGround(next, tac.systemId, survivors.slice(0, hits), seed, LANDING_DEFENSE_SALT)
     survivors = survivors.slice(hits)
   }
   next = removeUnits(next, tac.systemId, survivors.map(u => u.id))
@@ -235,9 +245,8 @@ export function groundCombatRound(state: GameState, seed: number): Result<GameSt
   let next: GameState = { ...state, log: [...state.log,
     { t: 'roll', owner: seat, rolls: a.rolls, context: `ground combat on ${planetId}` },
     { t: 'roll', owner: defender, rolls: d.rolls, context: `ground combat on ${planetId}` }] }
-  // TODO(plan 3): Infantry II revival (R4.3 step 4)
-  next = destroyUnits(next, tac.systemId, foes.slice(0, a.hits))
-  next = destroyUnits(next, tac.systemId, mine.slice(0, d.hits))
+  next = destroyGround(next, tac.systemId, foes.slice(0, a.hits), seed, GROUND_SALT_BASE + 3 * round)
+  next = destroyGround(next, tac.systemId, mine.slice(0, d.hits), seed, GROUND_SALT_BASE + 3 * round + 1)
   next = { ...next, tactical: { ...tac, invasion: { ...inv, round: round + 1 } } }
   const after = planetOf(next, tac.systemId, planetId)
   // HARROW: L1Z1X may bombard after every ground combat round; v1 does it automatically

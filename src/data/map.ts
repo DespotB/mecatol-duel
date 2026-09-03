@@ -31,3 +31,9 @@ export function systemDef(id: string): SystemDef {
   if (!s) throw new Error(`unknown system ${id}`)
   return s
 }
+
+export function homeSystemId(seat: Seat): string {
+  const home = SYSTEMS.find(s => s.home === seat)
+  if (!home) throw new Error(`no home system for seat ${String(seat)}`)
+  return home.id
+}

@@ -39,6 +39,7 @@ export interface Player {
   spentInOneProductionThisRound: number
   tradedThisRound: { west: boolean; east: boolean }
   inheritanceExhausted: boolean; shipyardUsed: boolean
+  pendingInfantry: number          // R4.3 step 4: Infantry II waiting to return at the start of your next turn
   reinforcements: Record<UnitType, number>
 }
 export interface TacticalContext {
