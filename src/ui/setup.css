@@ -222,8 +222,8 @@
   clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%)}
 
 /* the mode question: one game, two answers, in the lobby's own language */
-.lobbyui .modeq{width:min(980px,100%);margin:34px auto 0;display:grid;grid-template-columns:1fr 1fr;gap:24px}
-.lobbyui .modeq .box{min-height:190px}
+.lobbyui .modeq{width:min(1080px,100%);margin:72px auto 0;display:grid;grid-template-columns:1fr 1fr;gap:26px}
+/* the two boxes are one grid row, so the taller answer sets the height and both feet sit on the same line */
 .lobbyui .modeq .panel{padding:26px 22px 18px;display:flex;flex-direction:column;gap:12px}
 .lobbyui .modeq .lead{display:flex;align-items:center;gap:12px;min-height:34px}
 .lobbyui .modeq .lead .ico{display:flex;align-items:center;gap:2px;flex:none}

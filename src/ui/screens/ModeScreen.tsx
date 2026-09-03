@@ -28,7 +28,7 @@ export function ModeScreen({ code, names, free, onClaim }: ModeScreenProps) {
       <header className="hero">
         <h1 className="title goldtext">Mecatol Duel</h1>
         <div className="rule"><span /><i className="dia" /><span /></div>
-        <p className="tagline">{names[0]} against {names[1]}</p>
+        <p className="tagline">How do you want to play this game?</p>
       </header>
 
       <section className="modeq" aria-label="How to play this game">
