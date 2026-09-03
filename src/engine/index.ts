@@ -1,3 +1,4 @@
+import { endTactical, pass, startTactical } from './actionPhase'
 import { pickStrategyCard } from './strategyPhase'
 import type { GameState, Move, Result } from './types'
 
@@ -8,6 +9,9 @@ export function applyMove(state: GameState, move: Move, seed: number): Result<Ga
     let result: Result<GameState>
     switch (move.type) {
       case 'pickStrategyCard': result = pickStrategyCard(state, move.card); break
+      case 'startTactical': result = startTactical(state, move.systemId); break
+      case 'pass': result = pass(state); break
+      case 'endTactical': result = endTactical(state); break
       default: result = { ok: false, error: `not implemented: ${move.type}` }
     }
     if (!result.ok) return result
