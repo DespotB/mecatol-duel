@@ -54,7 +54,7 @@ export function SecondaryPanel() {
     ? template.planets.reduce((sum, id) => sum + (ownedPlanets(state, seat).find(p => p.id === id)?.resources ?? 0), 0) + (template.tradeGoods ?? 0)
     : productionCost({ infantry: 1 }, { faction: player.faction, techs: player.techs }, player.techs.includes('sarween_tools'))
   return (
-    <div className="dialog cut" data-testid="secondary-panel">
+    <div className={card === 'technology' ? 'drawer full cut' : 'dialog cut'} data-testid="secondary-panel">
       <div className="in">
         <div className="dhead">
           <span className="tab">{CARD_NAME[card]}, secondary</span>
