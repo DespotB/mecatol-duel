@@ -44,8 +44,18 @@ describe('R4.4 economy helpers', () => {
   it('fleet pool, non-fighter count and capacity', () => {
     expect(fleetPoolLimit(g.players[0])).toBe(3)
     expect(fleetPoolLimit(g.players[1])).toBe(5)
-    expect(nonFighterShips(g.systems['home-n'].space)).toBe(2)
-    expect(capacity(g.systems['home-n'].space, { faction: 'l1z1x', techs: [] })).toBe(6)   // super-dreadnought 2 + carrier 4
-    expect(capacity(g.systems['home-s'].space, { faction: 'letnev', techs: [] })).toBe(5)   // dreadnought 1 + carrier 4
+    expect(nonFighterShips(g.systems['home-n'].space, 0)).toBe(2)
+    expect(capacity(g.systems['home-n'].space, 0, { faction: 'l1z1x', techs: [] })).toBe(6)   // super-dreadnought 2 + carrier 4
+    expect(capacity(g.systems['home-s'].space, 1, { faction: 'letnev', techs: [] })).toBe(5)   // dreadnought 1 + carrier 4
+  })
+  it('nonFighterShips and capacity only count the requested owner in a mixed-owner array', () => {
+    const mixed = [...g.systems['home-n'].space, ...g.systems['home-s'].space]
+    expect(nonFighterShips(mixed, 0)).toBe(2)
+    expect(nonFighterShips(mixed, 1)).toBe(3)
+    expect(capacity(mixed, 0, { faction: 'l1z1x', techs: [] })).toBe(6)
+    expect(capacity(mixed, 1, { faction: 'letnev', techs: [] })).toBe(5)
+  })
+  it('payCost fails for an unknown planet id', () => {
+    expect(payCost(g, 0, 1, ['not-a-planet'], 0).ok).toBe(false)
   })
 })

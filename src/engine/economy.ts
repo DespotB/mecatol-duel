@@ -1,6 +1,5 @@
-import { unitStats, type StatsOwner } from '../data/units'
-import { NON_FIGHTER_SHIPS, isShip } from '../data/units'
-import type { GameState, Player, Result, Seat, Unit, UnitType } from './types'
+import { NON_FIGHTER_SHIPS, isShip, unitStats, type StatsOwner } from '../data/units'
+import type { GameState, Owner, Player, Result, Seat, Unit, UnitType } from './types'
 
 export function readyResources(state: GameState, seat: Seat): number {
   let sum = 0
@@ -54,10 +53,10 @@ export function fleetPoolLimit(player: Player): number {
   return player.tokens.fleet + (player.faction === 'letnev' ? 2 : 0)
 }
 
-export function nonFighterShips(units: Unit[]): number {
-  return units.filter(u => NON_FIGHTER_SHIPS.includes(u.type)).length
+export function nonFighterShips(units: Unit[], owner: Owner): number {
+  return units.filter(u => u.owner === owner && NON_FIGHTER_SHIPS.includes(u.type)).length
 }
 
-export function capacity(units: Unit[], owner: StatsOwner): number {
-  return units.filter(u => isShip(u.type)).reduce((sum, u) => sum + unitStats(u.type, owner).capacity, 0)
+export function capacity(units: Unit[], owner: Owner, stats: StatsOwner): number {
+  return units.filter(u => u.owner === owner && isShip(u.type)).reduce((sum, u) => sum + unitStats(u.type, stats).capacity, 0)
 }
