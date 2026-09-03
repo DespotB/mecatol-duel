@@ -1,6 +1,7 @@
 import { FACTIONS } from '../data/factions'
 import { MECATOL_ID, SYSTEM_IDS, homeSystemId } from '../data/map'
 import { otherSeat, passTurn } from './actionPhase'
+import { checkFleet } from './board'
 import { distributeTokens, exhaustPlanets, payCost } from './economy'
 import { addVp, controlsMecatol, fulfils, scoreObjective } from './objectives'
 import { produce } from './production'
@@ -128,13 +129,27 @@ function warfarePrimary(state: GameState, seat: Seat, params: StrategicParams): 
   const systemId = params.systemId
   if (systemId === undefined) {
     if (onBoard.length > 0) return { ok: false, error: 'R6: name the system your command token comes from' }
-    return distributeTokens(state, seat, params.tokens, 0, true)
+    return withFleetPoolIntact(distributeTokens(state, seat, params.tokens, 0, true), seat)
   }
   const sys = state.systems[systemId]
   if (!sys) return { ok: false, error: `unknown system ${systemId}` }
   if (!sys.activatedBy.includes(seat)) return { ok: false, error: `R6: no command token of yours in ${systemId}` }
   const next = { ...state, systems: { ...state.systems, [systemId]: { ...sys, activatedBy: sys.activatedBy.filter(s => s !== seat) } } }
-  return distributeTokens(next, seat, params.tokens, 1, true)
+  return withFleetPoolIntact(distributeTokens(next, seat, params.tokens, 1, true), seat)
+}
+
+/**
+ * R4.4/R6: Warfare is the only card that may shrink the fleet pool, so the resulting sheet has to still carry
+ * every fleet already on the board. There is no rule that destroys ships here, so a sheet that would leave a
+ * system over its fleet pool is simply not a legal redistribution.
+ */
+function withFleetPoolIntact(result: Result<GameState>, seat: Seat): Result<GameState> {
+  if (!result.ok) return result
+  for (const sys of Object.values(result.value.systems)) {
+    if (!sys.space.some(u => u.owner === seat)) continue
+    if (!checkFleet(result.value, seat, sys.id).ok) return { ok: false, error: 'R4.4: redistribution would exceed the fleet pool' }
+  }
+  return result
 }
 
 /** R6 Warfare secondary: the R4.4 production of a space dock in your own home system. */
