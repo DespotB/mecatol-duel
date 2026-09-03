@@ -15,6 +15,7 @@ export function createGame(config: GameConfig, seed: number): GameState
 - A rejected move comes back as `{ ok: false, error }`. `internal: true` marks the rare case where the engine threw instead of rejecting: an engine bug, never a rules question, so callers may treat it as fatal.
 - All randomness inside a move comes from `seed` (a 32-bit integer) through `mulberry32`; the same state, move and seed always give the same result. Dice are `1 + floor(rng() * 10)`.
 - `legalMoves` enumerates concrete moves for the active player in all four phases; the UI builds its interaction from this list (highlighted systems, enabled buttons). Two kinds stay templates whose parameters the UI fills in: `moveShips` (`moves: []`) and `produce` (`units: {}`, `planets: []`, `tradeGoods: 0`); `land`, `strategic`, `secondary`, `shipyard` and `status` carry directly playable defaults that the UI may replace. `validateMove(state, move)` compares only the fields that identify a move (system, planet, card, technology, post, accept), never the parameter payload, so a richer but legal parameter set is accepted.
+- Hits scored against a fleet whose owner has a real decision to make wait in `tactical.combat.pending` (R4.1 step 4). While that queue is filled, `legalMoves` offers exactly one `assignHits` (a complete pick, ready to play), and every other move is rejected with `hits must be assigned first`, `applyMove` included. The seat that has to answer is `actingSeat(state)`, which is not always `state.active`; `pendingFor`, `assignmentTargets` and `assignmentComplete` are the read-only queries the UI builds the picker from.
 - A strategic action is two moves: the `strategic` move resolves the primary, marks the card used and sets `pendingSecondary`; the opponent then answers with exactly one `secondary` move (`accept: true` pays the strategy token and resolves the ability, `accept: false` declines). Only then does the turn pass. While `pendingSecondary` is set, no other move is legal, and the answering seat responds even when it has already passed, because the response is not a turn.
 - The game log is part of the state (`state.log`), append-only, one entry per move plus one per dice roll, so replays and the online transport need only the move list and seeds.
 
@@ -66,7 +67,12 @@ export interface TacticalContext {
   combat?: CombatState
   invasion?: InvasionState
 }
-export interface CombatState { round: number; attacker: Seat; defender: Owner; retreating: Seat | null; retreatTo: string | null; lastRolls: DieRoll[] }
+export interface HitGroup { count: number; mode: 'any' | 'noFighters' | 'preferNonFighters' }
+export interface PendingHits { owner: Seat; groups: HitGroup[]; context: string }   // hits waiting for their owner
+export interface CombatState {
+  round: number; attacker: Seat; defender: Owner; retreating: Seat | null; retreatTo: string | null
+  lastRolls: DieRoll[]; pending: PendingHits[]        // head first; empty when the combat may continue
+}
 export interface InvasionState { planetId: string | null; landed: number[]; bombarded: string[]; round: number }
 export interface DieRoll { owner: Owner; unit: UnitType; value: number; hit: boolean }
 export interface GameState {
@@ -98,6 +104,7 @@ export type Move =
   | { type: 'moveShips'; moves: { unitId: number; from: string; carrying: number[] }[] }   // all into tactical.systemId
   | { type: 'endMovement' }
   | { type: 'combatRound'; munitions?: { attacker?: boolean; defender?: boolean } }   // resolves one round (or the pre-combat steps on round 0); Munitions Reserves is per side
+  | { type: 'assignHits'; destroy: number[]; sustain: number[] }   // R4.1 step 4: unit ids of the seat whose hits are queued, in the activated system
   | { type: 'retreat'; to: string }
   | { type: 'bombard'; planetId: string }
   | { type: 'land'; planetId: string; infantryIds: number[] }
