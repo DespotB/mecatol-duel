@@ -1,10 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { objectiveCost } from '../data/objectives'
-import { applyMove, createGame, deriveSeed, legalMoves, postDef } from '../engine'
+import { createGame, legalMoves, postDef } from '../engine'
 import type { GameConfig, GameState, Move, Seat } from '../engine/types'
+import { advance } from './advance'
 import { timeCost } from './format'
-import { moveCount, undoable } from './history'
+import { undoable } from './history'
 import {
   actingSeats, deleteGame, hasGame, newGameCode, playerId, readClaim, saveClock, saveGame, writeClaim,
 } from './persist'
@@ -40,12 +41,6 @@ function clockAfter(before: GameState, move: Move, seat: Seat, clockMs: [number,
     if (ability === 'timeTrade') out[seat] = Math.max(0, out[seat] - timeCost(out[seat], TIME_TRADE_FRACTION))
   }
   return out
-}
-
-/** The turn is spent and nothing free is left: only ending it remains, so the UI does not ask. */
-function onlyEndTurn(state: GameState): boolean {
-  const moves = legalMoves(state)
-  return moves.length === 1 && moves[0].type === 'endTurn'
 }
 
 const TICK_MS = 100
@@ -137,23 +132,14 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     // The claim, not the engine, decides who may push a button here: a move for a seat this browser does
     // not hold is dropped before the rules ever see it, and it is no engine error, so nothing is reported.
     if (!actingSeats(claim).includes(session.state.active)) return false
-    const result = applyMove(session.state, move, deriveSeed(session.seed, moveCount(session.state)))
+    // what the move means, including whatever follows from it on its own, lives in `advance`: the browser
+    // that receives this move over the wire runs the same function and must arrive at the same board
+    const result = advance(session.state, move, session.seed)
     if (!result.ok) {
       setError(result.error)
       return false
     }
-    let next = result.value
-    // R3.2: an action ends the action, not the turn, so the player can still take a free move such as a
-    // trade post sale. When nothing free is open, ending the turn is the only thing left and asking for a
-    // click (in hot-seat: a device handoff) buys nothing, so the engine's own verdict decides it here.
-    // A free move is the player's own detour, so it never ends the turn behind their back: after a trade
-    // or a post's special ability they press End turn themselves.
-    const free = move.type === 'tradePost' || move.type === 'postAbility'
-    while (!free && next.winner === null && onlyEndTurn(next)) {
-      const ended = applyMove(next, { type: 'endTurn' }, deriveSeed(session.seed, moveCount(next)))
-      if (!ended.ok) break
-      next = ended.value
-    }
+    const next = result.value
     const keep = undoable(session.state, next)
     setError(null)
     setSession({
