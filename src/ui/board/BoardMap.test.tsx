@@ -65,6 +65,26 @@ describe('the board', () => {
     expect(screen.getByTestId('tile-bereg').className).toContain('selectable')
   })
 
+  it('makes a selectable tile a focusable button that answers to Enter and Space', () => {
+    const onSelect = vi.fn()
+    render(<BoardMap state={state} selectable={['bereg']} onSelect={onSelect} />)
+    const tile = screen.getByTestId('tile-bereg')
+    expect(tile.getAttribute('role')).toBe('button')
+    expect(tile.getAttribute('tabindex')).toBe('0')
+    expect(tile.getAttribute('aria-label')).toBe('Activate Bereg')
+    tile.focus()
+    expect(document.activeElement).toBe(tile)
+    fireEvent.keyDown(tile, { key: 'Enter' })
+    fireEvent.keyDown(tile, { key: ' ' })
+    fireEvent.keyDown(tile, { key: 'a' })
+    expect(onSelect).toHaveBeenCalledTimes(2)
+    expect(onSelect).toHaveBeenCalledWith('bereg')
+    // a tile that cannot be activated stays out of the tab order
+    const idle = screen.getByTestId('tile-sakulag')
+    expect(idle.getAttribute('role')).toBeNull()
+    expect(idle.getAttribute('tabindex')).toBeNull()
+  })
+
   it('R8: both trade posts sit outside the map with their state', () => {
     render(<BoardMap state={state} />)
     expect(screen.getByTestId('post-west').textContent).toContain('Kasda Exchange')

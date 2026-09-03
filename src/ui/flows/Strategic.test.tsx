@@ -44,6 +44,15 @@ describe('strategic actions', () => {
     expect(screen.getByTestId('tech-0-sarween_tools').textContent).toBe('Sarween Tools')
   })
 
+  it('closes the strategic dialog on Escape, the same way Cancel does', () => {
+    const s = withCards(withCards(toActionPhase(), 0, ['leadership']), 1, [])
+    renderWithSession(s, <BoardScreen />)
+    playCard('leadership')
+    expect(screen.getByTestId('strategic-dialog')).toBeTruthy()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByTestId('strategic-dialog')).toBeNull()
+  })
+
   it('keeps the confirm button dead until the card has the parameter it needs', () => {
     const tech = withCards(withCards(toActionPhase(), 0, ['technology']), 1, [])
     const view = renderWithSession(tech, <BoardScreen />)

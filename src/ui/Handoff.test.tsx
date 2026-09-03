@@ -15,12 +15,24 @@ describe('hot-seat courtesies', () => {
     expect(screen.queryByTestId('handoff')).toBeNull()
   })
 
-  it('renders the log with moves, dice and engine notes', () => {
+  it('makes the overlay a modal dialog and puts the focus on its continue button', () => {
+    renderWithSession(cardsUsed(toActionPhase()), <BoardScreen />)
+    fireEvent.click(screen.getByTestId('btn-pass'))
+    const overlay = screen.getByTestId('handoff')
+    expect(overlay.getAttribute('role')).toBe('dialog')
+    expect(overlay.getAttribute('aria-modal')).toBe('true')
+    expect(document.activeElement).toBe(screen.getByTestId('handoff-continue'))
+  })
+
+  it('renders the log with moves, dice and engine notes, and closes it on Escape', () => {
     renderWithSession(toActionPhase(), <BoardScreen />)
     fireEvent.click(screen.getByTestId('btn-log'))
     const log = screen.getByTestId('log-panel')
     expect(log.textContent).toContain('A takes Warfare')
     expect(log.textContent).toContain('B takes Leadership')
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByTestId('log-panel')).toBeNull()
+    fireEvent.click(screen.getByTestId('btn-log'))
     fireEvent.click(screen.getByTestId('btn-log'))
     expect(screen.queryByTestId('log-panel')).toBeNull()
   })

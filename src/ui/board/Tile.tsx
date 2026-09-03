@@ -67,11 +67,23 @@ export function Tile({ state, system, active, selectable, onSelect }: TileProps)
   const home = def.home === null ? '' : def.home === 0 ? ' home-0' : ' home-1'
   const classes = `tile${home}${active ? ' active' : ''}${selectable ? ' selectable' : ''}`
   const guardians = system.space.some(u => u.owner === 'guardian')
+  // a selectable tile is a control, so it takes focus and answers to Enter and Space like a button
+  const activate = selectable && onSelect ? () => onSelect(system.id) : undefined
   return (
     <div
       className={classes} data-testid={`tile-${system.id}`}
       style={{ left: pos.left, top: pos.top, width: TILE_W, height: TILE_H }}
-      onClick={selectable && onSelect ? () => onSelect(system.id) : undefined}
+      role={activate ? 'button' : undefined}
+      tabIndex={activate ? 0 : undefined}
+      aria-label={activate ? `Activate ${system.name}` : undefined}
+      onClick={activate}
+      onKeyDown={activate
+        ? event => {
+          if (event.key !== 'Enter' && event.key !== ' ') return
+          event.preventDefault()
+          activate()
+        }
+        : undefined}
     >
       <img className="hex" src={tileUrl(system.id)} alt={system.name} width={TILE_W} height={TILE_H} data-testid={`hex-${system.id}`} />
       <svg className="line" viewBox={`0 0 ${TILE_W} ${TILE_H}`}><polygon points={HEX} /></svg>

@@ -6,6 +6,7 @@ import { PayRow } from './PayRow'
 import { TechDrawer } from './TechDrawer'
 import { TokenSheet } from './TokenSheet'
 import { useGame } from '../store'
+import { useEscape } from '../useEscape'
 import type { Player, StrategicParams, StrategyCardId } from '../../engine/types'
 
 export interface StrategicDialogProps {
@@ -22,6 +23,7 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
   const [objectiveId, setObjectiveId] = useState<string | null>(null)
   const [share, setShare] = useState(false)
   const [tokens, setTokens] = useState<Player['tokens'] | null>(null)
+  useEscape(onClose)
   if (!session) return null
   const state = session.state
   const seat = state.active

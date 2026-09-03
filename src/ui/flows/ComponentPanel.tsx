@@ -3,12 +3,14 @@ import { planetLabel } from '../format'
 import { inheritanceTechIds, shipyardOffers, tradePostOffers } from '../moveOptions'
 import { TechDrawer } from './TechDrawer'
 import { useGame } from '../store'
+import { useEscape } from '../useEscape'
 
 const POST_NAME = { west: 'Kasda Exchange', east: 'Vorhal Freeport' } as const
 
 export function ComponentPanel({ onClose }: { onClose: () => void }) {
   const { session, legal, apply } = useGame()
   const [techId, setTechId] = useState<string | null>(null)
+  useEscape(onClose)
   if (!session) return null
   const state = session.state
   const techs = inheritanceTechIds(legal)

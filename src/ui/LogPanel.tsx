@@ -1,7 +1,9 @@
 import { describeEntry } from './logText'
+import { useEscape } from './useEscape'
 import type { GameState } from '../engine/types'
 
 export function LogPanel({ state, onClose }: { state: GameState; onClose?: () => void }) {
+  useEscape(onClose)
   return (
     <div className="logpanel cut" data-testid="log-panel">
       <div className="in">
