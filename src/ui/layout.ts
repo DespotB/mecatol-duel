@@ -65,6 +65,17 @@ export const WORMHOLE_SPOTS: Record<string, Point> = {
 
 export const ANOMALY_SPOT: Point = { left: 84, top: 8 }
 
+/**
+ * Played command tokens (System.activatedBy), top-right corner. The top-left corner looks free at a
+ * glance but the fleet anchor sits right in it on three tiles (home-n, sakulag, starpoint: FLEET_ANCHOR
+ * left 14-16, top 24-26), so a token there sits on top of the very first ship of any fleet at that
+ * system. The centre of the top edge is out too: Mecatol Rex's guardian-fleet label spans roughly
+ * x57-175 there. left:194 clears the guardian label, every FLEET_ANCHOR, and every PLANET_SPOTS art
+ * rect (Starpoint's reaches to x192, the widest of the seven) with a few px to spare, confirmed against
+ * live-rendered geometry, not just the declared spot values.
+ */
+export const ACTIVATION_SPOT: Point = { left: 194, top: 8 }
+
 export const POST_POS: Record<'west' | 'east', Point> = {
   west: { left: 16, top: 254 },
   east: { left: 776, top: 254 },

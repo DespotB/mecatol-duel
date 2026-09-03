@@ -170,6 +170,8 @@ button{font-family:inherit}
 .plate .nm{font:700 11px/1 var(--hud);letter-spacing:.06em;color:#fff;text-transform:uppercase}
 .wh{position:absolute}
 .chev{position:absolute;opacity:.9}
+.tile .acts{position:absolute;display:flex;gap:4px;pointer-events:none}
+.tile .act{width:34px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.85))}
 .guard{position:absolute;left:50%;top:4px;transform:translateX(-50%);white-space:nowrap;font:600 11px/18px var(--hud);text-transform:uppercase;color:var(--gold-hi);padding:0 7px;background:rgba(6,9,20,.82);border:1px solid var(--hair)}
 .post{position:absolute;width:148px;height:190px}
 .post .in{display:flex;flex-direction:column;align-items:center;padding:8px 6px 6px;gap:5px}
