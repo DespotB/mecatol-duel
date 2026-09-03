@@ -1,7 +1,9 @@
 import { FACTIONS } from '../data/factions'
-import { MECATOL_ID, SYSTEM_IDS } from '../data/map'
+import { MECATOL_ID, SYSTEM_IDS, homeSystemId } from '../data/map'
 import { otherSeat, passTurn } from './actionPhase'
-import { distributeTokens, exhaustPlanets } from './economy'
+import { distributeTokens, exhaustPlanets, payCost } from './economy'
+import { addVp, controlsMecatol, fulfils, scoreObjective } from './objectives'
+import { produce } from './production'
 import { canResearch } from './research'
 import type { GameState, Result, Seat, StrategicParams, StrategyCardId } from './types'
 
@@ -76,11 +78,20 @@ function addTradeGoods(state: GameState, seat: Seat, n: number): GameState {
   return { ...state, players }
 }
 
-/** R6 Leadership: `base` command tokens plus one for every 3 influence exhausted. */
+/**
+ * R6 Leadership: `base` command tokens plus one for every 3 influence exhausted. Ruling: trade goods count
+ * as influence too, spent 1 for 1 alongside planets.
+ */
 function leadership(state: GameState, seat: Seat, params: StrategicParams, base: number): Result<GameState> {
   const spent = exhaustPlanets(state, seat, params.planets ?? [])
   if (!spent.ok) return spent
-  return distributeTokens(spent.value.state, seat, params.tokens, base + Math.floor(spent.value.influence / 3))
+  const tradeGoods = params.tradeGoods ?? 0
+  const player = state.players[seat]
+  if (tradeGoods < 0 || tradeGoods > player.tradeGoods) return { ok: false, error: 'R6: not enough trade goods' }
+  const players = [...spent.value.state.players] as GameState['players']
+  players[seat] = { ...players[seat], tradeGoods: players[seat].tradeGoods - tradeGoods }
+  const influence = spent.value.influence + tradeGoods
+  return distributeTokens({ ...spent.value.state, players }, seat, params.tokens, base + Math.floor(influence / 3))
 }
 
 /**
@@ -104,6 +115,73 @@ function diplomacyPrimary(state: GameState, seat: Seat, params: StrategicParams)
   return readyPlanets({ ...state, systems }, seat, params.planets ?? [], 2)
 }
 
+/**
+ * R6 Warfare: one of your command tokens leaves the board and you gain one, then you may move any of them.
+ * With a token on the board the system must be named; with none the card is pure redistribution and gains
+ * nothing, so it stays playable (R3.2).
+ */
+function warfarePrimary(state: GameState, seat: Seat, params: StrategicParams): Result<GameState> {
+  const onBoard = warfareTokenSystems(state, seat)
+  const systemId = params.systemId
+  if (systemId === undefined) {
+    if (onBoard.length > 0) return { ok: false, error: 'R6: name the system your command token comes from' }
+    return distributeTokens(state, seat, params.tokens, 0, true)
+  }
+  const sys = state.systems[systemId]
+  if (!sys) return { ok: false, error: `unknown system ${systemId}` }
+  if (!sys.activatedBy.includes(seat)) return { ok: false, error: `R6: no command token of yours in ${systemId}` }
+  const next = { ...state, systems: { ...state.systems, [systemId]: { ...sys, activatedBy: sys.activatedBy.filter(s => s !== seat) } } }
+  return distributeTokens(next, seat, params.tokens, 1, true)
+}
+
+/** R6 Warfare secondary: the R4.4 production of a space dock in your own home system. */
+function warfareSecondary(state: GameState, seat: Seat, params: StrategicParams): Result<GameState> {
+  const staged: GameState = { ...state, tactical: { systemId: homeSystemId(seat), step: 'production' } }
+  const made = produce(staged, params.units ?? {}, params.planets ?? [], params.tradeGoods ?? 0)
+  if (!made.ok) return made
+  return { ok: true, value: { ...made.value, tactical: state.tactical } }
+}
+
+/** R5: one technology, then optionally a second one for 6 resources; the first may be the prerequisite. */
+function technologyPrimary(state: GameState, seat: Seat, params: StrategicParams): Result<GameState> {
+  let next = state
+  if (params.techId !== undefined) {
+    const first = grantTech(next, seat, params.techId, false)
+    if (!first.ok) return first
+    next = first.value
+  }
+  if (params.secondTechId !== undefined) {
+    if (params.techId === undefined) return { ok: false, error: 'R5: the second technology needs the first' }
+    const paid = payCost(next, seat, 6, params.planets ?? [], params.tradeGoods ?? 0)
+    if (!paid.ok) return paid
+    const second = grantTech(paid.value, seat, params.secondTechId, false)
+    if (!second.ok) return second
+    next = second.value
+  }
+  return { ok: true, value: next }
+}
+
+function technologySecondary(state: GameState, seat: Seat, params: StrategicParams): Result<GameState> {
+  if (params.techId === undefined) return { ok: false, error: 'R5: name the technology to research' }
+  const paid = payCost(state, seat, 4, params.planets ?? [], params.tradeGoods ?? 0)
+  if (!paid.ok) return paid
+  return grantTech(paid.value, seat, params.techId, false)
+}
+
+/** R6/R7 Imperial: score one fulfilled public objective, then 1 VP for Mecatol Rex. */
+function imperialPrimary(state: GameState, seat: Seat, params: StrategicParams): Result<GameState> {
+  let next = state
+  const id = params.objectiveId
+  if (id !== undefined) {
+    if (!state.publicObjectives.includes(id)) return { ok: false, error: `R7: ${id} is not a revealed public objective` }
+    if (state.players[seat].scoredObjectives.includes(id)) return { ok: false, error: `R7: ${id} is already scored` }
+    if (!fulfils(state, seat, id)) return { ok: false, error: `R7: ${id} is not fulfilled` }
+    next = scoreObjective(next, seat, id)
+  }
+  if (controlsMecatol(next, seat)) next = addVp(next, seat, 1, 'Imperial primary: Mecatol Rex')
+  return { ok: true, value: next }
+}
+
 function primary(state: GameState, seat: Seat, card: StrategyCardId, params: StrategicParams): Result<GameState> {
   switch (card) {
     case 'leadership':
@@ -115,8 +193,12 @@ function primary(state: GameState, seat: Seat, card: StrategyCardId, params: Str
       if (params.shareWithOpponent) next = replenish(next, otherSeat(seat))
       return { ok: true, value: next }
     }
-    default:
-      return { ok: false, error: `no primary implemented for ${card}` }
+    case 'warfare':
+      return warfarePrimary(state, seat, params)
+    case 'technology':
+      return technologyPrimary(state, seat, params)
+    case 'imperial':
+      return imperialPrimary(state, seat, params)
   }
 }
 
@@ -128,8 +210,12 @@ function secondaryEffect(state: GameState, seat: Seat, card: StrategyCardId, par
       return readyPlanets(state, seat, params.planets ?? [], 2)
     case 'trade':
       return { ok: true, value: replenish(state, seat) }
-    default:
-      return { ok: false, error: `no secondary implemented for ${card}` }
+    case 'warfare':
+      return warfareSecondary(state, seat, params)
+    case 'technology':
+      return technologySecondary(state, seat, params)
+    case 'imperial':
+      return { ok: true, value: addTradeGoods(state, seat, 2) }   // R6: replaces "draw a secret objective"
   }
 }
 
