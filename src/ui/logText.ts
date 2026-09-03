@@ -25,6 +25,9 @@ export function describeMove(state: GameState, seat: Seat | null, move: Move): s
       const sides = [move.munitions?.attacker ? 'attacker' : null, move.munitions?.defender ? 'defender' : null].filter(s => s !== null)
       return sides.length > 0 ? `${name} fights a combat round, Munitions Reserves for the ${sides.join(' and ')}` : `${name} fights a combat round`
     }
+    // the move is logged under the seat on turn, but hits are assigned by their owner, whom the engine's own
+    // info entry names right after this one
+    case 'assignHits': return 'Hits are assigned'
     case 'retreat': return `${name} announces a retreat to ${systemLabel(move.to)}`
     case 'bombard': return `${name} bombards ${planetLabel(state, move.planetId)}`
     case 'land': return `${name} lands ${move.infantryIds.length} infantry on ${planetLabel(state, move.planetId)}`

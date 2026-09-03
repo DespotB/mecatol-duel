@@ -48,7 +48,17 @@ export interface TacticalContext {
   combat?: CombatState
   invasion?: InvasionState
 }
-export interface CombatState { round: number; attacker: Seat; defender: Owner; retreating: Seat | null; retreatTo: string | null; lastRolls: DieRoll[] }
+/** How a batch of hits may be assigned: `noFighters` is Graviton Laser System, `preferNonFighters` is [0.0.1]. */
+export type HitMode = 'any' | 'noFighters' | 'preferNonFighters'
+export interface HitGroup { count: number; mode: HitMode }
+/** R4.1 step 4: hits waiting for their owner to assign them; `context` names the step that scored them. */
+export interface PendingHits { owner: Seat; groups: HitGroup[]; context: string }
+export interface CombatState {
+  round: number; attacker: Seat; defender: Owner
+  retreating: Seat | null; retreatTo: string | null
+  lastRolls: DieRoll[]
+  pending: PendingHits[]           // hits waiting to be assigned, head first; empty when the combat may continue
+}
 export interface InvasionState { planetId: string | null; landed: number[]; bombarded: string[]; round: number }
 export interface DieRoll { owner: Owner; unit: UnitType; value: number; hit: boolean }
 export interface GameState {
@@ -76,6 +86,7 @@ export type Move =
   | { type: 'moveShips'; moves: { unitId: number; from: string; carrying: number[] }[] }   // all into tactical.systemId
   | { type: 'endMovement' }
   | { type: 'combatRound'; munitions?: { attacker?: boolean; defender?: boolean } }   // resolves one round (or the pre-combat steps on round 0); Munitions Reserves is per side
+  | { type: 'assignHits'; destroy: number[]; sustain: number[] }   // unit ids of the assigning seat, in the activated system
   | { type: 'retreat'; to: string }
   | { type: 'bombard'; planetId: string }
   | { type: 'land'; planetId: string; infantryIds: number[] }

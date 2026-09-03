@@ -1,6 +1,7 @@
 // src/engine/movement.test.ts
 import { describe, expect, it } from 'vitest'
-import { applyMove } from './index'
+import { pendingFor } from './combat'
+import { applyMove, legalMoves } from './index'
 import { deepFreeze, groundIds, hitsIn, shipId, toActionPhase, withPlanetOwner, withTechs, withUnits } from './testUtils'
 import type { GameState, Seat } from './types'
 
@@ -121,7 +122,7 @@ describe('R3.2 movement', () => {
     const combat = applyMove(moved.value, { type: 'endMovement' }, 0)
     if (!combat.ok) throw new Error(combat.error)
     expect(combat.value.tactical?.step).toBe('spaceCombat')
-    expect(combat.value.tactical?.combat).toEqual({ round: 0, attacker: 0, defender: 'guardian', retreating: null, retreatTo: null, lastRolls: [] })
+    expect(combat.value.tactical?.combat).toEqual({ round: 0, attacker: 0, defender: 'guardian', retreating: null, retreatTo: null, lastRolls: [], pending: [] })
   })
   it('R4.1 step 1: endMovement resolves space cannon offense when only a PDS defends an otherwise empty system, then continues to the invasion', () => {
     const withPds = withUnits(withPlanetOwner(toActionPhase(), 'bereg', 'bereg', 1), 'bereg', 1, ['pds'], 'bereg')
@@ -135,6 +136,25 @@ describe('R3.2 movement', () => {
     const entries = after.value.log.filter(e => e.t === 'roll' && e.context === 'space cannon offense')
     expect(entries).toHaveLength(1)
     expect(after.value.systems.bereg.space.filter(u => u.owner === 0)).toHaveLength(2 - hitsIn(after.value, 'space cannon offense'))
+  })
+  it('R4.1 step 1 and 4: a mixed fleet assigns the PDS hits itself, and the invasion waits for it', () => {
+    const withPds = withUnits(withPlanetOwner(toActionPhase(), 'bereg', 'bereg', 1), 'bereg', 1, ['pds'], 'bereg')
+    const s = activate(withUnits(withPds, 'home-n', 0, ['destroyer']), 0, 'bereg')
+    const carrier = shipId(s, 'home-n', 'carrier')
+    const destroyer = shipId(s, 'home-n', 'destroyer')
+    const moved = applyMove(s, { type: 'moveShips', moves: [carrier, destroyer].map(unitId => ({ unitId, from: 'home-n', carrying: [] })) }, 0)
+    if (!moved.ok) throw new Error(moved.error)
+    const stopped = applyMove(moved.value, { type: 'endMovement' }, 3)   // seed 3: the PDS hits
+    if (!stopped.ok) throw new Error(stopped.error)
+    expect(pendingFor(stopped.value)).toMatchObject({ owner: 0, context: 'space cannon offense' })
+    expect(stopped.value.tactical?.step).toBe('movement')                // the movement step holds the queue
+    expect(legalMoves(stopped.value).map(m => m.type)).toEqual(['assignHits'])
+    expect(stopped.value.systems.bereg.space.filter(u => u.owner === 0)).toHaveLength(2)
+    const after = applyMove(stopped.value, { type: 'assignHits', destroy: [destroyer], sustain: [] }, 3)
+    if (!after.ok) throw new Error(after.error)
+    expect(after.value.systems.bereg.space.filter(u => u.owner === 0).map(u => u.type)).toEqual(['carrier'])
+    expect(after.value.tactical?.step).toBe('invasion')
+    expect(after.value.tactical?.combat).toBeUndefined()
   })
   it('R4.1 step 1: cargo orphaned by the space cannon in the PDS-only branch is destroyed with its carrier', () => {
     // seat 1 activates [0.0.0], where the L1Z1X starting PDS defends an otherwise empty system: the cannon

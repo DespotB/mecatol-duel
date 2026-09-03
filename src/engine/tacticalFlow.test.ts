@@ -125,12 +125,31 @@ describe('tactical legal moves', () => {
     const bothLetnev = withPlayer(withPlayer(staged, 0, { faction: 'letnev', tradeGoods: 2 }), 1, { tradeGoods: 2 })
     const atRound = (round: number) => withTactical(bothLetnev, {
       systemId: 'bereg', step: 'spaceCombat',
-      combat: { round, attacker: 0, defender: 1, retreating: null, retreatTo: null, lastRolls: [] },
+      combat: { round, attacker: 0, defender: 1, retreating: null, retreatTo: null, lastRolls: [], pending: [] },
     })
     expect(legalMoves(atRound(0)).every(m => m.type !== 'combatRound' || m.munitions === undefined)).toBe(true)
     const variants = legalMoves(atRound(1)).filter(m => m.type === 'combatRound' && m.munitions !== undefined)
     expect(variants).toHaveLength(3)   // attacker only, defender only, both sides
     for (const move of variants) expect(applyMove(atRound(1), move, 7).ok).toBe(true)
+  })
+  it('R4.1 step 4: a queued assignment is the only enumerated move, and playing it carries the round on', () => {
+    const base = toActionPhase(3)
+    const cleared: GameState = { ...base, systems: { ...base.systems, bereg: { ...base.systems.bereg, space: [] } } }
+    const staged = withUnits(withUnits(cleared, 'bereg', 0, ['cruiser', 'cruiser']), 'bereg', 1, ['dreadnought', 'fighter', 'fighter'])
+    const s = withTactical(staged, {
+      systemId: 'bereg', step: 'spaceCombat',
+      combat: { round: 1, attacker: 0, defender: 1, retreating: null, retreatTo: null, lastRolls: [], pending: [] },
+    })
+    const fought = applyMove(s, { type: 'combatRound' }, 3)   // seed 3: one hit for the attacker, none for the defender
+    if (!fought.ok) throw new Error(fought.error)
+    const moves = legalMoves(fought.value)
+    expect(moves.map(m => m.type)).toEqual(['assignHits'])
+    expect(validateMove(fought.value, { type: 'combatRound' }).ok).toBe(false)
+    const assigned = applyMove(fought.value, moves[0], 3)
+    if (!assigned.ok) throw new Error(assigned.error)
+    expect(assigned.value.tactical?.combat?.pending).toEqual([])
+    expect(assigned.value.tactical?.combat?.round).toBe(2)
+    expect(legalMoves(assigned.value).some(m => m.type === 'combatRound')).toBe(true)
   })
   it('R4.3: endInvasion is not enumerated while a ground combat is pending', () => {
     const base = toActionPhase(3)

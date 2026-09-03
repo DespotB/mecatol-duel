@@ -3,6 +3,7 @@ import { FACTIONS } from '../data/factions'
 import { homeSystemId } from '../data/map'
 import { otherSeat } from './actionPhase'
 import { checkFleet } from './board'
+import { groundCombatPending } from './invasion'
 import { applyMove, legalMoves, validateMove } from './index'
 import { createGame, unitsOf } from './setup'
 import { DUEL_CONFIG, fillTemplate, shuffle, toActionPhase, toStatusPhase, withCards, withExhausted, withPlanetOwner, withPlayer, withTechs } from './testUtils'
@@ -87,7 +88,10 @@ function playGame(seed: number): GameRun {
     expect(options.length).toBeGreaterThan(0)
     // after half the budget the driver prefers the moves that close a turn, so every game terminates
     const closer = moves > MAX_MOVES / 2 ? options.find(m => CLOSERS.includes(m.type)) : undefined
-    const order = closer ? [closer, ...shuffle(options, rng)] : shuffle(options, rng)
+    // R4.3 step 4: a ground combat that is running is fought out, the way the engine stops offering a landing
+    // while one is pending; otherwise a stray bombardment can wipe the defenders and that path is never played
+    const fight = groundCombatPending(state) ? options.find(m => m.type === 'groundCombatRound') : undefined
+    const order = [closer, fight, ...shuffle(options, rng)].filter(m => m !== undefined)
     let next: GameState | null = null
     for (const option of order) {
       const move = fillTemplate(state, option, rng)
@@ -213,9 +217,9 @@ function runGame(seed: number): GameRun {
 }
 
 const ALL_MOVE_TYPES: readonly Move['type'][] = [
-  'pickStrategyCard', 'startTactical', 'moveShips', 'endMovement', 'combatRound', 'retreat', 'bombard', 'land',
-  'groundCombatRound', 'endInvasion', 'produce', 'endTactical', 'strategic', 'secondary', 'research', 'shipyard',
-  'tradePost', 'pass', 'status',
+  'pickStrategyCard', 'startTactical', 'moveShips', 'endMovement', 'combatRound', 'assignHits', 'retreat', 'bombard',
+  'land', 'groundCombatRound', 'endInvasion', 'produce', 'endTactical', 'strategic', 'secondary', 'research',
+  'shipyard', 'tradePost', 'pass', 'status',
 ]
 const ALL_CARDS: readonly StrategyCardId[] = ['leadership', 'diplomacy', 'trade', 'warfare', 'technology', 'imperial']
 
