@@ -10,7 +10,13 @@ import type { Session } from './store'
 export const LEGACY_KEY = 'md:local'
 export const INDEX_KEY = 'md:games'
 export const PLAYER_KEY = 'md:player'
-export const MAX_GAMES = 20
+/**
+ * Three games at a time, and the lobby draws three slots whether they are filled or not. The number is a
+ * layout decision as much as a storage one: a list that grows with every game left the lobby a different
+ * height on every visit, and the page scales itself to its own height, so the whole screen changed size.
+ * Three fits the block the lobby has for it, and a fourth game asks the player to let one go first.
+ */
+export const MAX_GAMES = 3
 /** No I, L, O, 0 or 1: a code is read out loud across the table, and those five are misheard. */
 export const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
 const CODE_LENGTH = 6
