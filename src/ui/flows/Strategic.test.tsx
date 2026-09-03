@@ -44,6 +44,16 @@ describe('strategic actions', () => {
     expect(screen.getByTestId('tech-0-sarween_tools').textContent).toBe('Sarween Tools')
   })
 
+  it('R5: the Technology secondary opens in the wide drawer, so the unit-upgrade and faction column is not clipped', () => {
+    const s = withCards(withCards(toActionPhase(), 0, ['technology']), 1, [])
+    renderWithSession(s, <BoardScreen />)
+    playCard('technology')
+    fireEvent.click(screen.getByTestId('tech-card-sarween_tools'))
+    fireEvent.click(screen.getByTestId('btn-strategic-confirm'))
+    expect(screen.getByTestId('secondary-panel').className).toContain('drawer full')
+    expect(screen.getByTestId('tech-card-infantry_ii')).toBeTruthy()
+  })
+
   it('closes the strategic dialog on Escape, the same way Cancel does', () => {
     const s = withCards(withCards(toActionPhase(), 0, ['leadership']), 1, [])
     renderWithSession(s, <BoardScreen />)

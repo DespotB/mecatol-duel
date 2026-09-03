@@ -1,10 +1,13 @@
 import { useState } from 'react'
+import { FACTIONS } from '../../data/factions'
 import { homeSystemId } from '../../data/map'
 import { cardOwner, productionLimit, secondaryTokenCost } from '../../engine'
-import { CARD_NAME, ownedPlanets, systemLabel } from '../format'
+import { BADGE, MISC, strategyCardUrl, techArtUrl, tokenUrl } from '../art'
+import { CARD_NAME, ownedPlanets, systemLabel, techLabel } from '../format'
 import { secondaryOffer } from '../moveOptions'
 import { PayRow } from './PayRow'
 import { ProductionPicker, costOf, unitTotal } from './ProductionPicker'
+import { Rewards } from './Rewards'
 import { TechDrawer } from './TechDrawer'
 import { TokenSheet } from './TokenSheet'
 import { useGame } from '../store'
@@ -55,13 +58,12 @@ export function SecondaryPanel() {
   const paidResources = pay.reduce((sum, id) => sum + (ownedPlanets(state, seat).find(p => p.id === id)?.resources ?? 0), 0) + tradeGoods
   const warfareBlocked = card === 'warfare' && (warfareCount === 0 || warfareCount > warfareLimit || paidResources < warfareCost)
   return (
-    <div className="dialog cut" data-testid="secondary-panel">
+    <div className={card === 'technology' ? 'drawer full cut' : 'dialog cut'} data-testid="secondary-panel">
       <div className="in">
         <div className="dhead">
           <span className="tab">{CARD_NAME[card]}, secondary</span>
           <span className="sub">
             {owner === null ? 'Your opponent' : state.players[owner].name} played {CARD_NAME[card]}.
-            It costs you {secondaryTokenCost(card)} strategy token.
           </span>
           <div className="right">
             <button type="button" className="btn gold" data-testid="btn-secondary-accept" disabled={offer.accept === null || warfareBlocked}
@@ -72,24 +74,40 @@ export function SecondaryPanel() {
         </div>
         {card === 'leadership' ? (
           <>
+            <Rewards items={[
+              { icon: tokenUrl(player.faction, 'command'), alt: 'Command token', count: gained, label: 'Command tokens' },
+            ]} note={`Costs you ${secondaryTokenCost(card)} strategy token.`} />
             <PayRow state={state} seat={seat} unit="influence" needed={0} planets={pay} onPlanets={ids => { setPlanets(ids); setTokens(null) }}
               tradeGoods={tradeGoods} onTradeGoods={n => { setTradeGoods(n); setTokens(null) }} />
             <TokenSheet current={player.tokens} gained={gained} value={sheet} onChange={setTokens} />
           </>
         ) : null}
         {card === 'diplomacy' ? (
-          <div className="rowline">
-            {ownedPlanets(state, seat).filter(p => p.exhausted).map(planet => (
-              <button key={planet.id} type="button" className={`pay${pay.includes(planet.id) ? ' on' : ''}`} data-testid={`ready-${planet.id}`}
-                disabled={!pay.includes(planet.id) && pay.length >= 2}
-                onClick={() => setPlanets(pay.includes(planet.id) ? pay.filter(id => id !== planet.id) : [...pay, planet.id])}>
-                Ready {planet.name}
-              </button>
-            ))}
-          </div>
+          <>
+            <Rewards items={[
+              { icon: BADGE.influenceReady, alt: 'Ready planet', count: pay.length > 0 ? pay.length : 2, label: 'Ready planet' },
+            ]} note={`Costs you ${secondaryTokenCost(card)} strategy token.`} />
+            <div className="rowline">
+              {ownedPlanets(state, seat).filter(p => p.exhausted).map(planet => (
+                <button key={planet.id} type="button" className={`pay${pay.includes(planet.id) ? ' on' : ''}`} data-testid={`ready-${planet.id}`}
+                  disabled={!pay.includes(planet.id) && pay.length >= 2}
+                  onClick={() => setPlanets(pay.includes(planet.id) ? pay.filter(id => id !== planet.id) : [...pay, planet.id])}>
+                  Ready {planet.name}
+                </button>
+              ))}
+            </div>
+          </>
         ) : null}
         {card === 'technology' ? (
           <>
+            <Rewards items={[
+              {
+                icon: (techId ?? template.techId) ? techArtUrl(techId ?? template.techId ?? '') : strategyCardUrl('technology'),
+                alt: (techId ?? template.techId) ? techLabel(techId ?? template.techId ?? '') : 'Technology',
+                count: 1,
+                label: (techId ?? template.techId) ? techLabel(techId ?? template.techId ?? '') : 'Technology',
+              },
+            ]} note={`Costs you ${secondaryTokenCost(card)} strategy token.`} />
             <PayRow state={state} seat={seat} needed={needed} planets={pay} onPlanets={setPlanets} tradeGoods={tradeGoods} onTradeGoods={setTradeGoods} />
             <TechDrawer state={state} seat={seat} allowed={techOptions} selected={techId ?? template.techId ?? null} onSelect={setTechId} />
           </>
@@ -103,8 +121,22 @@ export function SecondaryPanel() {
             <PayRow state={state} seat={seat} needed={warfareCost} planets={pay} onPlanets={setPlanets} tradeGoods={tradeGoods} onTradeGoods={setTradeGoods} />
           </>
         ) : null}
-        {card === 'trade' ? <div className="sub">Replenish your commodities.</div> : null}
-        {card === 'imperial' ? <div className="sub">Gain two trade goods.</div> : null}
+        {card === 'trade' ? (
+          <>
+            <div className="sub">Your commodities come back.</div>
+            <Rewards items={[
+              { icon: MISC.commodity, alt: 'Commodity', count: Math.max(0, FACTIONS[player.faction].commodityValue - player.commodities), label: 'Commodities' },
+            ]} note={`Costs you ${secondaryTokenCost(card)} strategy token.`} />
+          </>
+        ) : null}
+        {card === 'imperial' ? (
+          <>
+            <div className="sub">You get trade goods.</div>
+            <Rewards items={[
+              { icon: MISC.tradeGood, alt: 'Trade good', count: 2, label: 'Trade goods' },
+            ]} note={`Costs you ${secondaryTokenCost(card)} strategy token.`} />
+          </>
+        ) : null}
       </div>
     </div>
   )
