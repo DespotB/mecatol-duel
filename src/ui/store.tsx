@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { applyMove, createGame, deriveSeed, legalMoves } from '../engine'
+import { applyMove, createGame, deriveSeed, legalMoves, postDef } from '../engine'
 import type { GameConfig, GameState, Move, Seat } from '../engine/types'
+import { timeTradeCost } from './format'
 import { moveCount, undoable } from './history'
 import { deleteGame, hasGame, newGameCode, saveGame } from './persist'
 import { gamePath, navigate } from './route'
@@ -17,6 +18,21 @@ function onlyEndTurn(state: GameState): boolean {
 const TICK_MS = 100
 // R6: a player whose clock ran out gets three more minutes at the start of every later round
 const ROUND_BONUS_MS = 180000
+// R8: the Vandel Bulk Tanker's layover, the same three minutes, bought with a command token
+const LAYOVER_BONUS_MS = 180000
+
+/**
+ * R8: the two abilities the engine cannot resolve, because it is time-free. The move is applied like any
+ * other and the clock is the UI's part of it: a layover adds three minutes to the acting seat, a time trade
+ * takes half of what is left. Every other move, this one's own post included, leaves the clocks alone.
+ */
+function clockAfter(before: GameState, move: Move, clockMs: number): number {
+  if (move.type !== 'postAbility') return clockMs
+  const ability = postDef(before, move.post).ability
+  if (ability === 'layover') return clockMs + LAYOVER_BONUS_MS
+  if (ability === 'timeTrade') return clockMs - timeTradeCost(clockMs)
+  return clockMs
+}
 
 export interface Session {
   /** The six-character code this game is stored and addressed under; it never changes. */
@@ -89,17 +105,23 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     // trade post sale. When nothing free is open, ending the turn is the only thing left and asking for a
     // click (in hot-seat: a device handoff) buys nothing, so the engine's own verdict decides it here.
     // A free move is the player's own detour, so it never ends the turn behind their back: after a trade
-    // they press End turn themselves.
-    while (move.type !== 'tradePost' && next.winner === null && onlyEndTurn(next)) {
+    // or a post's special ability they press End turn themselves.
+    const free = move.type === 'tradePost' || move.type === 'postAbility'
+    while (!free && next.winner === null && onlyEndTurn(next)) {
       const ended = applyMove(next, { type: 'endTurn' }, deriveSeed(session.seed, moveCount(next)))
       if (!ended.ok) break
       next = ended.value
     }
     const keep = undoable(session.state, next)
+    // R8: the layover and the time trade are settled on the clock here, because the engine is time-free
+    const seat = session.state.active
+    const clockMs: [number, number] = [session.clockMs[0], session.clockMs[1]]
+    clockMs[seat] = clockAfter(session.state, move, clockMs[seat])
     setError(null)
     setSession({
       ...session,
       state: next,
+      clockMs,
       history: keep ? [...session.history, session.state] : [],
       handoff: next.active !== session.state.active && next.winner === null ? next.active : null,
     })

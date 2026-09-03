@@ -4,8 +4,9 @@ import { describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import * as engine from '../engine'
 import { applyMove, createGame, deriveSeed } from '../engine'
-import { cardsUsed, toActionPhase, toStatusPhase } from '../engine/testUtils'
+import { cardsUsed, toActionPhase, toStatusPhase, withPlanetOwner } from '../engine/testUtils'
 import { GameProvider, useGame } from './store'
+import type { PostId } from '../data/posts'
 import type { GameConfig, Session } from './store'
 import type { StrategyCardId } from '../engine/types'
 
@@ -181,5 +182,43 @@ describe('the hot-seat store', () => {
     enumerate.mockRestore()
     write.mockRestore()
     vi.useRealTimers()
+  })
+
+  /** R8: seat 0 on turn, holding Sakulag, with the named post in play on the west side. */
+  function atWestPost(post: PostId) {
+    const base = withPlanetOwner(toActionPhase(1, 0), 'sakulag', 'sakulag', 0)
+    return { ...base, posts: { west: post, east: 'tessik' as PostId }, postAbilityUsed: { west: false, east: false } }
+  }
+
+  it('R8: a layover adds three minutes to the acting seat and leaves the other clock alone', () => {
+    const { result } = renderHook(() => useGame(), { wrapper: wrapper(false) })
+    act(() => { result.current.resume(session(atWestPost('vandel'), [600000, 500000])) })
+    act(() => { result.current.apply({ type: 'postAbility', post: 'west', params: { pool: 'fleet' } }) })
+    expect(result.current.session?.clockMs[0]).toBe(780000)
+    expect(result.current.session?.clockMs[1]).toBe(500000)
+  })
+
+  it('R8: a time trade takes half the acting seat\'s clock, and the victory point comes from the engine', () => {
+    const { result } = renderHook(() => useGame(), { wrapper: wrapper(false) })
+    act(() => { result.current.resume(session(atWestPost('sarnex'), [601500, 500000])) })
+    act(() => { result.current.apply({ type: 'postAbility', post: 'west', params: {} }) })
+    // half of ten minutes and a second and a half, rounded down to the second
+    expect(result.current.session?.clockMs[0]).toBe(301500)
+    expect(result.current.session?.state.players[0].vp).toBe(1)
+  })
+
+  it('R8: every other post ability leaves both clocks where they were', () => {
+    const { result } = renderHook(() => useGame(), { wrapper: wrapper(false) })
+    act(() => { result.current.resume(session(atWestPost('kesh'), [600000, 500000])) })
+    act(() => { result.current.apply({ type: 'postAbility', post: 'west', params: { pool: 'fleet' } }) })
+    expect(result.current.session?.state.players[0].tradeGoods).toBe(4)
+    expect(result.current.session?.clockMs).toEqual([600000, 500000])
+  })
+
+  it('R8: a post ability is final, so the clock cannot be farmed by undoing it', () => {
+    const { result } = renderHook(() => useGame(), { wrapper: wrapper(false) })
+    act(() => { result.current.resume(session(atWestPost('vandel'), [600000, 500000])) })
+    act(() => { result.current.apply({ type: 'postAbility', post: 'west', params: { pool: 'fleet' } }) })
+    expect(result.current.canUndo).toBe(false)
   })
 })

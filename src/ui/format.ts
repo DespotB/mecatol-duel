@@ -24,6 +24,14 @@ export function formatClock(ms: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
 
+/**
+ * R8: what the Sarnex Time Machine Wheel charges, half the clock that is left, rounded down to the second.
+ * The engine is time-free, so this is the UI's own rule and it lives next to the clock it reads.
+ */
+export function timeTradeCost(clockMs: number): number {
+  return Math.floor(clockMs / 2000) * 1000
+}
+
 function ago(count: number, unit: string): string {
   return `${String(count)} ${unit}${count === 1 ? '' : 's'} ago`
 }
