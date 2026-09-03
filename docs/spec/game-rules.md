@@ -40,7 +40,7 @@ Two-player distillation of Twilight Imperium 4th edition (base game rules, no Pr
 Snake draft: speaker picks one card, the other player picks two, the speaker picks the last. The two remaining cards each get one trade good placed on them; the next player to pick such a card gains its trade goods. Initiative order for the action phase is by the lowest card number each player holds.
 
 ### 3.2 Action phase
-Players alternate turns in initiative order. On a turn the active player performs exactly one of: tactical action, strategic action, component action, pass. After passing, a player takes no more turns this round; the other player continues until they also pass. A player may not pass while they still hold an unused strategy card (they must play it first).
+Players alternate turns in initiative order. On a turn the active player performs exactly one of: tactical action, strategic action, component action, pass. After passing, a player takes no more turns this round; the other player continues until they also pass. A player may not pass while they still hold an unused strategy card (they must play it first). A player who has passed may still resolve the secondary ability of a strategy card the opponent plays, because answering a card is not a turn (TI4 rule). A player who has passed may not trade at a trade post, because trading needs a turn of their own (section 8).
 
 Tactical action (a system that already contains one of your command tokens cannot be activated, your home system included):
 1. Activation: spend one tactic token into the system.
