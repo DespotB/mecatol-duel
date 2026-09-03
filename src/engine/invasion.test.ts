@@ -158,6 +158,24 @@ describe('R4.3 invasion', () => {
     expect(groundOf(after, 'bereg', 'bereg', 0)).toHaveLength(wiped ? 0 : 1)
     expect(after.tactical?.invasion?.planetId).toBe(wiped ? null : 'bereg')
   })
+  it('R4.3 step 4: no landing at all while a ground combat is running, and the enumerator offers none', () => {
+    const base = withUnits(invasion('bereg', ['carrier'], 4), 'bereg', 1, ['infantry', 'infantry', 'infantry'], 'bereg')
+    const landed = apply(base, { type: 'land', planetId: 'bereg', infantryIds: carriedIds(base, 'bereg', 0).slice(0, 2) })
+    expect(groundCombatPending(landed)).toBe(true)
+    expect(landablePlanets(landed)).toEqual([])
+    const left = carriedIds(landed, 'bereg', 0)
+    expect(applyMove(landed, { type: 'land', planetId: 'bereg', infantryIds: left }, 5).ok).toBe(false)
+    expect(applyMove(landed, { type: 'land', planetId: 'lirta-iv', infantryIds: left }, 5).ok).toBe(false)
+  })
+  it('R4.3 step 3: a planet is landed on only once per invasion', () => {
+    const base = invasion('bereg', ['carrier'], 4)   // empty planets, so nothing starts a ground combat
+    const landed = apply(base, { type: 'land', planetId: 'bereg', infantryIds: carriedIds(base, 'bereg', 0).slice(0, 2) })
+    expect(landed.tactical?.invasion?.planetId).toBe('bereg')
+    const left = carriedIds(landed, 'bereg', 0)
+    expect(applyMove(landed, { type: 'land', planetId: 'bereg', infantryIds: left }, 5).ok).toBe(false)
+    expect(landablePlanets(landed).map(l => l.planetId)).toEqual(['lirta-iv'])
+    expect(applyMove(landed, { type: 'land', planetId: 'lirta-iv', infantryIds: left }, 5).ok).toBe(true)
+  })
   it('the enumerators mirror the validators exactly: every enumerated move is legal', () => {
     const seed = 7
     const scenarios: GameState[] = [

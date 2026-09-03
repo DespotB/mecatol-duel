@@ -98,9 +98,9 @@ export function landablePlanets(state: GameState): { planetId: string; infantryI
   const seat = state.active
   const infantryIds = state.systems[tac.systemId].space.filter(u => u.owner === seat && u.type === 'infantry').map(u => u.id)
   if (!infantryIds.length) return []
-  const busy = groundCombatPending(state) ? inv.planetId : null
+  if (groundCombatPending(state)) return []   // R4.3 step 4: the running ground combat is fought out first
   return state.systems[tac.systemId].planets
-    .filter(p => !busy || p.id === busy)
+    .filter(p => p.id !== inv.planetId)       // R4.3 step 3: one landing per planet per invasion
     .map(p => ({ planetId: p.id, infantryIds }))
 }
 
@@ -165,7 +165,8 @@ export function land(state: GameState, planetId: string, infantryIds: number[], 
   const planet = planetOf(state, tac.systemId, planetId)
   if (!planet) return { ok: false, error: `planet ${planetId} is not in the active system` }
   if (!infantryIds.length) return { ok: false, error: 'no infantry to land' }
-  if (groundCombatPending(state) && inv.planetId !== planetId) return { ok: false, error: 'finish the running ground combat first' }
+  if (groundCombatPending(state)) return { ok: false, error: 'R4.3 step 4: finish the running ground combat first' }
+  if (inv.planetId === planetId) return { ok: false, error: `R4.3 step 3: ${planetId} was already landed on this invasion` }
   const landing: Unit[] = []
   for (const id of infantryIds) {
     const u = sys.space.find(x => x.id === id && x.owner === seat && x.type === 'infantry')
