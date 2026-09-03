@@ -18,15 +18,24 @@ describe('the soundtrack', () => {
     expect(nextTrack(2)).toBe(0)
   })
 
-  it('is off until it is asked for, and remembers that it was', () => {
+  it('plays by default and remembers being switched off', () => {
     const view = render(<MusicProvider><MusicButton /></MusicProvider>)
-    expect(screen.getByTestId('btn-music').textContent).toBe('Music off')
-    fireEvent.click(screen.getByTestId('btn-music'))
     expect(screen.getByTestId('btn-music').textContent).toBe('Music on')
-    expect(window.localStorage.getItem('md:music')).toBe('on')
+    fireEvent.click(screen.getByTestId('btn-music'))
+    expect(screen.getByTestId('btn-music').textContent).toBe('Music off')
+    expect(window.localStorage.getItem('md:music')).toBe('off')
     view.unmount()
     render(<MusicProvider><MusicButton /></MusicProvider>)
-    expect(screen.getByTestId('btn-music').textContent).toBe('Music on')
+    expect(screen.getByTestId('btn-music').textContent).toBe('Music off')
+  })
+
+  it('the button and the stored setting never disagree, however often it is clicked', () => {
+    render(<MusicProvider><MusicButton /></MusicProvider>)
+    for (const expected of ['off', 'on', 'off']) {
+      fireEvent.click(screen.getByTestId('btn-music'))
+      expect(window.localStorage.getItem('md:music')).toBe(expected)
+      expect(screen.getByTestId('btn-music').textContent).toBe(expected === 'on' ? 'Music on' : 'Music off')
+    }
   })
 
   it('plays one of the three tracks and steps on when it ends', () => {

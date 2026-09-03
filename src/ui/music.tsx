@@ -2,9 +2,9 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import type { ReactNode } from 'react'
 
 /**
- * The soundtrack: three tracks played in rotation, endlessly. It is off until the player asks for it, both
- * out of manners and because a browser refuses to start audio before someone has clicked something. The
- * choice is remembered per browser, like the model style.
+ * The soundtrack: three tracks played in rotation, endlessly. It is on by default and switched off in the
+ * lobby or in the game menu; the choice is remembered per browser, like the model style. A browser will not
+ * start audio before the page has been touched, so on a fresh visit the first click anywhere starts it.
  *
  * Music by Kevin MacLeod (incompetech.com), licensed CC BY 4.0. The credit line the licence asks for is in
  * the lobby footer and in public/audio/CREDITS.md.
@@ -25,45 +25,48 @@ export function nextTrack(index: number): number {
   return (index + 1) % TRACKS.length
 }
 
+/** On unless it was switched off here before: the soundtrack is part of the game, not an extra. */
 function readOn(): boolean {
   try {
-    return window.localStorage.getItem(KEY) === 'on'
+    return window.localStorage.getItem(KEY) !== 'off'
   } catch {
-    return false
+    return true
   }
 }
 
 interface MusicStore { on: boolean; toggle: () => void; title: string }
-const MusicContext = createContext<MusicStore>({ on: false, toggle: () => undefined, title: TRACKS[0].title })
+const MusicContext = createContext<MusicStore>({ on: true, toggle: () => undefined, title: TRACKS[0].title })
 
 export function MusicProvider({ children }: { children: ReactNode }) {
-  const [on, setOn] = useState<boolean>(() => typeof window === 'undefined' ? false : readOn())
+  const [on, setOn] = useState<boolean>(() => typeof window === 'undefined' ? true : readOn())
   // a different track each visit, so the same one is not always the first thing you hear
   const [index, setIndex] = useState(() => Math.floor(Math.random() * TRACKS.length))
   const audio = useRef<HTMLAudioElement | null>(null)
 
-  // Playback starts inside the click itself: a browser only accepts `play()` while the page has just been
-  // interacted with, so going through an effect would be a needless step away from the gesture.
+  // The updater stays pure: the side effects hang off the state instead. An earlier version toggled and
+  // played inside the updater, which left the button and the stored setting disagreeing with each other.
   const toggle = useCallback(() => {
     const element = audio.current
-    setOn(prev => {
-      const next = !prev
-      try { window.localStorage.setItem(KEY, next ? 'on' : 'off') } catch { /* still switches for this session */ }
-      if (element) {
-        element.volume = VOLUME
-        if (next) void element.play().catch(() => undefined)
-        else element.pause()
-      }
-      return next
-    })
+    setOn(prev => !prev)
+    // still inside the click, which is the moment a browser is willing to start audio
+    if (element && element.paused) {
+      element.volume = VOLUME
+      void element.play().catch(() => undefined)
+    }
   }, [])
 
-  // the track changed under a running soundtrack, or the page came back with music remembered as on
+  useEffect(() => {
+    try { window.localStorage.setItem(KEY, on ? 'on' : 'off') } catch { /* the session still knows */ }
+  }, [on])
+
   useEffect(() => {
     const element = audio.current
     if (!element) return
     element.volume = VOLUME
-    if (!on) return
+    if (!on) {
+      element.pause()
+      return
+    }
     const start = () => { void element.play().catch(() => undefined) }
     void element.play().catch(() => {
       // remembered from an earlier visit: the browser waits for this page to be touched at all
