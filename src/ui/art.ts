@@ -67,6 +67,21 @@ export const BADGE = {
   influenceExhausted: '/assets/cards/pc_inf_exh.png',
 }
 
+/**
+ * The printed tiles colour a planet's nameplate by its trait: blue for cultural, red for hazardous, green
+ * for industrial, and a plain steel blue for the home planets and Mecatol Rex, which have none. It carries
+ * no rule in this game, it is what makes the board read like the original.
+ */
+export type PlanetTrait = 'cultural' | 'hazardous' | 'industrial' | 'none'
+const PLANET_TRAIT: Record<string, PlanetTrait> = {
+  '000': 'none', bereg: 'hazardous', 'lirta-iv': 'hazardous', sakulag: 'hazardous',
+  'mecatol-rex': 'none', quann: 'cultural', starpoint: 'hazardous', centauri: 'cultural',
+  'arc-prime': 'none', 'wren-terra': 'none',
+}
+export function planetTrait(planetId: string): PlanetTrait {
+  return PLANET_TRAIT[planetId] ?? 'none'
+}
+
 export const PORTRAIT: Record<FactionId, string> = {
   l1z1x: '/assets/factions/leader_l1z1x_commander.png',
   letnev: '/assets/factions/leader_letnev_commander.png',
