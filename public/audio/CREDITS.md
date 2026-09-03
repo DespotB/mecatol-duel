@@ -7,6 +7,13 @@ Licence source (verified): <https://incompetech.com/music/royalty-free/faq.html>
 FAQ states the site-wide licence for its free music downloads is "Creative Commons: By Attribution 4.0"
 and prescribes the attribution format used below.
 
+## Changes made to the works
+
+The tracks were downloaded from incompetech at 256 to 320 kbps and **re-encoded to a lower bitrate**
+(128 kbps, and 80 kbps for the longest one) so a browser loads them quickly. Nothing else was changed: no
+edit, no cut, no remix. CC BY 4.0 asks that modifications be indicated, so the credit line in the lobby and
+on the rules page says "re-encoded for the web".
+
 Attribution is required. The lines under "Required attribution" must appear somewhere the player can
 see them (credits screen, about page, or README).
 

@@ -212,6 +212,17 @@ export function RulesScreen() {
           </p>
         </Section>
 
+        <Section title="Music">
+          <p>
+            Three tracks play in rotation while you think: <b>Lightless Dawn</b>, <b>Interloper</b> and
+            <b> Impact Andante</b>, all by <b>Kevin MacLeod</b> (incompetech.com). They are licensed under
+            Creative Commons By Attribution 4.0, <a href="https://creativecommons.org/licenses/by/4.0/"
+              target="_blank" rel="noreferrer">creativecommons.org/licenses/by/4.0</a>, and are used here
+            re-encoded at a lower bitrate so they load quickly. Nothing else about them was changed.
+          </p>
+          <p>You can switch the music off in the lobby or in the game menu; the choice is remembered.</p>
+        </Section>
+
         <div className="back">
           <button type="button" className="btn ghost" data-testid="btn-back-to-lobby-foot" onClick={() => navigate('#/')}>
             Back to the lobby
@@ -220,6 +231,7 @@ export function RulesScreen() {
 
         <p className="legal">
           Fan project. Twilight Imperium and its artwork belong to Fantasy Flight Games. Unit, tile and card images via AsyncTI4.
+          {' '}Music by Kevin MacLeod (incompetech.com), licensed under Creative Commons By Attribution 4.0, re-encoded for the web.
         </p>
       </div>
     </div>

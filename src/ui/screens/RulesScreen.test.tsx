@@ -11,7 +11,7 @@ function renderApp(hash: string) {
 }
 
 describe('the rules page', () => {
-  it('is reachable straight from its own URL and carries the five sections', () => {
+  it('is reachable straight from its own URL and carries its sections', () => {
     renderApp('#/rules')
     expect(screen.getByTestId('rules-screen')).toBeTruthy()
     expect(screen.getAllByRole('heading', { level: 2 }).map(h => h.textContent)).toEqual([
@@ -20,6 +20,7 @@ describe('the rules page', () => {
       'Trade posts',
       'Victory points',
       'The clock',
+      'Music',
     ])
   })
 

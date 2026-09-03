@@ -181,5 +181,6 @@ describe('the setup screen', () => {
     expect(legal).toContain('Unit, tile and card images via AsyncTI4')
     expect(legal).toContain('Kevin MacLeod')
     expect(legal).toContain('Creative Commons By Attribution 4.0')
+    expect(legal).toContain('re-encoded for the web')   // CC BY asks that a change be named
   })
 })
