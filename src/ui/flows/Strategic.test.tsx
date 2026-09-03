@@ -2,7 +2,7 @@
 // @vitest-environment jsdom
 import { fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { cardsUsed, toActionPhase, toStatusPhase, withCards, withPlanetOwner } from '../../engine/testUtils'
+import { cardsUsed, toActionPhase, toStatusPhase, withCards, withPlanetOwner, withUnits } from '../../engine/testUtils'
 import { BoardScreen } from '../screens/BoardScreen'
 import { renderWithSession } from '../test/harness'
 
@@ -121,6 +121,24 @@ describe('strategic actions', () => {
     expect(screen.getByTestId('economy-0-tradegoods').textContent).toBe('2')
     expect(screen.getByTestId('economy-0-commodities').textContent).toBe('0 of 2')
     expect(screen.getByTestId('turn-0').textContent).toBe('Your turn')
+  })
+
+  it('R4.4: a Warfare sheet that shrinks the fleet pool says what it costs and still confirms', () => {
+    // three cruisers in Bereg sit exactly on the pool of 3, so the third token is the one holding them
+    const s = withUnits(withCards(withCards(toActionPhase(), 0, ['warfare']), 1, []), 'bereg', 0, ['cruiser', 'cruiser', 'cruiser'])
+    renderWithSession(s, <BoardScreen />)
+    playCard('warfare')
+    expect(screen.queryByTestId('fleet-pool-warning')).toBeNull()
+    fireEvent.click(screen.getByTestId('token-fleet-minus'))
+    const warning = screen.getByTestId('fleet-pool-warning')
+    expect(warning.textContent).toContain('This gives up 1 ship')
+    expect(warning.textContent).toContain('Bereg')
+    // it is a warning, never a block: the sheet only has to add up
+    fireEvent.click(screen.getByTestId('token-tactic-plus'))
+    expect(screen.getByTestId('btn-strategic-confirm').hasAttribute('disabled')).toBe(false)
+    fireEvent.click(screen.getByTestId('btn-strategic-confirm'))
+    expect(screen.getByTestId('tokens-0-fleet').textContent).toBe('2')
+    expect(screen.getByTestId('stack-bereg-0-cruiser').textContent).toBe('2')
   })
 
   it('R3.3: the status dialog distributes the new command tokens, speaker first', () => {
