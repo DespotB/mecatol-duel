@@ -25,15 +25,15 @@ function withoutDocks(state: GameState, seat: 0 | 1): GameState {
 describe('R6/R8 component actions', () => {
   it('R6: Inheritance Systems exhausts, pays 2 resources, ignores prerequisites and ends the turn', () => {
     const s = withTechs(toActionPhase(), 0, ['inheritance_systems'])
-    const done = value(inherit(s, 'war_sun'))                       // red 3 and yellow 1 are missing
-    expect(done.players[0].techs).toContain('war_sun')
+    const done = value(inherit(s, 'carrier_ii'))                    // blue 2 is missing
+    expect(done.players[0].techs).toContain('carrier_ii')
     expect(done.players[0].inheritanceExhausted).toBe(true)
     expect(done.systems['home-n'].planets[0].exhausted).toBe(true)  // [0.0.0] is the only ready planet
     expect(done.active).toBe(1)
     expect(inherit({ ...done, active: 0 }, 'sarween_tools').ok).toBe(false)   // the card stays exhausted this round
   })
   it('R6: without the technology, without resources or with a known technology the action is illegal', () => {
-    expect(inherit(toActionPhase(), 'war_sun').ok).toBe(false)      // seat 0 does not own the card
+    expect(inherit(toActionPhase(), 'carrier_ii').ok).toBe(false)   // seat 0 does not own the card
     const rich = withTechs(toActionPhase(), 0, ['inheritance_systems'])
     expect(inherit(rich, 'plasma_scoring').ok).toBe(false)          // already owned
     expect(inherit(rich, 'dreadnought_ii').ok).toBe(false)          // never available to L1Z1X
@@ -70,11 +70,11 @@ describe('R6/R8 component actions', () => {
   it('R3.2: component actions need your own turn with nothing else running', () => {
     const s = withTechs(withPlanetOwner(toActionPhase(), 'bereg', 'bereg', 0), 0, ['inheritance_systems'])
     const running: GameState = deepFreeze({ ...s, tactical: { systemId: 'bereg', step: 'movement' } })
-    expect(inherit(running, 'war_sun').ok).toBe(false)
+    expect(inherit(running, 'carrier_ii').ok).toBe(false)
     expect(sell(running, 'east', 1).ok).toBe(false)
     expect(build(running, '000', ['000']).ok).toBe(false)
     const window = value(applyMove(withCards(s, 0, ['trade']), { type: 'strategic', card: 'trade' }, 0))
-    expect(inherit(window, 'war_sun').ok).toBe(false)
+    expect(inherit(window, 'carrier_ii').ok).toBe(false)
     expect(sell(window, 'east', 1).ok).toBe(false)
     expect(build(window, '000', ['000']).ok).toBe(false)
     expect(sell(withPlayer(s, 0, { passed: true }), 'east', 1).ok).toBe(false)
@@ -82,7 +82,7 @@ describe('R6/R8 component actions', () => {
   it('R3.2: research is rejected while a secondary window is open', () => {
     const s = withTechs(toActionPhase(), 0, ['inheritance_systems'])
     const window = value(applyMove(withCards(s, 0, ['trade']), { type: 'strategic', card: 'trade' }, 0))
-    const r = inherit(window, 'war_sun')
+    const r = inherit(window, 'carrier_ii')
     expect(r.ok).toBe(false)
     if (!r.ok) expect(r.error).toMatch(/secondary/i)
   })

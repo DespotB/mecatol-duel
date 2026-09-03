@@ -5,7 +5,7 @@ import { ActionBar } from '../hud/ActionBar'
 import type { ActionMode } from '../hud/ActionBar'
 import { SidePanel } from '../hud/SidePanel'
 import { TopBar } from '../hud/TopBar'
-import { shipsThatCanReach } from '../../engine'
+import { productionLimit, shipsThatCanReach } from '../../engine'
 import { useGame } from '../store'
 import { useViewportScale } from '../useViewportScale'
 import type { StrategyCardId } from '../../engine/types'
@@ -21,6 +21,7 @@ import { StatusDialog } from '../flows/StatusDialog'
 import { StrategicDialog } from '../flows/StrategicDialog'
 import { CARD_NAME } from '../format'
 import { strategicCards } from '../moveOptions'
+import { systemLabel } from '../format'
 import { HandoffOverlay } from '../HandoffOverlay'
 import { LogPanel } from '../LogPanel'
 
@@ -54,6 +55,16 @@ export function BoardScreen() {
   // before the click rather than the movement panel saying it afterwards
   const outOfReach = selectable.filter(id => shipsThatCanReach(state, state.active, id).length === 0)
   const hint = drafting ? HINTS.strategy : state.phase === 'status' ? HINTS.status : HINTS[mode ?? 'idle']
+  // R4.4: production needs a space dock of your own in the activated system, so `productionLimit` is 0
+  // everywhere else. Without one there is nothing to decide at the end of the action, and the drawer would
+  // only ask the player to confirm an empty production, so the turn simply ends.
+  const producing = state.tactical !== null
+    && (state.tactical.step === 'production' || state.tactical.step === 'done')
+    && productionLimit(state, state.active, state.tactical.systemId) > 0
+  // the same step without a dock: nothing to produce, so a slim bar closes the action instead of the drawer
+  const idleTactical = state.tactical !== null
+    && (state.tactical.step === 'production' || state.tactical.step === 'done')
+    && !producing
   return (
     <>
       <div
@@ -78,7 +89,26 @@ export function BoardScreen() {
             {state.tactical?.step === 'movement' ? <MovementPanel /> : null}
             {state.tactical?.step === 'spaceCombat' ? <CombatDialog /> : null}
             {state.tactical?.step === 'invasion' ? <InvasionPanel /> : null}
-            {state.tactical && (state.tactical.step === 'production' || state.tactical.step === 'done') ? <ProduceDrawer /> : null}
+            {producing ? <ProduceDrawer /> : null}
+          {idleTactical ? (
+            <div className="drawer bottom cut" data-testid="end-tactical-bar">
+              <div className="in">
+                <div className="dhead">
+                  <span className="tab">{systemLabel(state.tactical?.systemId ?? '')}</span>
+                  <span className="sub">No space dock here, so there is nothing to produce.</span>
+                  <div className="right">
+                    <button
+                      type="button" className="btn gold" data-testid="btn-end-tactical"
+                      disabled={!legal.some(m => m.type === 'endTactical')}
+                      onClick={() => apply({ type: 'endTactical' })}
+                    >
+                      End tactical action
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
           </>
           {/* strategic, component and status flows (Task 4b) */}
           <div className="flows-4b">

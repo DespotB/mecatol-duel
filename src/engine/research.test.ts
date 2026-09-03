@@ -3,17 +3,17 @@ import { TECHS, techDef } from '../data/techs'
 import { canResearch, colourCounts, researchable } from './research'
 
 describe('R5 technology', () => {
-  it('has 16 general techs, 8 unit upgrades (no PDS II) and 4 faction techs', () => {
+  it('has 16 general techs, 7 unit upgrades (no PDS II, no War Sun) and 4 faction techs', () => {
     expect(TECHS.filter(t => t.kind === 'general')).toHaveLength(16)
-    expect(TECHS.filter(t => t.kind === 'upgrade').map(t => t.id).sort()).toEqual(['carrier_ii', 'cruiser_ii', 'destroyer_ii', 'dreadnought_ii', 'fighter_ii', 'infantry_ii', 'space_dock_ii', 'war_sun'])
+    expect(TECHS.filter(t => t.kind === 'upgrade').map(t => t.id).sort()).toEqual(['carrier_ii', 'cruiser_ii', 'destroyer_ii', 'dreadnought_ii', 'fighter_ii', 'infantry_ii', 'space_dock_ii'])
     expect(TECHS.filter(t => t.kind === 'faction').map(t => t.id).sort()).toEqual(['inheritance_systems', 'l4_disruptors', 'non_euclidean_shielding', 'super_dreadnought_ii'])
     expect(TECHS.find(t => t.id === 'pds_ii')).toBeUndefined()
+    expect(TECHS.find(t => t.id === 'war_sun')).toBeUndefined()     // War Suns need no technology, see R4.4
   })
   it('prerequisites follow the tiers', () => {
     expect(techDef('gravity_drive').prereq).toEqual({ blue: 1 })
     expect(techDef('light_wave_deflector').prereq).toEqual({ blue: 3 })
     expect(techDef('cruiser_ii').prereq).toEqual({ green: 1, yellow: 1, red: 1 })
-    expect(techDef('war_sun').prereq).toEqual({ red: 3, yellow: 1 })
     expect(techDef('super_dreadnought_ii').prereq).toEqual({ blue: 2, yellow: 1 })
     expect(techDef('l4_disruptors').prereq).toEqual({ yellow: 1 })
   })
@@ -42,7 +42,7 @@ describe('R5 technology', () => {
   })
   it('ignorePrereqs (Inheritance Systems) skips colour requirements but not ownership', () => {
     const l = { faction: 'l1z1x' as const, techs: ['neural_motivator'] }
-    expect(canResearch(l, 'war_sun', true)).toBe(true)
+    expect(canResearch(l, 'cruiser_ii', true)).toBe(true)          // green met, yellow and red missing
     expect(canResearch(l, 'neural_motivator', true)).toBe(false)
   })
   it('an unknown tech id cannot be researched instead of throwing', () => {

@@ -17,7 +17,6 @@ export function produce(state: GameState, units: Partial<Record<UnitType, number
     if (n === 0) continue
     if (n < 0 || !Number.isInteger(n)) return { ok: false, error: `invalid count for ${type}` }
     if (!PRODUCIBLE.includes(type)) return { ok: false, error: `R4.4: ${type} cannot be produced` }
-    if (type === 'warsun' && !player.techs.includes('war_sun')) return { ok: false, error: 'R4.4: a War Sun needs the War Sun technology' }
   }
   // R4.4: fighters above the capacity plus the dock's (I or II) free slots are simply not produced. The new
   // non-fighter ships in this same order pool their capacity too, so they count toward the room before trimming.
