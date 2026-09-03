@@ -194,29 +194,37 @@ button{font-family:inherit}
 .tile.selectable{cursor:pointer}
 .tile.selectable svg.line polygon{stroke:rgba(232,207,138,.55);stroke-dasharray:6 5}
 /* scoped to the tile: the setup screen's seat card has a `row fleet` of its own */
-.tile .fleet{position:absolute;display:flex;flex-wrap:wrap;align-items:flex-end;gap:4px;width:200px}
+.tile .fleet{position:absolute;display:flex;flex-wrap:wrap;align-items:flex-end;gap:4px;width:164px}
 .row-ground,.row-structures{position:absolute;display:flex;align-items:flex-end;gap:3px}
 .stk{position:relative;display:inline-block;filter:drop-shadow(0 2px 2px rgba(0,0,0,.85))}
 .stk .cnt{position:absolute;right:-9px;bottom:-5px;min-width:16px;height:16px;padding:0 3px;border-radius:8px;background:#0b1020;border:1px solid var(--gold);color:#f1ead8;font:700 10px/14px var(--hud);text-align:center}
 .planet{position:absolute;object-fit:contain}
 .ctl{width:26px}
-/* planet nameplate, after the printed tiles: the two value badges sit diagonally on a tapered name banner */
-.plate{position:absolute;display:flex;align-items:center;height:26px}
-.plate .vals{position:relative;width:32px;height:26px;flex:none;z-index:2}
-.plate .badge{position:absolute;width:21px;height:21px;font:700 12px/21px var(--body);
-  filter:drop-shadow(0 1px 2px rgba(0,0,0,.85))}
-.plate .badge.res{left:0;bottom:0;color:#f8ecc0}
-.plate .badge.inf{left:11px;top:0;color:#fff}
-.plate .nm{margin-left:-7px;height:19px;padding:0 15px 0 12px;
-  font:700 11px/19px var(--hud);letter-spacing:.11em;color:#fff;text-transform:uppercase;white-space:nowrap;
-  background:linear-gradient(90deg,rgba(7,11,24,.94),rgba(7,11,24,.8) 65%,rgba(7,11,24,0));
-  clip-path:polygon(0 0,100% 0,calc(100% - 11px) 100%,0 100%);
-  text-shadow:0 1px 2px rgba(0,0,0,.9)}
+/*
+ * Planet nameplate, copied off the printed tiles: the resource hexagon sits low and left of the influence
+ * shield, the two barely touching, and the name rides a thin outlined banner whose colour is the planet's
+ * trait. The badge art is the printed one, the number is drawn on top.
+ */
+.plate{position:absolute;display:flex;align-items:center;height:34px;--trait:#8fb4dd}
+.plate.hazardous{--trait:#e05a4a}
+.plate.cultural{--trait:#4fa3e8}
+.plate.industrial{--trait:#54b06a}
+.plate .vals{position:relative;width:40px;height:34px;flex:none;z-index:2}
+.plate .badge{position:absolute;width:24px;height:24px;font:700 13px/24px var(--body);color:#fff;
+  text-shadow:0 1px 2px rgba(0,0,0,.9);filter:drop-shadow(0 1px 2px rgba(0,0,0,.8))}
+.plate .badge.res{left:0;top:10px}
+.plate .badge.inf{left:16px;top:0}
+.plate .nm{margin-left:-4px;height:20px;padding:0 16px 0 10px;
+  font:600 12px/19px var(--hud);letter-spacing:.13em;color:#fff;text-transform:uppercase;white-space:nowrap;
+  background:rgba(6,10,22,.72);border:1px solid var(--trait);border-left:0;
+  clip-path:polygon(0 0,100% 0,calc(100% - 12px) 100%,0 100%);
+  text-shadow:0 1px 2px rgba(0,0,0,.95)}
 .plate.exh{filter:grayscale(.7) brightness(.8)}
-.sigil{position:absolute;left:10px;bottom:12px;opacity:.85;filter:drop-shadow(0 1px 2px rgba(0,0,0,.9))}
+.sigil{position:absolute;opacity:.8;filter:drop-shadow(0 1px 2px rgba(0,0,0,.9))}
 .wh{position:absolute}
 .chev{position:absolute;opacity:.9}
-.tile .acts{position:absolute;display:flex;flex-direction:row-reverse;pointer-events:none}
+/* the activation token has to stay readable over ships, planets and the neighbouring tiles */
+.tile .acts{position:absolute;display:flex;flex-direction:row-reverse;pointer-events:none;z-index:8}
 .tile .act{width:34px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.85))}
 /* a system both seats activated stacks its tokens like cardboard instead of growing past the hex */
 .tile .act+.act{margin-right:-14px}

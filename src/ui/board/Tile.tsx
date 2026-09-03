@@ -1,6 +1,9 @@
 import { systemDef } from '../../data/map'
-import { BADGE, MISC, SIGIL, ownerKey, planetArtUrl, tileUrl, tokenUrl } from '../art'
-import { ACTIVATION_SPOT, FLEET_ANCHOR, PLANET_SPOTS, TILE_H, TILE_POS, TILE_W, WORMHOLE_SPOTS } from '../layout'
+import { BADGE, MISC, SIGIL, ownerKey, planetArtUrl, planetTrait, tileUrl, tokenUrl } from '../art'
+import {
+  ACTIVATION_SIZE, ACTIVATION_SPOT, FLEET_ANCHOR, PLANET_SPOTS, SIGIL_SIZE, SIGIL_SPOT,
+  TILE_H, TILE_POS, TILE_W, WORMHOLE_SIZE, WORMHOLE_SPOTS,
+} from '../layout'
 import { UnitStack, groupUnits } from './UnitStack'
 import type { Color, GameState, Owner, Planet, System } from '../../engine/types'
 
@@ -22,7 +25,7 @@ function PlanetMarkers({ state, planet }: { state: GameState; planet: Planet }) 
           style={{ left: spot.art.left, top: spot.art.top, width: spot.art.width, height: spot.art.height }} />
       ) : null}
       {spot.plate ? (
-        <span className={`plate${planet.exhausted ? ' exh' : ''}`} data-testid={`plate-${planet.id}`}
+        <span className={`plate ${planetTrait(planet.id)}${planet.exhausted ? ' exh' : ''}`} data-testid={`plate-${planet.id}`}
           style={{ left: spot.plate.left, top: spot.plate.top }}>
           <span className="vals">
             <span className="badge res" style={{ backgroundImage: `url(${planet.exhausted ? BADGE.resourceExhausted : BADGE.resourceReady})` }}>{planet.resources}</span>
@@ -100,19 +103,20 @@ export function Tile({ state, system, active, selectable, outOfReach = false, on
         ))}
       </span>
       {system.activatedBy.length > 0 ? (
-        <span className="acts" style={ACTIVATION_SPOT}>
+        <span className="acts" style={{ left: ACTIVATION_SPOT.left, top: ACTIVATION_SPOT.top }}>
           {system.activatedBy.map(seat => (
-            <img key={seat} className="act" src={tokenUrl(state.players[seat].faction, 'command')}
+            <img key={seat} className="act" src={tokenUrl(state.players[seat].faction, 'command')} width={ACTIVATION_SIZE}
               alt={`${state.players[seat].name} command token`} data-testid={`activation-${system.id}-${seat}`} />
           ))}
         </span>
       ) : null}
       {def.wormhole ? (
         <img className="wh" src={def.wormhole === 'alpha' ? MISC.alpha : MISC.beta} alt={`${def.wormhole} wormhole`}
-          data-testid={`wormhole-${system.id}`} style={WORMHOLE_SPOTS[system.id]} width={26} height={26} />
+          data-testid={`wormhole-${system.id}`} style={WORMHOLE_SPOTS[system.id]} width={WORMHOLE_SIZE} height={WORMHOLE_SIZE} />
       ) : null}
       {def.home !== null ? (
-        <img className="sigil" src={SIGIL[state.players[def.home].faction]} alt="" data-testid={`sigil-${system.id}`} width={34} />
+        <img className="sigil" src={SIGIL[state.players[def.home].faction]} alt="" data-testid={`sigil-${system.id}`}
+          style={{ left: SIGIL_SPOT.left, top: SIGIL_SPOT.top }} width={SIGIL_SIZE} height={SIGIL_SIZE} />
       ) : null}
       {guardians ? <span className="guard" data-testid="guardian-label">Guardian fleet, worth 8</span> : null}
       {selectable && outOfReach ? (
