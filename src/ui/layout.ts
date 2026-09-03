@@ -137,7 +137,50 @@ export const SIGIL_SPOT: Point = { left: 150, top: 20 }
 export const SIGIL_SIZE = 30
 export const WORMHOLE_SIZE = 26
 
+/**
+ * The two trade posts live in the margins the flower leaves free: the tiles occupy x180 to x760 of the
+ * 940-wide map box, so 176 px are open on either side. A post takes 172 of them, which is what the rendered
+ * model needs to read as a model rather than an icon, and the four px left over keep the panel off the
+ * hexagon's widest point. Vertically the panel is centred on the map, level with Mecatol Rex.
+ */
+export const POST_W = 172
+export const POST_H = 302
 export const POST_POS: Record<'west' | 'east', Point> = {
-  west: { left: 16, top: 254 },
-  east: { left: 776, top: 254 },
+  west: { left: 4, top: 198 },
+  east: { left: 940 - 4 - POST_W, top: 198 },
+}
+/** The model box inside the panel; the render is letterboxed into it, so every post keeps its own ratio. */
+export const POST_ART_W = 160
+export const POST_ART_H = 146
+
+/** Where a hyperlane leaves the post: the inner edge of the panel, at half its height. */
+export function postAnchor(post: 'west' | 'east'): Point {
+  const pos = POST_POS[post]
+  return { left: post === 'west' ? pos.left + POST_W : pos.left, top: pos.top + POST_H / 2 }
+}
+
+/** The centre of a tile, which is where a hyperlane ends; the tile art covers the last stretch of it. */
+export function tileCentre(systemId: string): Point {
+  const pos = TILE_POS[systemId]
+  return { left: pos.left + TILE_W / 2, top: pos.top + TILE_H / 2 }
+}
+
+/**
+ * R8: the hyperlane from a post to one of the two systems it serves. A straight line between the two
+ * anchors would run through the gap between the tiles as a spoke; the lane bows away from the map's
+ * middle instead, so the two lanes of one post read as a fan of routes rather than as a pair of rails.
+ * Everything is in design pixels and derived from the tile and post constants: the map is scaled with a
+ * CSS zoom at runtime, so nothing here may ever be measured off the DOM.
+ */
+export const LANE_BOW = 26
+export function lanePath(post: 'west' | 'east', systemId: string): string {
+  const from = postAnchor(post)
+  const to = tileCentre(systemId)
+  const midX = (from.left + to.left) / 2
+  const midY = (from.top + to.top) / 2
+  // the bow points away from the horizontal centre line the post sits on, upwards for the upper system
+  const away = Math.sign(to.top - from.top) || 1
+  const cx = midX + (post === 'west' ? -LANE_BOW / 2 : LANE_BOW / 2)
+  const cy = midY + away * LANE_BOW
+  return `M ${String(from.left)} ${String(from.top)} Q ${String(cx)} ${String(cy)} ${String(to.left)} ${String(to.top)}`
 }

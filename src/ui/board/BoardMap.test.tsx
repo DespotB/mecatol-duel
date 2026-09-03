@@ -1,11 +1,17 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { toActionPhase } from '../../engine/testUtils'
+import { toActionPhase, withPlanetOwner } from '../../engine/testUtils'
 import { BoardMap } from './BoardMap'
-import type { Seat } from '../../engine/types'
+import type { PostId } from '../../data/posts'
+import type { GameState, Seat } from '../../engine/types'
 
 const state = toActionPhase()
+
+/** R8: the rolled pair is part of the state, so a test names the two posts it wants to see drawn. */
+function withPosts(base: GameState, west: PostId, east: PostId): GameState {
+  return { ...base, posts: { west, east } }
+}
 
 describe('the board', () => {
   it('draws all seven systems with their tile art', () => {
@@ -90,10 +96,44 @@ describe('the board', () => {
     expect(idle.getAttribute('tabindex')).toBeNull()
   })
 
-  it('R8: both trade posts sit outside the map with their state', () => {
-    render(<BoardMap state={state} />)
-    expect(screen.getByTestId('post-west').textContent).toContain('Kasda Exchange')
-    expect(screen.getByTestId('post-east').textContent).toContain('Vorhal Freeport')
+  it('R8: both trade posts sit outside the map, each drawn as the post the state rolled', () => {
+    render(<BoardMap state={withPosts(state, 'sarnex', 'tessik')} />)
+    const west = screen.getByTestId('post-west')
+    expect(west.textContent).toContain('Sarnex Wheel')
+    expect(west.textContent).toContain('4 commodities for 4 trade goods')
+    expect(screen.getByTestId('post-art-west').getAttribute('src')).toBe('/assets/posts/sarnex.png')
+    // R8: the Sarnex Wheel is the one post without a special ability, and the card says so
+    expect(screen.getByTestId('post-ability-west').textContent).toBe('No special ability')
+    const east = screen.getByTestId('post-east')
+    expect(east.textContent).toContain('Tessik Refinery')
+    expect(east.textContent).toContain('2 commodities for 2 trade goods')
+    expect(screen.getByTestId('post-art-east').getAttribute('src')).toBe('/assets/posts/tessik.png')
+    expect(screen.getByTestId('post-ability-east').textContent).toBe('Technology exchange')
+  })
+
+  it('R8: the pair turns over with the round, and the panel marks it as new', () => {
+    const { rerender } = render(<BoardMap state={withPosts(state, 'sarnex', 'tessik')} />)
+    expect(screen.getByTestId('post-new-west').textContent).toBe('New this round')
+    rerender(<BoardMap state={{ ...withPosts(state, 'orrun', 'kesh'), round: 2 }} />)
+    expect(screen.getByTestId('post-art-west').getAttribute('src')).toBe('/assets/posts/orrun.png')
+    expect(screen.getByTestId('post-art-east').getAttribute('src')).toBe('/assets/posts/kesh.png')
+    expect(screen.getByTestId('post-west').textContent).toContain('Orrun Port Authority')
+    expect(screen.getByTestId('post-east').textContent).toContain('Kesh Line Freighter')
+    expect(screen.getByTestId('post-new-west').textContent).toBe('New this round')
+    expect(screen.getByTestId('post-new-east').textContent).toBe('New this round')
+  })
+
+  it('R8: a post says whether the sale and the ability are still open for the seat', () => {
+    const reachable = withPlanetOwner(withPosts(state, 'tessik', 'orrun'), 'sakulag', 'sakulag', 0)
+    const { rerender } = render(<BoardMap state={reachable} />)
+    expect(screen.getByTestId('post-state-west').textContent).toBe('Sale open')
+    // R8: out of reach for the acting seat, and the card says why rather than going quiet
+    expect(screen.getByTestId('post-state-east').textContent).toBe('Hold a planet in Bereg or Quann')
+    expect(screen.queryByTestId('post-used-west')).toBeNull()
+    // R8: the special ability is once per round for the whole table, so a used one is spent for both seats
+    rerender(<BoardMap state={{ ...reachable, postAbilityUsed: { west: true, east: false } }} />)
+    expect(screen.getByTestId('post-used-west').textContent).toBe('Ability used this round')
+    expect(screen.queryByTestId('post-used-east')).toBeNull()
   })
 
   it('shows a played command token per seat with a token on the system, and none on an idle system', () => {

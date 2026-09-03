@@ -16,7 +16,7 @@ export interface PostDef {
   ability: PostAbility
   /** Empty at the Sarnex Wheel, which has no special ability. */
   abilityName: string
-  /** One sentence, the same wording the rules page uses. */
+  /** One sentence, short enough for the card under the model and the same wording the rules page uses. */
   abilityText: string
   art: string
 }
@@ -25,19 +25,19 @@ export const POSTS: Record<PostId, PostDef> = {
   sarnex: {
     id: 'sarnex', name: 'Sarnex Wheel', kind: 'station', commodityLimit: 4,
     ability: 'none', abilityName: '',
-    abilityText: 'No special ability: the ring buys twice as deep instead, up to 4 commodities in one sale.',
+    abilityText: 'No special ability: the ring simply buys twice as deep as any other post.',
     art: '/assets/posts/sarnex.png',
   },
   tessik: {
     id: 'tessik', name: 'Tessik Refinery', kind: 'station', commodityLimit: 2,
     ability: 'techExchange', abilityName: 'Technology exchange',
-    abilityText: 'Return one general technology you own and take another general technology of the same tier in a different colour. Prerequisites are ignored. Unit upgrades and faction technologies are excluded on both sides of the trade.',
+    abilityText: 'Return one general technology and take another of the same tier in a different colour, prerequisites ignored.',
     art: '/assets/posts/tessik.png',
   },
   orrun: {
     id: 'orrun', name: 'Orrun Port Authority', kind: 'station', commodityLimit: 2,
     ability: 'clearingHouse', abilityName: 'Clearing house',
-    abilityText: 'Exhaust your ready planets and take one trade good per resource or influence spent, up to 3 trade goods. Each planet is exhausted once and pays either its resources or its influence, your choice, never both.',
+    abilityText: 'Exhaust ready planets and take one trade good per resource or influence spent, up to 3.',
     art: '/assets/posts/orrun.png',
   },
   kesh: {
@@ -55,7 +55,7 @@ export const POSTS: Record<PostId, PostDef> = {
   dromm: {
     id: 'dromm', name: 'Dromm Heavy Hauler', kind: 'ship', commodityLimit: 2,
     ability: 'refit', abilityName: 'Refit',
-    abilityText: 'Return ships you have in a system linked to this post and take one ship from your reinforcements whose cost is not higher than the total cost you returned. The new ship is placed in the same system. Any difference in cost is lost. Fighters and infantry cannot be part of a refit.',
+    abilityText: 'Return ships in a linked system and take one from your reinforcements that costs no more.',
     art: '/assets/posts/dromm.png',
   },
 }
