@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { cardOwner, secondaryTokenCost } from '../../engine'
+import { cardOwner, productionCost, secondaryTokenCost } from '../../engine'
 import { CARD_NAME, ownedPlanets, unitLabel } from '../format'
 import { secondaryOffer } from '../moveOptions'
 import { PayRow } from './PayRow'
@@ -44,6 +44,12 @@ export function SecondaryPanel() {
 
   const needed = card === 'technology' ? 4 : 0
   const units = template.units ?? {}
+  // R6 warfare secondary: the enumerator already worked out the true production cost (and picked planets
+  // covering it, empty with Sarween Tools), so read it back off the payload rather than assume 1. Fall back
+  // to recomputing it only when no accept payload was carried at all (nothing to accept).
+  const warfareNeeded = template.planets
+    ? template.planets.reduce((sum, id) => sum + (ownedPlanets(state, seat).find(p => p.id === id)?.resources ?? 0), 0) + (template.tradeGoods ?? 0)
+    : productionCost({ infantry: 1 }, { faction: player.faction, techs: player.techs }, player.techs.includes('sarween_tools'))
   return (
     <div className="dialog cut" data-testid="secondary-panel">
       <div className="in">
@@ -89,7 +95,7 @@ export function SecondaryPanel() {
             <div className="sub" data-testid="secondary-units">
               Produce {(Object.entries(units) as [UnitType, number][]).map(([type, n]) => `${n} ${unitLabel(type, player)}`).join(', ')} at your home system.
             </div>
-            <PayRow state={state} seat={seat} needed={1} planets={pay} onPlanets={setPlanets} tradeGoods={tradeGoods} onTradeGoods={setTradeGoods} />
+            <PayRow state={state} seat={seat} needed={warfareNeeded} planets={pay} onPlanets={setPlanets} tradeGoods={tradeGoods} onTradeGoods={setTradeGoods} />
           </>
         ) : null}
         {card === 'trade' ? <div className="sub">Replenish your commodities.</div> : null}
