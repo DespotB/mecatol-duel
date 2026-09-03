@@ -74,18 +74,46 @@ export function fitScale(width: number, height: number): number {
   return round3(clamp(FIT_MIN, Math.min(width / PAGE_W, height / PAGE_H), FIT_MAX))
 }
 
+/**
+ * A browser zoom reports exactly what a smaller window reports: `innerWidth` and `innerHeight` shrink by
+ * the zoom factor. A page that scales itself to those numbers therefore cancels the zoom out precisely,
+ * and the player sees nothing move until the clamp below stops the fit from following any further.
+ *
+ * `devicePixelRatio` is what separates the two cases: it moves with the zoom and stays put when the window
+ * is dragged to another size. Measured against the ratio the page first painted at, it turns the viewport
+ * back into the size it would have had unzoomed, which leaves the fit where it was and lets the zoom
+ * through to the player, while a real resize still answers as before.
+ *
+ * Dragging the window onto a display with a different pixel ratio reads as a zoom under this rule. That is
+ * the one case it gets wrong, a reload corrects it, and it is the right trade: a player reaches for the
+ * zoom on purpose, a second monitor is not a request to resize the lobby.
+ */
+export function fitScaleAt(width: number, height: number, dpr: number, baseDpr: number): number {
+  const zoom = dpr > 0 && baseDpr > 0 ? dpr / baseDpr : 1
+  return fitScale(width * zoom, height * zoom)
+}
+
+function currentDpr(): number {
+  return typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1
+}
+
 export function useFitScale(): number {
-  const [fit, setFit] = useState(() => typeof window === 'undefined' ? 1 : fitScale(window.innerWidth, window.innerHeight))
+  // the ratio of the first paint is the zero point: whatever zoom the page was opened at is the size it fits
+  const [baseDpr] = useState(currentDpr)
+  const [fit, setFit] = useState(
+    () => typeof window === 'undefined' ? 1 : fitScaleAt(window.innerWidth, window.innerHeight, currentDpr(), baseDpr),
+  )
   useEffect(() => {
     if (typeof window === 'undefined') return
+    // a browser zoom fires `resize` like any other change to the viewport, so one listener covers both
     const onResize = () => {
-      const next = fitScale(window.innerWidth, window.innerHeight)
+      const next = fitScaleAt(window.innerWidth, window.innerHeight, currentDpr(), baseDpr)
       setFit(prev => prev === next ? prev : next)
     }
     window.addEventListener('resize', onResize)
     onResize()
     return () => { window.removeEventListener('resize', onResize) }
-  }, [])
+  }, [baseDpr])
   return fit
 }
 

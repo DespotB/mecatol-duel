@@ -1,13 +1,43 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { objectiveCost } from '../data/objectives'
 import { applyMove, createGame, deriveSeed, legalMoves, postDef } from '../engine'
 import type { GameConfig, GameState, Move, Seat } from '../engine/types'
-import { timeTradeCost } from './format'
+import { timeCost } from './format'
 import { moveCount, undoable } from './history'
 import { deleteGame, hasGame, newGameCode, saveClock, saveGame } from './persist'
 import { gamePath, navigate } from './route'
 
 export type { GameConfig } from '../engine/types'
+
+/**
+ * R7 and R8: the engine is time-free, so every price paid in clock time is settled here, by the side that
+ * owns the clock. The move was accepted, which is what makes the debt real, and the cost is read off the
+ * clock as it stood before the move. Three things charge time: an objective scored for a fraction of what is
+ * left, the Vandel Bulk Tanker's layover, which pays three minutes out, and the Sarnex Time Machine Wheel's
+ * time trade, which takes half. Every other move leaves the clocks alone.
+ */
+const ROUND_BONUS_MS = 180000
+// R8: the Vandel Bulk Tanker's layover, the same three minutes, bought with a command token
+const LAYOVER_BONUS_MS = 180000
+const TIME_TRADE_FRACTION = 0.5
+
+function clockAfter(before: GameState, move: Move, seat: Seat, clockMs: [number, number]): [number, number] {
+  const out: [number, number] = [clockMs[0], clockMs[1]]
+  if (move.type === 'status') {
+    for (const request of move.params.score ?? []) {
+      const cost = objectiveCost(request.objectiveId)
+      if (cost?.kind === 'time') out[seat] = Math.max(0, out[seat] - timeCost(out[seat], cost.fraction))
+    }
+    return out
+  }
+  if (move.type === 'postAbility') {
+    const ability = postDef(before, move.post).ability
+    if (ability === 'layover') out[seat] = out[seat] + LAYOVER_BONUS_MS
+    if (ability === 'timeTrade') out[seat] = Math.max(0, out[seat] - timeCost(out[seat], TIME_TRADE_FRACTION))
+  }
+  return out
+}
 
 /** The turn is spent and nothing free is left: only ending it remains, so the UI does not ask. */
 function onlyEndTurn(state: GameState): boolean {
@@ -18,23 +48,6 @@ function onlyEndTurn(state: GameState): boolean {
 const TICK_MS = 100
 /** How often the running clock is written on its own; a reload can then cost at most this much. */
 const CLOCK_SAVE_MS = 2000
-// R6: a player whose clock ran out gets three more minutes at the start of every later round
-const ROUND_BONUS_MS = 180000
-// R8: the Vandel Bulk Tanker's layover, the same three minutes, bought with a command token
-const LAYOVER_BONUS_MS = 180000
-
-/**
- * R8: the two abilities the engine cannot resolve, because it is time-free. The move is applied like any
- * other and the clock is the UI's part of it: a layover adds three minutes to the acting seat, a time trade
- * takes half of what is left. Every other move, this one's own post included, leaves the clocks alone.
- */
-function clockAfter(before: GameState, move: Move, clockMs: number): number {
-  if (move.type !== 'postAbility') return clockMs
-  const ability = postDef(before, move.post).ability
-  if (ability === 'layover') return clockMs + LAYOVER_BONUS_MS
-  if (ability === 'timeTrade') return clockMs - timeTradeCost(clockMs)
-  return clockMs
-}
 
 export interface Session {
   /** The six-character code this game is stored and addressed under; it never changes. */
@@ -115,15 +128,11 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
       next = ended.value
     }
     const keep = undoable(session.state, next)
-    // R8: the layover and the time trade are settled on the clock here, because the engine is time-free
-    const seat = session.state.active
-    const clockMs: [number, number] = [session.clockMs[0], session.clockMs[1]]
-    clockMs[seat] = clockAfter(session.state, move, clockMs[seat])
     setError(null)
     setSession({
       ...session,
       state: next,
-      clockMs,
+      clockMs: clockAfter(session.state, move, session.state.active, session.clockMs),
       history: keep ? [...session.history, session.state] : [],
       handoff: next.active !== session.state.active && next.winner === null ? next.active : null,
     })

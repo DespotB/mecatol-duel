@@ -2,7 +2,7 @@
 // @vitest-environment jsdom
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
-import { useViewportScale, viewportScale } from './useViewportScale'
+import { fitScaleAt, useViewportScale, viewportScale } from './useViewportScale'
 
 const round3 = (value: number) => Math.round(value * 1000) / 1000
 
@@ -67,5 +67,39 @@ describe('useViewportScale', () => {
       window.dispatchEvent(new Event('resize'))
     })
     expect(result.current.k).toBeLessThan(1)
+  })
+})
+
+describe('fitScaleAt', () => {
+  it('is the identity at the design size', () => {
+    expect(fitScaleAt(1440, 900, 2, 2)).toBe(1)
+  })
+
+  it('shrinks with the window', () => {
+    // no zoom: the ratio has not moved, so a smaller window is simply a smaller window
+    expect(fitScaleAt(1152, 720, 2, 2)).toBe(0.8)
+  })
+
+  /**
+   * A browser zoom reports the same `innerWidth` a smaller window does. Scaling to it would cancel the
+   * zoom exactly, which is the bug: the player zooms and nothing on screen changes size.
+   */
+  it('leaves the fit alone when the viewport shrank because the player zoomed in', () => {
+    // 125% zoom of a 1440x900 window: 1152x720 css pixels at 2.5 device pixels each
+    expect(fitScaleAt(1152, 720, 2.5, 2)).toBe(1)
+  })
+
+  it('leaves the fit alone when the player zoomed out', () => {
+    // 80% zoom of the same window
+    expect(fitScaleAt(1800, 1125, 1.6, 2)).toBe(1)
+  })
+
+  it('answers a resize that happens while zoomed', () => {
+    // still at 125%, but the window itself is now half as wide
+    expect(fitScaleAt(576, 720, 2.5, 2)).toBe(0.5)
+  })
+
+  it('falls back to the plain fit when the ratio is unusable', () => {
+    expect(fitScaleAt(1152, 720, 0, 0)).toBe(0.8)
   })
 })

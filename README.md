@@ -26,7 +26,8 @@ A round runs the way it does in Twilight Imperium:
 
 Seven victory points win it. If nobody gets there, the higher score after round six does.
 
-**Victory points come from** a shuffled pool of five public objectives, one revealed per round, plus two
+**Victory points come from** six public objectives drawn from a pool at setup, one revealed per round, two
+of which cost something to score (six resources, or a fifth of the time left on your clock), plus two
 cards that are in play from the first round: *First Strike*, a race for a single point that goes to whoever
 first wins a space combat at Mecatol Rex, and *Foothold*, the secret both players hold, worth a point for
 taking a planet in the opponent's home system. Holding Mecatol Rex is worth a point in every status phase.

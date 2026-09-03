@@ -230,26 +230,28 @@ export const WORMHOLE_SIZE = 26
  * hyperlanes run through before they disappear under a hexagon. Vertically the block is centred on the map,
  * level with Mecatol Rex.
  */
-export const POST_W = 156
-export const POST_H = 322
-/**
- * The block sits so that the seam between the model and its card lands on the map's own centre line, level
- * with Mecatol Rex and exactly between the two tiles the post serves: that is where a lane can leave it and
- * meet both hexagons on a slanted edge instead of running straight into the one nearest point of the near
- * one, which would leave nothing of it to see.
- */
-export const POST_POS: Record<'west' | 'east', Point> = {
-  west: { left: 0, top: 203 },
-  east: { left: MAP_W - POST_W, top: 203 },
-}
 /** The model box at the top of the block; the render is letterboxed into it, so every post keeps its ratio. */
 export const POST_ART_W = 150
 export const POST_ART_H = 146
 
-/** Where a hyperlane leaves the post: the inner edge of the block, at the foot of the model it serves. */
+export const POST_W = 156
+export const POST_H = 322
+/**
+ * The block sits so that the **model** lands on the map's own centre line, level with Mecatol Rex and
+ * exactly between the two tiles the post serves. That is what the lanes plug into: a lane leaving the
+ * model's own height meets both hexagons on a slanted edge, and it ends at the station rather than in the
+ * card's explaining text, which is where it landed while the block hung higher.
+ */
+const POST_CENTRE_Y = 349
+export const POST_POS: Record<'west' | 'east', Point> = {
+  west: { left: 0, top: POST_CENTRE_Y - POST_ART_H / 2 },
+  east: { left: MAP_W - POST_W, top: POST_CENTRE_Y - POST_ART_H / 2 },
+}
+
+/** Where a hyperlane leaves the post: the inner edge of the block, level with the middle of the model. */
 export function postAnchor(post: 'west' | 'east'): Point {
   const pos = POST_POS[post]
-  return { left: post === 'west' ? pos.left + POST_W : pos.left, top: pos.top + POST_ART_H }
+  return { left: post === 'west' ? pos.left + POST_W : pos.left, top: pos.top + POST_ART_H / 2 }
 }
 
 /** The centre of a tile, which is where a hyperlane ends; the tile art covers the last stretch of it. */
