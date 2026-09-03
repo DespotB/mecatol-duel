@@ -81,7 +81,7 @@ export function SidePanel({ state, seat }: { state: GameState; seat: Seat }) {
             {FORCE_ORDER.filter(type => counts.has(type)).map(type => {
               const size = spriteSize(type, PANEL_SCALE)
               return (
-                <div className="fc" key={type} data-testid={`forces-${seat}-${type}`}>
+                <div className={`fc${type === 'dreadnought' ? ' wide' : ''}`} key={type} data-testid={`forces-${seat}-${type}`}>
                   <img src={spriteUrl(player.color, type)} alt="" width={size.width} height={size.height} />
                   <b>{counts.get(type)}</b>{' '}<span className="n">{unitLabel(type, player)}</span>
                 </div>
