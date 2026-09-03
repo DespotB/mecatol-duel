@@ -24,6 +24,7 @@ export function activatableSystems(state: GameState, seat: Seat): string[] {
 export function startTactical(state: GameState, systemId: string): Result<GameState> {
   if (state.phase !== 'action') return { ok: false, error: 'not in the action phase' }
   if (state.tactical) return { ok: false, error: 'a tactical action is already running' }
+  if (state.pendingSecondary) return { ok: false, error: 'R3.2: the opponent still has to answer the last strategy card' }
   const seat = state.active
   const player = state.players[seat]
   if (player.passed) return { ok: false, error: 'this player has passed' }
@@ -47,6 +48,7 @@ export function startTactical(state: GameState, systemId: string): Result<GameSt
 export function pass(state: GameState): Result<GameState> {
   if (state.phase !== 'action') return { ok: false, error: 'not in the action phase' }
   if (state.tactical) return { ok: false, error: 'finish the tactical action first' }
+  if (state.pendingSecondary) return { ok: false, error: 'R3.2: the opponent still has to answer the last strategy card' }
   const seat = state.active
   if (state.players[seat].passed) return { ok: false, error: 'this player has already passed' }
   if (!canPass(state, seat)) return { ok: false, error: 'R3.2: cannot pass while holding an unused strategy card' }
