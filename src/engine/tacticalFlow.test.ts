@@ -4,7 +4,7 @@ import { capacity, fleetPoolLimit, nonFighterShips, productionCost } from './eco
 import { applyMove, legalMoves, validateMove } from './index'
 import { movableShips } from './movement'
 import { createGame, unitsOf } from './setup'
-import { DUEL_CONFIG, cardsUsed, deepFreeze, toActionPhase, withTactical } from './testUtils'
+import { DUEL_CONFIG, cardsUsed, deepFreeze, toActionPhase, withPlayer, withTactical, withUnits } from './testUtils'
 import type { GameState, Move, Seat } from './types'
 
 function draft(state: GameState): GameState {
@@ -117,6 +117,20 @@ describe('tactical legal moves', () => {
     const producing = withTactical(combat.value, { systemId: 'home-n', step: 'production' })
     expect(legalMoves(producing).some(m => m.type === 'produce')).toBe(true)
     expect(legalMoves(producing).some(m => m.type === 'endTactical')).toBe(true)
+  })
+  it('R4.1 step 6: Munitions Reserves is enumerated only from round 1, per side and for both sides at once', () => {
+    const base = toActionPhase(3)
+    const cleared: GameState = { ...base, systems: { ...base.systems, bereg: { ...base.systems.bereg, space: [] } } }
+    const staged = withUnits(withUnits(cleared, 'bereg', 0, ['cruiser']), 'bereg', 1, ['cruiser'])
+    const bothLetnev = withPlayer(withPlayer(staged, 0, { faction: 'letnev', tradeGoods: 2 }), 1, { tradeGoods: 2 })
+    const atRound = (round: number) => withTactical(bothLetnev, {
+      systemId: 'bereg', step: 'spaceCombat',
+      combat: { round, attacker: 0, defender: 1, retreating: null, retreatTo: null, lastRolls: [] },
+    })
+    expect(legalMoves(atRound(0)).every(m => m.type !== 'combatRound' || m.munitions === undefined)).toBe(true)
+    const variants = legalMoves(atRound(1)).filter(m => m.type === 'combatRound' && m.munitions !== undefined)
+    expect(variants).toHaveLength(3)   // attacker only, defender only, both sides
+    for (const move of variants) expect(applyMove(atRound(1), move, 7).ok).toBe(true)
   })
   it('R4.3: endInvasion is not enumerated while a ground combat is pending', () => {
     const base = toActionPhase(3)

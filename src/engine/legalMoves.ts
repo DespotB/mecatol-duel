@@ -23,8 +23,14 @@ function tacticalMoves(state: GameState): Move[] {
       const out: Move[] = [{ type: 'combatRound' }]
       const combat = tac.combat
       if (!combat) return out
-      if (canMunitions(state, combat.attacker)) out.push({ type: 'combatRound', munitions: { attacker: true } })
-      if (canMunitions(state, combat.defender)) out.push({ type: 'combatRound', munitions: { defender: true } })
+      // R4.1 step 6: Munitions Reserves rerolls a combat round's dice, so it is only offered from round 1 on.
+      if (combat.round >= 1) {
+        const attacker = canMunitions(state, combat.attacker)
+        const defender = canMunitions(state, combat.defender)
+        if (attacker) out.push({ type: 'combatRound', munitions: { attacker: true } })
+        if (defender) out.push({ type: 'combatRound', munitions: { defender: true } })
+        if (attacker && defender) out.push({ type: 'combatRound', munitions: { attacker: true, defender: true } })
+      }
       if (combat.round >= 2 && seat === combat.attacker && combat.retreating === null) {
         for (const to of retreatTargets(state, seat)) out.push({ type: 'retreat', to })   // one announcement per combat
       }
