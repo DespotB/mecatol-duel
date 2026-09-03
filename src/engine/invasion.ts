@@ -235,6 +235,7 @@ export function groundCombatRound(state: GameState, seed: number): Result<GameSt
   let next: GameState = { ...state, log: [...state.log,
     { t: 'roll', owner: seat, rolls: a.rolls, context: `ground combat on ${planetId}` },
     { t: 'roll', owner: defender, rolls: d.rolls, context: `ground combat on ${planetId}` }] }
+  // TODO(plan 3): Infantry II revival (R4.3 step 4)
   next = destroyUnits(next, tac.systemId, foes.slice(0, a.hits))
   next = destroyUnits(next, tac.systemId, mine.slice(0, d.hits))
   next = { ...next, tactical: { ...tac, invasion: { ...inv, round: round + 1 } } }
