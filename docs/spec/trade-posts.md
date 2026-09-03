@@ -36,7 +36,7 @@ control at least one planet in a system linked to that post, you may sell commod
 each. **Once per round per post per player**, as today.
 
 - Five of the six posts take **up to 2 commodities**.
-- The **Sarnex Wheel** takes **up to 4**.
+- The **Sarnex Time Machine Wheel** takes **up to 4**.
 
 ## 3. The special abilities
 
@@ -50,7 +50,7 @@ systems.
 
 | Post | Model | Commodities | Special ability |
 | --- | --- | --- | --- |
-| Sarnex Wheel | ring habitat | up to 4 | none, its size is its ability |
+| Sarnex Time Machine Wheel | ring habitat | up to 4 | **Time trade:** pay half the time left on your chess clock, rounded down to the second, and take 1 victory point. |
 | Tessik Refinery | industrial platform | up to 2 | **Technology exchange:** return one general technology you own and take another general technology of the same tier in a different colour. Prerequisites are ignored. Unit upgrades and faction technologies are excluded on both sides of the trade. |
 | Orrun Port Authority | layered disc port | up to 2 | **Clearing house:** exhaust your ready planets and take one trade good per resource or influence spent, up to 3 trade goods. Each planet is exhausted once and pays either its resources or its influence, your choice, never both. |
 | Kesh Line Freighter | container freighter | up to 2 | **Charter:** return one command token from any pool (tactic, fleet or strategy) and take 4 trade goods. |
@@ -63,8 +63,13 @@ Notes that follow from the rules already in the engine:
   of its colour requirements. Same tier, different colour, both sides general technologies.
 - **Refit** may not put more non-fighter ships into the system than the fleet pool allows, and the flagship
   and the War Sun follow their usual limits (one flagship at a time, War Sun needs no technology).
-- **Layover** is the one ability the engine cannot resolve on its own, because the engine is time-free. The
-  move is recorded like any other and the UI adds the three minutes to that seat's clock when it applies it.
+- **Layover** and the **time trade** are the two abilities the engine cannot resolve on its own, because the
+  engine is time-free. The move is recorded like any other; the UI adds the three minutes for a layover and
+  halves the seat's remaining clock for a time trade when it applies the move. The victory point itself is
+  the engine's business and is granted like any other point, so a replay of the move log reproduces the
+  score without knowing anything about clocks.
+- The time trade is the one place in the game where time buys points. It is deliberately expensive: half of
+  everything you have left, once per round, for one point out of the seven you need.
 - A returned command token goes back to the player's reinforcements, it is not placed on the board.
 
 ## 4. What the player sees
