@@ -1,0 +1,32 @@
+import type { Seat } from '../engine/types'
+
+export interface PlanetDef { id: string; name: string; resources: number; influence: number }
+export interface SystemDef {
+  id: string; name: string; tile: string
+  planets: PlanetDef[]
+  anomaly: 'asteroid' | 'nebula' | null
+  wormhole: 'alpha' | 'beta' | null
+  neighbours: string[]
+  home: Seat | null
+}
+
+// Flower layout: mecatol in the centre; ring order clockwise from the top: home-n, bereg, quann, home-s, starpoint, sakulag.
+export const SYSTEMS: SystemDef[] = [
+  { id: 'home-n', name: '[0.0.0]', tile: '06_000', planets: [{ id: '000', name: '[0.0.0]', resources: 5, influence: 0 }], anomaly: null, wormhole: null, neighbours: ['mecatol', 'bereg', 'sakulag'], home: 0 },
+  { id: 'bereg', name: 'Bereg', tile: '35_Bereg', planets: [{ id: 'bereg', name: 'Bereg', resources: 3, influence: 1 }, { id: 'lirta-iv', name: 'Lirta IV', resources: 2, influence: 3 }], anomaly: null, wormhole: 'alpha', neighbours: ['mecatol', 'home-n', 'quann'], home: null },
+  { id: 'quann', name: 'Quann', tile: '42_Nebula', planets: [{ id: 'quann', name: 'Quann', resources: 2, influence: 1 }], anomaly: 'nebula', wormhole: 'beta', neighbours: ['mecatol', 'bereg', 'home-s'], home: null },
+  { id: 'home-s', name: 'Arc Prime', tile: '10_ArcPime', planets: [{ id: 'arc-prime', name: 'Arc Prime', resources: 4, influence: 0 }, { id: 'wren-terra', name: 'Wren Terra', resources: 2, influence: 1 }], anomaly: null, wormhole: null, neighbours: ['mecatol', 'quann', 'starpoint'], home: 1 },
+  { id: 'starpoint', name: 'Starpoint', tile: '00_blue', planets: [{ id: 'starpoint', name: 'Starpoint', resources: 3, influence: 1 }, { id: 'centauri', name: 'Centauri', resources: 1, influence: 3 }], anomaly: null, wormhole: 'alpha', neighbours: ['mecatol', 'home-s', 'sakulag'], home: null },
+  { id: 'sakulag', name: 'Sakulag', tile: '44_Asteroids', planets: [{ id: 'sakulag', name: 'Sakulag', resources: 2, influence: 1 }], anomaly: 'asteroid', wormhole: 'beta', neighbours: ['mecatol', 'starpoint', 'home-n'], home: null },
+  { id: 'mecatol', name: 'Mecatol Rex', tile: '18_MR', planets: [{ id: 'mecatol-rex', name: 'Mecatol Rex', resources: 1, influence: 6 }], anomaly: null, wormhole: null, neighbours: ['home-n', 'bereg', 'quann', 'home-s', 'starpoint', 'sakulag'], home: null },
+]
+
+export const SYSTEM_IDS: string[] = SYSTEMS.map(s => s.id)
+export const TRADE_POSTS = { west: ['sakulag', 'starpoint'], east: ['bereg', 'quann'] } as const
+
+const BY_ID = new Map(SYSTEMS.map(s => [s.id, s]))
+export function systemDef(id: string): SystemDef {
+  const s = BY_ID.get(id)
+  if (!s) throw new Error(`unknown system ${id}`)
+  return s
+}
