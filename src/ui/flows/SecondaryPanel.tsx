@@ -1,8 +1,10 @@
 import { useState } from 'react'
-import { cardOwner, productionCost, secondaryTokenCost } from '../../engine'
-import { CARD_NAME, ownedPlanets, unitLabel } from '../format'
+import { homeSystemId } from '../../data/map'
+import { cardOwner, productionLimit, secondaryTokenCost } from '../../engine'
+import { CARD_NAME, ownedPlanets, systemLabel } from '../format'
 import { secondaryOffer } from '../moveOptions'
 import { PayRow } from './PayRow'
+import { ProductionPicker, costOf, unitTotal } from './ProductionPicker'
 import { TechDrawer } from './TechDrawer'
 import { TokenSheet } from './TokenSheet'
 import { useGame } from '../store'
@@ -14,6 +16,7 @@ export function SecondaryPanel() {
   const [tradeGoods, setTradeGoods] = useState(0)
   const [techId, setTechId] = useState<string | null>(null)
   const [tokens, setTokens] = useState<Player['tokens'] | null>(null)
+  const [units, setUnits] = useState<Partial<Record<UnitType, number>>>({})
   if (!session) return null
   const state = session.state
   const card = state.pendingSecondary
@@ -37,19 +40,20 @@ export function SecondaryPanel() {
       case 'leadership': return { planets: pay, tradeGoods, tokens: sheet }
       case 'diplomacy': return { planets: pay }
       case 'technology': return { techId: techId ?? template.techId, planets: pay, tradeGoods }
-      case 'warfare': return { units: template.units, planets: pay, tradeGoods }
+      case 'warfare': return { units, planets: pay, tradeGoods }
       default: return {}
     }
   }
 
-  const needed = card === 'technology' ? 4 : 0
-  const units = template.units ?? {}
-  // R6 warfare secondary: the enumerator already worked out the true production cost (and picked planets
-  // covering it, empty with Sarween Tools), so read it back off the payload rather than assume 1. Fall back
-  // to recomputing it only when no accept payload was carried at all (nothing to accept).
-  const warfareNeeded = template.planets
-    ? template.planets.reduce((sum, id) => sum + (ownedPlanets(state, seat).find(p => p.id === id)?.resources ?? 0), 0) + (template.tradeGoods ?? 0)
-    : productionCost({ infantry: 1 }, { faction: player.faction, techs: player.techs }, player.techs.includes('sarween_tools'))
+  // R6 warfare secondary: the space dock in the home system produces up to its full limit, so the responder
+  // picks the units and pays for them exactly like a tactical production, not a fixed single infantry.
+  const home = homeSystemId(seat)
+  const warfareLimit = productionLimit(state, seat, home)
+  const warfareCount = unitTotal(units)
+  const warfareCost = costOf(state, seat, units)
+  const needed = card === 'technology' ? 4 : card === 'warfare' ? warfareCost : 0
+  const paidResources = pay.reduce((sum, id) => sum + (ownedPlanets(state, seat).find(p => p.id === id)?.resources ?? 0), 0) + tradeGoods
+  const warfareBlocked = card === 'warfare' && (warfareCount === 0 || warfareCount > warfareLimit || paidResources < warfareCost)
   return (
     <div className="dialog cut" data-testid="secondary-panel">
       <div className="in">
@@ -60,7 +64,7 @@ export function SecondaryPanel() {
             It costs you {secondaryTokenCost(card)} strategy token.
           </span>
           <div className="right">
-            <button type="button" className="btn gold" data-testid="btn-secondary-accept" disabled={offer.accept === null}
+            <button type="button" className="btn gold" data-testid="btn-secondary-accept" disabled={offer.accept === null || warfareBlocked}
               onClick={() => apply({ type: 'secondary', card, accept: true, params: params() })}>Use the secondary</button>
             <button type="button" className="btn quiet" data-testid="btn-secondary-decline"
               onClick={() => apply({ type: 'secondary', card, accept: false })}>Decline</button>
@@ -93,9 +97,10 @@ export function SecondaryPanel() {
         {card === 'warfare' ? (
           <>
             <div className="sub" data-testid="secondary-units">
-              Produce {(Object.entries(units) as [UnitType, number][]).map(([type, n]) => `${n} ${unitLabel(type, player)}`).join(', ')} at your home system.
+              Produce at {systemLabel(home)}: {warfareLimit} units at most, {warfareCount} chosen, cost {warfareCost}.
             </div>
-            <PayRow state={state} seat={seat} needed={warfareNeeded} planets={pay} onPlanets={setPlanets} tradeGoods={tradeGoods} onTradeGoods={setTradeGoods} />
+            <ProductionPicker state={state} seat={seat} limit={warfareLimit} units={units} onUnits={setUnits} />
+            <PayRow state={state} seat={seat} needed={warfareCost} planets={pay} onPlanets={setPlanets} tradeGoods={tradeGoods} onTradeGoods={setTradeGoods} />
           </>
         ) : null}
         {card === 'trade' ? <div className="sub">Replenish your commodities.</div> : null}
