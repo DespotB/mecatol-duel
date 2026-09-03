@@ -1,15 +1,17 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { GameProvider, useGame } from './store'
-import { latestGameCode, loadGame } from './persist'
+import { latestGameCode, loadGame, openSeats, playerId, readClaim, readClaims, saveGame, writeClaim } from './persist'
+import type { Claim } from './persist'
 import { codeFromRoute, gamePath, navigate, playRedirect, useHashRoute } from './route'
 import { BoardScreen } from './screens/BoardScreen'
 import { GameOverScreen } from './screens/GameOverScreen'
+import { ModeScreen } from './screens/ModeScreen'
 import { RulesScreen } from './screens/RulesScreen'
 import { SetupScreen } from './screens/SetupScreen'
 import { UnknownGameScreen } from './screens/UnknownGameScreen'
 import type { PostId } from '../data/posts'
 import type { GameConfig } from './store'
-import type { Move, StrategyCardId } from '../engine/types'
+import type { GameState, Move, Seat, StrategyCardId } from '../engine/types'
 import { ModelStyleProvider } from './modelStyle'
 import { MusicProvider } from './music'
 
@@ -30,6 +32,8 @@ function useDemoBootstrap() {
     if (session || typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
     if (params.get('demo') !== '1') return
+    // a demo is a hot-seat game, so it answers the mode question for itself and lands on the board
+    writeClaim(DEMO_CODE, { seats: [0, 1], playerId: playerId() })
     const panel = params.get('panel')
     // `&posts=tessik,kesh` is the same kind of hook for R8: it names the pair of trade posts to draw and
     // hands seat 0 Sakulag, so one hyperlane is lit and the other three are cold in the same shot.
@@ -47,6 +51,23 @@ function useDemoBootstrap() {
           ? { code: DEMO_CODE, seed: 1, minutes: 15, state: cardsUsed(state), history: [], clockMs: [900000, 900000], handoff: 1 }
           : { code: DEMO_CODE, seed: 1, minutes: 15, state, history: [], clockMs: [900000, 900000], handoff: null })
         navigate(gamePath(DEMO_CODE))
+      })
+      return
+    }
+    // `&panel=mode` / `&panel=locked` are the seat-claim QA hooks: the first saves a game this browser
+    // has no claim for and opens it, so the mode question is on screen; the second claims seat 1 of a
+    // game seat 0 is to act in, so the board is on screen with every control of seat 0 locked.
+    if (panel === 'mode' || panel === 'locked') {
+      void import('../engine/testUtils').then(({ toActionPhase }) => {
+        const state = toActionPhase(1, 0)
+        const players = state.players.map((p, seat) => ({ ...p, name: seat === 0 ? 'Despot' : 'Kael' }))
+        const code = panel === 'mode' ? 'MODEQQ' : 'LOCKQQ'
+        saveGame({
+          code, seed: 1, minutes: 15, history: [], clockMs: [781000, 900000], handoff: null,
+          state: { ...state, players: players as GameState['players'] },
+        })
+        if (panel === 'locked') writeClaim(code, { seats: [1], playerId: playerId() })
+        navigate(gamePath(code))
       })
       return
     }
@@ -115,19 +136,42 @@ function useDemoScript() {
  * One saved game, addressed by its code. The store may already hold it (it was just started, or the
  * player came from the lobby); otherwise it is read from this browser's storage on the spot. The read is
  * synchronous, so the "not on this device" panel is only ever shown for a game that really is absent.
+ *
+ * Before the board, the claim: a game this browser has no claim for asks how it wants to play this one,
+ * and the answer is written under the code and never asked again.
  */
 function GameRoute({ code }: { code: string }) {
   const { session, resume } = useGame()
   const open = session !== null && session.code === code
   const stored = useMemo(() => open ? null : loadGame(code), [open, code])
+  const [claim, setClaim] = useState<Claim | null>(() => readClaim(code, playerId()))
+  // a different game is a different question, so the claim is re-read whenever the address changes
+  useEffect(() => { setClaim(readClaim(code, playerId())) }, [code])
+  const held = claim !== null
   useEffect(() => {
-    if (stored) resume(stored)
-  }, [stored, resume])
-  if (session !== null && session.code === code) {
+    if (held && stored) resume(stored)
+  }, [held, stored, resume])
+  const answer = useCallback((seats: Seat[]) => {
+    const made: Claim = { seats, playerId: playerId() }
+    writeClaim(code, made)
+    setClaim(made)
+  }, [code])
+  const game = open && session !== null ? session : stored
+  // a game that is on no device here at all: the claim question would have nothing to ask about
+  if (game === null) return <UnknownGameScreen code={code} />
+  if (!held) {
+    return (
+      <ModeScreen
+        code={code} names={[game.state.players[0].name, game.state.players[1].name]}
+        free={openSeats(readClaims(code), playerId())} onClaim={answer}
+      />
+    )
+  }
+  if (open && session !== null) {
     return session.state.winner !== null ? <GameOverScreen /> : <BoardScreen />
   }
   // one frame while the store adopts the game the line above just read
-  return stored ? null : <UnknownGameScreen code={code} />
+  return null
 }
 
 function Screens() {

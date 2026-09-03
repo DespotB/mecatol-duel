@@ -14,7 +14,7 @@ import { useGame } from '../store'
 import type { Player, StrategicParams, UnitType } from '../../engine/types'
 
 export function SecondaryPanel() {
-  const { session, legal, apply } = useGame()
+  const { session, legal, apply, canAct } = useGame()
   const [planets, setPlanets] = useState<string[] | null>(null)
   const [tradeGoods, setTradeGoods] = useState(0)
   const [techId, setTechId] = useState<string | null>(null)
@@ -70,9 +70,9 @@ export function SecondaryPanel() {
             {owner === null ? 'Your opponent' : state.players[owner].name} played {CARD_NAME[card]}.
           </span>
           <div className="right">
-            <button type="button" className="btn gold" data-testid="btn-secondary-accept" disabled={offer.accept === null || warfareBlocked || tokensPending}
+            <button type="button" className="btn gold" data-testid="btn-secondary-accept" disabled={!canAct || offer.accept === null || warfareBlocked || tokensPending}
               onClick={() => apply({ type: 'secondary', card, accept: true, params: params() })}>Use the secondary</button>
-            <button type="button" className="btn quiet" data-testid="btn-secondary-decline"
+            <button type="button" className="btn quiet" data-testid="btn-secondary-decline" disabled={!canAct}
               onClick={() => apply({ type: 'secondary', card, accept: false })}>Decline</button>
           </div>
         </div>

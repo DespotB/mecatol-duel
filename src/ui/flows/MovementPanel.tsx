@@ -52,7 +52,7 @@ const OBSTACLE_TEXT: Record<MovementObstacle, (target: string) => string> = {
 }
 
 export function MovementPanel() {
-  const { session, legal, apply } = useGame()
+  const { session, legal, apply, canAct } = useGame()
   const { style } = useModelStyle()
   const [picked, setPicked] = useState<Picked>({})
   const [cargo, setCargo] = useState<Record<string, Cargo>>({})
@@ -102,9 +102,9 @@ export function MovementPanel() {
           <span className="tab">Movement into {systemLabel(target)}</span>
           <span className="sub">Pick the ships that move, then the units they carry.</span>
           <div className="right">
-            <button type="button" className="btn gold" data-testid="btn-move-ships" disabled={totalPicked === 0} onClick={submit}>Move ships</button>
+            <button type="button" className="btn gold" data-testid="btn-move-ships" disabled={!canAct || totalPicked === 0} onClick={submit}>Move ships</button>
             <button type="button" className="btn quiet" data-testid="btn-end-movement"
-              disabled={!legal.some(m => m.type === 'endMovement')} onClick={() => apply({ type: 'endMovement' })}>Done moving</button>
+              disabled={!canAct || !legal.some(m => m.type === 'endMovement')} onClick={() => apply({ type: 'endMovement' })}>Done moving</button>
           </div>
         </div>
         {obstacle ? <div className="warn" data-testid="movement-obstacle">{OBSTACLE_TEXT[obstacle](systemLabel(target))}</div> : null}

@@ -10,7 +10,7 @@ import type { GameState, Player, ScoreRequest, Seat } from '../../engine/types'
 interface Payment { planets: string[]; tradeGoods: number }
 
 export function StatusDialog() {
-  const { session, apply } = useGame()
+  const { session, apply, canAct } = useGame()
   const [tokens, setTokens] = useState<Player['tokens'] | null>(null)
   // R7: an entry here is an objective the player has chosen to buy; no entry means they are letting it go
   const [payments, setPayments] = useState<Record<string, Payment>>({})
@@ -59,7 +59,7 @@ export function StatusDialog() {
           <span className="tab">Status phase, {player.name}</span>
           <span className="sub">You gain {gained} command tokens.</span>
           <div className="right">
-            <button type="button" className="btn gold" data-testid="btn-status-confirm" disabled={placed !== target || short}
+            <button type="button" className="btn gold" data-testid="btn-status-confirm" disabled={!canAct || placed !== target || short}
               onClick={() => {
                 apply({ type: 'status', params: { tokens: sheet, ...(requests.length ? { score: requests } : {}) } })
                 setTokens(null)

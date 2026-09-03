@@ -37,7 +37,7 @@ const HINTS: Record<string, string> = {
 }
 
 export function BoardScreen() {
-  const { session, legal, apply, clockRunning } = useGame()
+  const { session, legal, apply, clockRunning, canAct, handoffSeat } = useGame()
   // the docked regions scale their contents with --k, the board inside the stage with --s (see theme.css)
   const { k, s } = useViewportScale()
   // `?panel=component` is the same dev-only QA hook as `?panel=log` below: it opens the component panel
@@ -52,9 +52,10 @@ export function BoardScreen() {
   const [card, setCard] = useState<StrategyCardId | null>(null)
   if (!session) return null
   const state = session.state
+  // the draft and the map are moves like any other: a browser that does not hold the seat is offered neither
   const drafting = state.phase === 'strategy'
-  const onPick = drafting ? (card: StrategyCardId) => { apply({ type: 'pickStrategyCard', card }) } : undefined
-  const selectable = mode === 'tactical'
+  const onPick = drafting && canAct ? (card: StrategyCardId) => { apply({ type: 'pickStrategyCard', card }) } : undefined
+  const selectable = mode === 'tactical' && canAct
     ? legal.flatMap(m => m.type === 'startTactical' ? [m.systemId] : [])
     : []
   // R3.2: activating a system your ships cannot enter is legal but usually a mistake, so the board says so
@@ -78,7 +79,7 @@ export function BoardScreen() {
   return (
     <>
       <div
-        className="app" data-testid="board-screen" inert={session.handoff !== null}
+        className="app" data-testid="board-screen" inert={handoffSeat !== null}
         style={{ '--k': k, '--s': s } as CSSProperties}
       >
         <SpaceBackdrop dim />
@@ -109,7 +110,7 @@ export function BoardScreen() {
                   <div className="right">
                     <button
                       type="button" className="btn gold" data-testid="btn-end-tactical"
-                      disabled={!legal.some(m => m.type === 'endTactical')}
+                      disabled={!canAct || !legal.some(m => m.type === 'endTactical')}
                       onClick={() => apply({ type: 'endTactical' })}
                     >
                       End tactical action
@@ -128,7 +129,8 @@ export function BoardScreen() {
                   <div className="dhead"><span className="tab">Strategic action</span></div>
                   <div className="rowline">
                     {strategicCards(legal).map(id => (
-                      <button key={id} type="button" className="btn" data-testid={`strategic-pick-${id}`} onClick={() => setCard(id)}>{CARD_NAME[id]}</button>
+                      <button key={id} type="button" className="btn" data-testid={`strategic-pick-${id}`}
+                        disabled={!canAct} onClick={() => setCard(id)}>{CARD_NAME[id]}</button>
                     ))}
                   </div>
                 </div>
