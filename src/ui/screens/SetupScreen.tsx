@@ -365,7 +365,7 @@ export function SetupScreen() {
                   />
                   minutes per player
                 </label>
-                <div className="sub">Chess clock, runs only on your turn</div>
+                <div className="sub">Chess clock, runs whenever it is your turn to decide</div>
               </div>
             </div>
             <div className="cell" data-testid="setup-target">
