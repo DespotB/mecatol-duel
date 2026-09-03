@@ -267,6 +267,14 @@ describe('the store and the seat claim', () => {
     expect(result.current.canAct).toBe(true)
   })
 
+  it('claims the one seat the host picked when the lobby starts an online game', () => {
+    const { result } = renderHook(() => useGame(), { wrapper })
+    act(() => { result.current.start(CONFIG, 7, 15, [1]) })
+    const code = result.current.session?.code ?? ''
+    expect(readClaim(code, playerId())).toEqual({ seats: [1], playerId: playerId() })
+    expect(result.current.seats).toEqual([1])
+  })
+
   it('reads the claim of the game it resumes and holds only that seat', () => {
     claim([1])
     const { result } = renderHook(() => useGame(), { wrapper: wrapper(false) })
