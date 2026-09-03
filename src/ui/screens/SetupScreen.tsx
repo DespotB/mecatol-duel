@@ -412,7 +412,7 @@ export function SetupScreen() {
 
       <p className="legal" data-testid="setup-legal">
         Fan project. Twilight Imperium and its artwork belong to Fantasy Flight Games. Unit, tile and card images via AsyncTI4.
-        {' '}Music by Kevin MacLeod (incompetech.com), licensed under Creative Commons By Attribution 4.0.
+        {' '}Music by Kevin MacLeod (incompetech.com), licensed under Creative Commons By Attribution 4.0, re-encoded for the web.
       </p>
     </div>
   )
