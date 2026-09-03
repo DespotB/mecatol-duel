@@ -52,6 +52,25 @@ export const SPRITE_SETS: Record<ModelStyle, Record<UnitType, SpriteDef>> = {
   models: MINIATURES, topdown: TOP_DOWN, counters: COUNTERS,
 }
 
+/**
+ * A ship seen from straight above shows its whole length, where the three quarter view foreshortens it, so
+ * the same model comes out half again as tall. This trims the top down set until its biggest piece sits
+ * next to the others, which keeps every style inside the hexagon and keeps the fleets comparable. Relative
+ * sizes inside a style are untouched: a fighter stays small next to a dreadnought.
+ */
+export const STYLE_SCALE: Record<ModelStyle, number> = { models: 1, topdown: 0.72, counters: 1 }
+
+/** The tallest a unit can be drawn on the board in any style; the tile layout has to hold this. */
+export function tallestSprite(scale: number = BOARD_SCALE): number {
+  let tallest = 0
+  for (const [style, set] of Object.entries(SPRITE_SETS)) {
+    for (const type of Object.keys(set) as UnitType[]) {
+      tallest = Math.max(tallest, spriteSize(type, scale, style as ModelStyle).height)
+    }
+  }
+  return tallest
+}
+
 /** The folder each style's files live in; the miniatures kept the original flat path. */
 export const SPRITE_FOLDER: Record<ModelStyle, string> = { models: '', topdown: 'topdown/', counters: 'counters/' }
 
@@ -62,8 +81,9 @@ export const PANEL_SCALE = 10.4
 
 export function spriteSize(type: UnitType, scale: number = BOARD_SCALE, style: ModelStyle = 'models'): { width: number; height: number } {
   const def = SPRITE_SETS[style][type]
+  const size = scale * STYLE_SCALE[style]
   return {
-    width: Math.round(def.spriteW / def.pxPerModelUnit * scale),
-    height: Math.round(def.spriteH / def.pxPerModelUnit * scale),
+    width: Math.round(def.spriteW / def.pxPerModelUnit * size),
+    height: Math.round(def.spriteH / def.pxPerModelUnit * size),
   }
 }

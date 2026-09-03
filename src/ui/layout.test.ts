@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
+import { MODEL_STYLES } from './modelStyle'
 import { SYSTEMS, TRADE_POSTS } from '../data/map'
 import {
   ACTIVATION_OVERLAP, ACTIVATION_SIZE, ACTIVATION_SPOT, GROUND_ROW, MAP_H, MAP_W, PLANET_CENTRE, PLANET_SPOTS,
   PLATE_SIZE, POST_ART_H, POST_H, POST_POS, POST_W, SIGIL_SIZE, SIGIL_SPOT, SPACE_BOX, TILE_H, TILE_POS, TILE_W,
   WORMHOLE_SIZE, WORMHOLE_SPOTS, boxInsideHex, discInsideHex, fleetCapacity, fleetScale, lanePath, plateBox,
+  stackCell,
   pointInsideHex, postAnchor, tileCentre,
 } from './layout'
 
@@ -204,6 +206,24 @@ describe('R8: the trade posts and their hyperlanes', () => {
       }
       // the two lanes of one post are different paths, one up and one down
       expect(lanePath(post, TRADE_POSTS[post][0])).not.toBe(lanePath(post, TRADE_POSTS[post][1]))
+    }
+  })
+})
+
+describe('a fleet stays inside its space box in every model style', () => {
+  it('shrinks a crowded system further when the art is taller', () => {
+    for (const [systemId, box] of Object.entries(SPACE_BOX)) {
+      for (const { id } of MODEL_STYLES) {
+        const cell = stackCell(id)
+        for (const stacks of [1, 2, 3, 4, 5, 6, 8]) {
+          const scale = fleetScale(stacks, box, id)
+          const cols = Math.max(1, Math.floor((box.width + 4) / (cell.width * scale + 4)))
+          const rows = Math.ceil(stacks / cols)
+          const used = rows * cell.height * scale + (rows - 1) * 4
+          // at the smallest step a very crowded box may still overflow; up to the sixth stack it must not
+          if (stacks <= 6) expect(used, `${systemId} ${id} ${String(stacks)} stacks`).toBeLessThanOrEqual(box.height + 2)
+        }
+      }
     }
   })
 })

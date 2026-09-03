@@ -5,6 +5,7 @@ import {
   SPACE_BOX, TILE_H, TILE_POS, TILE_W, WORMHOLE_SIZE, WORMHOLE_SPOTS, fleetScale,
 } from '../layout'
 import { UnitStack, groupUnits } from './UnitStack'
+import { useModelStyle } from '../modelStyle'
 import type { Color, GameState, Owner, Planet, System } from '../../engine/types'
 
 const HEX = '58,1 174,1 231,100.5 174,200 58,200 1,100.5'
@@ -78,13 +79,14 @@ export interface TileProps {
 }
 
 export function Tile({ state, system, active, selectable, outOfReach = false, onSelect }: TileProps) {
+  const { style } = useModelStyle()
   const def = systemDef(system.id)
   const pos = TILE_POS[system.id]
   // everything the system holds in space, ships and the fighters and infantry they carry, drawn inside
   // the tile's own space box and shrunk rather than allowed to spill out of it
   const box = SPACE_BOX[system.id]
   const fleet = groupUnits(system.space)
-  const scale = fleetScale(fleet.length, box)
+  const scale = fleetScale(fleet.length, box, style)
   const home = def.home === null ? '' : def.home === 0 ? ' home-0' : ' home-1'
   const classes = `tile${home}${active ? ' active' : ''}${selectable ? ' selectable' : ''}${selectable && outOfReach ? ' outofreach' : ''}`
   const guardians = system.space.some(u => u.owner === 'guardian')

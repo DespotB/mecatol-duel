@@ -1,3 +1,6 @@
+import { spriteSize } from './sprites'
+import type { ModelStyle } from './modelStyle'
+import type { UnitType } from '../engine/types'
 /** The map box every position below is authored in; `useViewportScale` zooms it, it never changes size. */
 export const MAP_W = 940
 export const MAP_H = 698
@@ -127,31 +130,39 @@ export const SPACE_BOX: Record<string, { left: number; top: number; width: numbe
   'home-s': { left: 77, top: 121, width: 94, height: 72 },
 }
 
-/**
- * The cell one unit stack takes in the space box: the mean footprint of the eight kinds of unit a system
- * can hold in space, at BOARD_SCALE out of `sprites.ts` (flagship 50x44, warsun 37x45, dreadnought 44x40,
- * carrier 36x36, cruiser 33x33, destroyer 29x23, fighter 27x17, infantry 25x30), rounded to 36x34.
- */
-const STACK_W = 36
-const STACK_H = 34
 const FLEET_GAP = 4
 const SCALE_STEPS = [1, 0.9, 0.8, 0.7, 0.6]
+
+/**
+ * The cell one unit stack takes in the space box: the mean footprint of the units a system can hold in
+ * space, taken from the sprite set that is actually on screen. It has to be read per style, because the
+ * same miniature seen from straight above is half again as tall as it is at three quarters, and a cell
+ * measured on one style would let the other spill out of the hexagon.
+ */
+const SPACE_UNITS: UnitType[] = ['flagship', 'warsun', 'dreadnought', 'carrier', 'cruiser', 'destroyer', 'fighter', 'infantry']
+export function stackCell(style: ModelStyle): { width: number; height: number } {
+  const sizes = SPACE_UNITS.map(type => spriteSize(type, undefined, style))
+  const mean = (pick: (s: { width: number; height: number }) => number) =>
+    Math.round(sizes.reduce((sum, s) => sum + pick(s), 0) / sizes.length)
+  return { width: mean(s => s.width), height: mean(s => s.height) }
+}
 
 /**
  * How far to shrink a fleet so that every stack stays inside the space box. Full size while the stacks fit,
  * then down in steps, never below 0.6: a crowded system draws smaller ships rather than ships outside the
  * hexagon or ships clipped away by the box.
  */
-export function fleetScale(stackCount: number, box: { width: number; height: number }): number {
-  for (const scale of SCALE_STEPS) if (fleetCapacity(box, scale) >= stackCount) return scale
+export function fleetScale(stackCount: number, box: { width: number; height: number }, style: ModelStyle = 'models'): number {
+  for (const scale of SCALE_STEPS) if (fleetCapacity(box, scale, style) >= stackCount) return scale
   return SCALE_STEPS[SCALE_STEPS.length - 1]
 }
 
 /** How many unit stacks a box shows at a given zoom, rows and columns of the mean stack cell. */
-export function fleetCapacity(box: { width: number; height: number }, scale: number): number {
-  const cols = Math.floor((box.width + FLEET_GAP) / (STACK_W * scale + FLEET_GAP))
-  const rows = Math.floor((box.height + FLEET_GAP) / (STACK_H * scale + FLEET_GAP))
-  return cols * rows
+export function fleetCapacity(box: { width: number; height: number }, scale: number, style: ModelStyle = 'models'): number {
+  const cell = stackCell(style)
+  const cols = Math.floor((box.width + FLEET_GAP) / (cell.width * scale + FLEET_GAP))
+  const rows = Math.floor((box.height + FLEET_GAP) / (cell.height * scale + FLEET_GAP))
+  return Math.max(0, cols) * Math.max(0, rows)
 }
 
 export const WORMHOLE_SPOTS: Record<string, Point> = {
