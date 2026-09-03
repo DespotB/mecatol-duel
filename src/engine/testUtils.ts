@@ -65,6 +65,20 @@ export function withTactical(state: GameState, tactical: TacticalContext | null)
   return deepFreeze({ ...state, tactical })
 }
 
+/** Replaces the seat's strategy cards, all unused. */
+export function withCards(state: GameState, seat: Seat, cards: StrategyCardId[]): GameState {
+  const players = [...state.players] as GameState['players']
+  players[seat] = { ...players[seat], strategyCards: cards.map(id => ({ id, used: false })) }
+  return deepFreeze({ ...state, players })
+}
+
+export function withExhausted(state: GameState, planetIds: string[], exhausted = true): GameState {
+  const systems = Object.fromEntries(Object.entries(state.systems).map(([id, sys]) => [id, {
+    ...sys, planets: sys.planets.map(p => planetIds.includes(p.id) ? { ...p, exhausted } : p),
+  }]))
+  return deepFreeze({ ...state, systems })
+}
+
 export function withPlanetOwner(state: GameState, systemId: string, planetId: string, owner: Seat | null): GameState {
   const sys = state.systems[systemId]
   return deepFreeze({

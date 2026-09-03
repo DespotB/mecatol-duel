@@ -83,12 +83,21 @@ export type Move =
   | { type: 'endTactical' }
   | { type: 'strategic'; card: StrategyCardId; params?: StrategicParams }
   | { type: 'secondary'; card: StrategyCardId; accept: boolean; params?: StrategicParams }
-  | { type: 'research'; techId: string; via: 'technology' | 'technologySecond' | 'inheritance' }
+  | { type: 'research'; techId: string; via: 'inheritance' }   // component action; the Technology card carries its technologies in StrategicParams
   | { type: 'shipyard'; planetId: string; planets: string[]; tradeGoods: number }
   | { type: 'tradePost'; post: 'west' | 'east'; commodities: number }
   | { type: 'pass' }
   | { type: 'status'; params: StatusParams }             // one move per player: token distribution, then the engine finishes the phase when both are in
-export interface StrategicParams { systemId?: string; planets?: string[]; techId?: string; secondTechId?: string; tradeGoods?: number; units?: Partial<Record<UnitType, number>> }
+export interface StrategicParams {
+  systemId?: string                 // Diplomacy: the chosen system; Warfare: where your command token comes off the board
+  planets?: string[]                // planets exhausted to pay (Leadership influence, Technology and Warfare resources) or readied (Diplomacy)
+  techId?: string; secondTechId?: string
+  tradeGoods?: number
+  units?: Partial<Record<UnitType, number>>
+  tokens?: { tactic: number; fleet: number; strategy: number }   // the resulting command sheet after Leadership or Warfare
+  objectiveId?: string              // Imperial primary: the public objective to score
+  shareWithOpponent?: boolean       // Trade primary: the opponent replenishes without paying
+}
 export interface StatusParams { tokens: { tactic: number; fleet: number; strategy: number } }
 
 export interface UnitStats {
