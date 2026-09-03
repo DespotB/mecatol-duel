@@ -21,6 +21,7 @@ export interface System {
   planets: Planet[]
   anomaly: 'asteroid' | 'nebula' | null
   wormhole: 'alpha' | 'beta' | null
+  // ships, plus fighters and infantry being transported; NON_FIGHTER_SHIPS and isShip exclude infantry, so capacity and fleet-pool helpers work on this mixed array
   space: Unit[]                    // ships
   activatedBy: Seat[]              // command tokens on the system this round
 }
