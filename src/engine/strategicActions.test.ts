@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { applyMove } from './index'
-import { deepFreeze, toActionPhase, withCards, withExhausted, withPlanetOwner, withPlayer } from './testUtils'
+import { warfareTokenSystems } from './strategicActions'
+import { deepFreeze, toActionPhase, withCards, withExhausted, withPlanetOwner, withPlayer, withTechs } from './testUtils'
 import type { GameState, Result, StrategicParams, StrategyCardId } from './types'
 
 const play = (state: GameState, card: StrategyCardId, params?: StrategicParams) =>
@@ -72,6 +73,13 @@ describe('R3.2 strategic actions', () => {
     expect(answered.players[1].tokens).toEqual({ tactic: 4, fleet: 3, strategy: 2 })
     expect(answered.systems.bereg.planets.find(p => p.id === 'lirta-iv')?.exhausted).toBe(true)
   })
+  it('R6 Leadership primary: trade goods also count as influence, spent 1 for 1', () => {
+    const s = withPlayer(holder('leadership'), 0, { tradeGoods: 3 })
+    const played = value(play(s, 'leadership', { tradeGoods: 3, tokens: { tactic: 4, fleet: 4, strategy: 4 } }))
+    expect(played.players[0].tradeGoods).toBe(0)
+    expect(played.players[0].tokens).toEqual({ tactic: 4, fleet: 4, strategy: 4 })   // 8 + 3 + 1 (3 trade goods / 3)
+    expect(play(s, 'leadership', { tradeGoods: 4 }).ok).toBe(false)                  // only 3 trade goods available
+  })
   it('R6 Diplomacy errata primary: the opponent gets a command token there, up to 2 planets are readied', () => {
     const s = withExhausted(holder('diplomacy'), ['000'])
     const played = value(play(s, 'diplomacy', { systemId: 'home-n', planets: ['000'] }))
@@ -118,5 +126,74 @@ describe('R3.2 strategic actions', () => {
     const s = withPlayer(holder('trade'), 1, { commodities: 0 })
     const answered = value(answer(value(play(s, 'trade')), 'trade', true))
     expect(answered.players[1]).toMatchObject({ commodities: 2, tokens: { tactic: 3, fleet: 3, strategy: 1 } })
+  })
+})
+
+describe('R3.2 strategic actions, the remaining three cards', () => {
+  it('R6 Warfare primary: a command token comes off the board, one is gained and the sheet is redistributed', () => {
+    const base = holder('warfare')
+    const s = deepFreeze({ ...base, systems: { ...base.systems, bereg: { ...base.systems.bereg, activatedBy: [0 as const] } } })
+    const played = value(play(s, 'warfare', { systemId: 'bereg', tokens: { tactic: 2, fleet: 5, strategy: 2 } }))
+    expect(played.systems.bereg.activatedBy).toEqual([])
+    expect(played.players[0].tokens).toEqual({ tactic: 2, fleet: 5, strategy: 2 })   // 8 + 1, freely moved
+    expect(play(s, 'warfare', { systemId: 'quann' }).ok).toBe(false)                  // no token of yours there
+    expect(play(s, 'warfare', {}).ok).toBe(false)                                     // a token is on the board, name it
+  })
+  it('R6 Warfare primary: without a token on the board it only redistributes and gains nothing', () => {
+    const s = holder('warfare')
+    expect(warfareTokenSystems(s, 0)).toEqual([])
+    expect(play(s, 'warfare', { tokens: { tactic: 1, fleet: 4, strategy: 3 } }).ok).toBe(true)
+    expect(play(s, 'warfare', { tokens: { tactic: 2, fleet: 4, strategy: 3 } }).ok).toBe(false)   // 9, not 8
+    expect(value(play(s, 'warfare')).players[0].tokens).toEqual({ tactic: 3, fleet: 3, strategy: 2 })
+  })
+  it('R6 Warfare secondary: a strategy token produces at the home space dock under the R4.4 rules', () => {
+    const played = value(play(holder('warfare'), 'warfare'))
+    const answered = value(answer(played, 'warfare', true, { units: { infantry: 2 }, planets: ['wren-terra'], tradeGoods: 0 }))
+    expect(answered.players[1].tokens.strategy).toBe(1)
+    expect(answered.systems['home-s'].planets.find(p => p.id === 'arc-prime')?.ground).toHaveLength(4)
+    expect(answered.tactical).toBeNull()
+    expect(answer(played, 'warfare', true, { units: { infantry: 99 }, planets: ['wren-terra'] }).ok).toBe(false)
+    expect(answer(played, 'warfare', true, {}).ok).toBe(false)                        // nothing to produce
+  })
+  it('R5/R6 Technology primary: one technology, a second for 6 resources, in order', () => {
+    const s = withPlayer(holder('technology'), 0, { tradeGoods: 1 })
+    const played = value(play(s, 'technology', { techId: 'antimass_deflectors', secondTechId: 'gravity_drive', planets: ['000'], tradeGoods: 1 }))
+    expect(played.players[0].techs).toContain('antimass_deflectors')
+    expect(played.players[0].techs).toContain('gravity_drive')      // prerequisite met by the first one
+    expect(played.players[0].tradeGoods).toBe(0)
+    expect(played.systems['home-n'].planets[0].exhausted).toBe(true)
+  })
+  it('R5: the second technology needs the first, the payment and a met prerequisite', () => {
+    const s = holder('technology')
+    expect(play(s, 'technology', { secondTechId: 'sarween_tools', planets: ['000'], tradeGoods: 1 }).ok).toBe(false)
+    expect(play(s, 'technology', { techId: 'sarween_tools', secondTechId: 'antimass_deflectors', planets: ['000'] }).ok).toBe(false)   // 5 of 6
+    expect(play(s, 'technology', { techId: 'war_sun' }).ok).toBe(false)                // prerequisites missing
+    expect(play(s, 'technology', { techId: 'l4_disruptors' }).ok).toBe(false)          // wrong faction
+    expect(value(play(s, 'technology')).players[0].techs).toHaveLength(2)              // researching nothing is allowed
+  })
+  it('R5/R6 Technology secondary: a strategy token and 4 resources for one technology', () => {
+    const played = value(play(holder('technology'), 'technology'))
+    const answered = value(answer(played, 'technology', true, { techId: 'sarween_tools', planets: ['arc-prime'] }))
+    expect(answered.players[1].techs).toContain('sarween_tools')
+    expect(answered.players[1].tokens.strategy).toBe(1)
+    expect(answer(played, 'technology', true, { techId: 'sarween_tools', planets: ['wren-terra'] }).ok).toBe(false)   // 2 of 4
+    expect(answer(played, 'technology', true, {}).ok).toBe(false)
+  })
+  it('R7/R6 Imperial primary: scores one fulfilled public objective and 1 VP for Mecatol Rex', () => {
+    let s = withTechs(holder('imperial'), 0, ['sarween_tools'])
+    s = withPlanetOwner(s, 'mecatol', 'mecatol-rex', 0)
+    const played = value(play(s, 'imperial', { objectiveId: 'own_3_techs' }))
+    expect(played.players[0].vp).toBe(2)
+    expect(played.players[0].scoredObjectives).toEqual(['own_3_techs'])
+    expect(play(s, 'imperial', { objectiveId: 'control_5_planets' }).ok).toBe(false)   // not revealed
+    expect(play(holder('imperial'), 'imperial', { objectiveId: 'own_3_techs' }).ok).toBe(false)   // not fulfilled
+    expect(play(withPlayer(s, 0, { scoredObjectives: ['own_3_techs'] }), 'imperial', { objectiveId: 'own_3_techs' }).ok).toBe(false)
+    expect(value(play(holder('imperial'), 'imperial')).players[0].vp).toBe(0)          // no objective, no Mecatol Rex
+  })
+  it('R6 Imperial secondary: a strategy token for 2 trade goods', () => {
+    const played = value(play(holder('imperial'), 'imperial'))
+    const answered = value(answer(played, 'imperial', true))
+    expect(answered.players[1]).toMatchObject({ tradeGoods: 2, tokens: { tactic: 3, fleet: 3, strategy: 1 } })
+    expect(value(answer(played, 'imperial', false)).players[1].tradeGoods).toBe(0)
   })
 })
