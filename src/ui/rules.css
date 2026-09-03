@@ -37,6 +37,16 @@
   border-left:1px solid rgba(201,162,77,.32);font:400 14.5px/1.45 var(--body);color:var(--ink-dim)}
 .rules .rnd{flex:none;width:62px;font:600 11px/1.45 var(--hud);letter-spacing:.1em;text-transform:uppercase;color:var(--gold)}
 
+/* the six trade posts: render, name, commodity limit, ability sentence, one row each */
+.rules .posts{display:flex;flex-direction:column;margin-top:2px}
+.rules .post{display:flex;gap:20px;align-items:flex-start;padding:18px 0;border-top:1px solid rgba(201,162,77,.20)}
+.rules .post:first-child{padding-top:0;border-top:0}
+.rules .post .art{flex:none;width:120px;height:auto;display:block;filter:drop-shadow(0 8px 16px rgba(0,0,0,.55))}
+.rules .post .body{min-width:0}
+.rules .post .name{font:700 16px/1.25 var(--hud);letter-spacing:.01em;color:var(--gold-hi)}
+.rules .post .limit{margin-top:3px;font:600 11px/1 var(--hud);letter-spacing:.09em;text-transform:uppercase;color:var(--gold)}
+.rules .post .ability{margin:8px 0 0;font:400 14.5px/1.5 var(--body);color:var(--ink-dim)}
+
 .rules .back{display:flex;justify-content:center}
 .rules .legal{margin:0}
 
@@ -50,4 +60,8 @@
   .rules p{font-size:14.5px}
   .rules .objlist li{flex-direction:column;gap:3px}
   .rules .rnd{width:auto}
+  .rules .post{gap:14px;padding:14px 0}
+  .rules .post .art{width:76px}
+  .rules .post .name{font-size:14px}
+  .rules .post .ability{font-size:13.5px}
 }
