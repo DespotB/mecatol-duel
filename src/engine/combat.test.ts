@@ -1,7 +1,7 @@
 // src/engine/combat.test.ts
 import { describe, expect, it } from 'vitest'
 import { unitStats } from '../data/units'
-import { rollHits, trimCargo } from './board'
+import { checkFleet, rollHits, trimCargo } from './board'
 import { applyCombatHits, assignHits, defenderModifier, type HitGroup, type MunitionsRequest } from './combat'
 import { applyMove } from './index'
 import { mulberry32 } from './rng'
@@ -271,5 +271,16 @@ describe('trimCargo (cargo above capacity at combat end)', () => {
     // fleet pool 3 (l1z1x), one cruiser already counts against it, so 2 excess fighters survive as loose ships
     expect(trimmed.systems.bereg.space.filter(u => u.owner === 0 && u.type === 'fighter')).toHaveLength(2)
     expect(trimmed.players[0].reinforcements.fighter).toBe(s.players[0].reinforcements.fighter + 3)
+  })
+  it('R4.4: Space Dock II free slots are fighter-only, so the infantry is trimmed and the fighters stay', () => {
+    // a destroyer carries nothing, so the only room is the dock's 3 fighter-only slots
+    const base = withUnits(toActionPhase(), 'bereg', 0, ['destroyer', 'fighter', 'fighter', 'infantry', 'infantry'])
+    const s = withTechs(withUnits(base, 'bereg', 0, ['spacedock'], 'bereg'), 0, ['space_dock_ii'])
+    const trimmed = trimCargo(s, 'bereg', 0)
+    const mine = trimmed.systems.bereg.space.filter(u => u.owner === 0)
+    expect(mine.filter(u => u.type === 'fighter')).toHaveLength(2)
+    expect(mine.filter(u => u.type === 'infantry')).toHaveLength(0)
+    expect(trimmed.players[0].reinforcements.infantry).toBe(s.players[0].reinforcements.infantry + 2)
+    expect(checkFleet(trimmed, 0, 'bereg').ok).toBe(true)
   })
 })

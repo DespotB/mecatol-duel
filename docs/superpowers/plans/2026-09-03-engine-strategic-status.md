@@ -2,15 +2,15 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Close the game loop. Add the six strategy cards with their primary and secondary abilities and the response window between them, the component actions (Inheritance Systems research, emergency shipyard) and the trade posts, the objective predicates, the status phase with scoring, token distribution, readying, guardian respawn, victory and round advance, and the legal-move enumeration for everything that is left. Prove it with a seeded smoke test that plays ten complete games from `createGame` to `phase: 'ended'`.
+**Goal:** Close the game loop. Add the six strategy cards with their primary and secondary abilities and the response window between them, the component actions (Inheritance Systems research, emergency shipyard) and the trade posts, the objective predicates, the status phase with scoring, token distribution, readying, guardian respawn, victory and round advance, the legal-move enumeration for everything that is left, and the Infantry II revival that the tactical plan deferred until the turn structure was complete. Prove it with a seeded smoke test that plays ten complete games from `createGame` to `phase: 'ended'`.
 
-**Architecture:** Everything stays pure: functions from state to state, no I/O, no React. This plan adds `src/engine/objectives.ts`, `src/engine/strategicActions.ts`, `src/engine/componentActions.ts` and `src/engine/statusPhase.ts`, extends `src/engine/economy.ts`, `src/data/map.ts` and the shared test kit in `src/engine/testUtils.ts`, and rewrites `legalMoves` and `validateMove`. The modules of plan 1 and plan 2 are reused with the signatures they have today: `economy.payCost`/`productionCost`/`productionLimit`/`fleetPoolLimit`, `research.canResearch(player, techId, ignorePrereqs)`, `setup.rollGuardianFleet(state, seed)`/`unitsOf(state, owner)`, `actionPhase.otherSeat`/`canPass`/`passTurn`/`activatableSystems`, `production.produce(state, units, planets, tradeGoods)`, `rng.deriveSeed`, `data/map.MECATOL_ID`/`SYSTEM_IDS`/`TRADE_POSTS`/`systemDef`, `data/objectives.PUBLIC_OBJECTIVES`/`MANDATE`. New move kinds are added as cases to the `applyMove` switch and as branches in `legalMoves`. Two type changes only, both in task 2: three new optional fields on `StrategicParams` and a narrowed `via` on the `research` move; `GameState` itself does not change, the secondary window rides on the existing `pendingSecondary` field.
+**Architecture:** Everything stays pure: functions from state to state, no I/O, no React. This plan adds `src/engine/objectives.ts`, `src/engine/strategicActions.ts`, `src/engine/componentActions.ts` and `src/engine/statusPhase.ts`, extends `src/engine/economy.ts`, `src/data/map.ts`, `src/engine/board.ts`, `src/engine/invasion.ts`, `src/engine/actionPhase.ts`, `src/engine/strategyPhase.ts` and the shared test kit in `src/engine/testUtils.ts`, and rewrites `legalMoves` and `validateMove`. The modules of plan 1 and plan 2 are reused with the signatures they have today: `economy.payCost`/`productionCost`/`productionLimit`/`fleetPoolLimit`, `research.canResearch(player, techId, ignorePrereqs)`, `setup.rollGuardianFleet(state, seed)`/`unitsOf(state, owner)`, `actionPhase.otherSeat`/`canPass`/`passTurn`/`activatableSystems`, `production.produce(state, units, planets, tradeGoods)`, `rng.deriveSeed`, `data/map.MECATOL_ID`/`SYSTEM_IDS`/`TRADE_POSTS`/`systemDef`, `data/objectives.PUBLIC_OBJECTIVES`/`MANDATE`. New move kinds are added as cases to the `applyMove` switch and as branches in `legalMoves`. Three type changes only: three new optional fields on `StrategicParams` and a narrowed `via` on the `research` move (task 2), and one new `Player` field, `pendingInfantry` (task 7). `GameState` itself does not change, the secondary window rides on the existing `pendingSecondary` field.
 
 **Tech Stack:** TypeScript 5 (strict), Vite 7 scaffold, Vitest 3, no runtime dependencies in the engine.
 
 **Spec:** `docs/spec/game-rules.md` (rules v0.2 as amended, sections referenced below as R1..R8) and `docs/spec/engine-design.md` (state and move types, module layout). This plan covers R3.1 (initiative and the fresh draft each round), R3.2 (strategic and component actions), R3.3 (status phase), R5 (research through the Technology card and Inheritance Systems), R6 (duel-specific card texts, emergency shipyard), R7 (objectives, Mandate, Mecatol Rex, victory and tie-breaks) and R8 (trade posts). Verbatim card texts come from `data/reference/factions.json` (`strategy_cards`), with the duel changes of R6.
 
-**Task order:** the requested scope is grouped so that dependencies run forwards. Task 1 is the objective predicates, because the Imperial card (task 3) and the status phase (task 5) both score with them. Tasks 2 and 3 are the requested "strategic actions" task, split so that neither exceeds roughly 250 lines of new implementation code. Task 4 is component actions and trade posts, task 5 the status phase, task 6 the enumerator, the structural validator and the full-game smoke test.
+**Task order:** the requested scope is grouped so that dependencies run forwards. Task 1 is the objective predicates, because the Imperial card (task 3) and the status phase (task 5) both score with them. Tasks 2 and 3 are the requested "strategic actions" task, split so that neither exceeds roughly 250 lines of new implementation code. Task 4 is component actions and trade posts, task 5 the status phase, task 6 the enumerator, the structural validator and the full-game smoke test. Task 7 adds the Infantry II revival last, because it needs the finished turn structure of tasks 5 and 6 to know when a turn begins.
 
 ## Global Constraints
 
@@ -22,6 +22,7 @@
 - Dice are ten-sided: `1 + Math.floor(rng() * 10)`; all randomness comes from the seed passed to `applyMove` or `createGame`. Inside a move, every separate roll uses its own generator `mulberry32(deriveSeed(seed, salt))` with a distinct salt, and every ability rolls through the single helper `board.rollHits`.
 - **Every dice roll is logged as a `roll` entry** (`{ t: 'roll'; owner; rolls: DieRoll[]; context }`), one entry per rolling side and step.
 - **Combat and invasion never leave a unit with `owner` of a seat that has no units in the system and no planet there:** carried fighters and infantry in space are trimmed to the remaining capacity when a space combat ends and after an announced retreat has been carried out, never after an individual round.
+- An error `Result` may carry `internal: true` (`{ ok: false; error: string; internal?: boolean }`) to mark a bug rather than an illegal move. Every handler in this plan returns plain `{ ok: false, error }` and simply forwards a narrowed error branch it receives, which stays assignable to the widened type; the full-game smoke test treats an `internal` error as a hard failure instead of a rejected candidate.
 - **Every test freezes its fixture.** The helpers in `src/engine/testUtils.ts` return `deepFreeze(...)`, so this holds by construction; the small per-file move wrappers freeze again. An accidental mutation then throws, `applyMove`'s try/catch turns it into a failed move, and the test fails.
 - Test names cite the spec section they cover, e.g. `'R3.3 step 3: two command tokens, three with Hyper Metabolism'`.
 - **Commit after every logical step: the failing test, the implementation and each fix are separate commits.** Conventional messages (`test:` for a failing test, `feat:`/`fix:`/`chore:` for the rest). Never squash a test and its implementation into one commit.
@@ -33,6 +34,7 @@
 **Files:**
 - Create: `src/engine/objectives.ts`
 - Modify: `docs/spec/engine-design.md` (module table)
+- Modify: `docs/spec/game-rules.md` (R7 objective 4, the cost counted is the one paid)
 - Test: `src/engine/objectives.test.ts`
 
 **Interfaces:**
@@ -219,7 +221,15 @@ export function scoreObjective(state: GameState, seat: Seat, objectiveId: string
 Run: `npm test -- src/engine/objectives.test.ts`
 Expected: PASS, 10 tests.
 
-- [ ] **Step 5: Bring the module table in line**
+- [ ] **Step 5: Amend the rules document for objective 4**
+
+In `docs/spec/game-rules.md`, section 7, append this sentence to the public objective list, directly after the sentence that ends with "(objective 4 is scored in the status phase of the round in which it was fulfilled)":
+
+```
+Objective 4 counts the resources actually paid for one production, that is the cost after Sarween Tools, so a production whose printed cost is 6 but which Sarween Tools reduces to 5 does not fulfil it.
+```
+
+- [ ] **Step 6: Bring the module table in line**
 
 In `docs/spec/engine-design.md`, replace the `src/data/objectives.ts` row of the module table with these two rows:
 
@@ -228,12 +238,12 @@ In `docs/spec/engine-design.md`, replace the `src/data/objectives.ts` row of the
 | `src/engine/objectives.ts` | objective predicates, scoring and victory point bookkeeping |
 ```
 
-- [ ] **Step 6: Type-check, lint and commit**
+- [ ] **Step 7: Type-check, lint and commit**
 
 Run: `npx tsc -p tsconfig.app.json --noEmit && npm run lint`
 
 ```bash
-git add src/engine/objectives.ts docs/spec/engine-design.md
+git add src/engine/objectives.ts docs/spec/engine-design.md docs/spec/game-rules.md
 git commit -m "feat(engine): objective predicates, scoring and victory point bookkeeping"
 ```
 
@@ -1710,7 +1720,11 @@ function playGame(seed: number): { state: GameState; moves: number; attempts: nu
       const move = fillTemplate(state, option, rng)
       attempts++
       const r = applyMove(state, move, 1000 + moves)
-      if (!r.ok) { rejected++; continue }
+      if (!r.ok) {
+        if (r.internal) throw new Error(`internal error on ${move.type}: ${r.error}`)   // a bug, not an illegal move
+        rejected++
+        continue
+      }
       if (move.type === 'land') {
         const seat = state.active
         const set = landed.get(move.planetId) ?? new Set<Seat>()
@@ -2098,8 +2112,8 @@ git commit -m "feat(engine): legal moves for every phase, structural validation 
 
 ```ts
 // src/engine/revival.test.ts
-import { homeSystemId } from '../data/map'
 import { describe, expect, it } from 'vitest'
+import { homeSystemId } from '../data/map'
 import { otherSeat } from './actionPhase'
 import { applyMove, legalMoves } from './index'
 import { tokensGained } from './statusPhase'
@@ -2382,12 +2396,13 @@ git commit -m "feat(engine): Infantry II revival with pending infantry returning
 | R3.3 status phase | `statusPhase.ts`, task 5 | one move per player, speaker first: scoring, 2 or 3 command tokens distributed without moving old ones, reveal, ready planets and the exhausted card, cards back to the pool, tokens off the map, per-round flags reset, guardian reroll, victory check, speaker swap, round advance |
 | R5 research | `strategicActions.grantTech`, `componentActions.research` | Technology primary researches one and optionally a second for 6 resources, in order, so the first may be the prerequisite; secondary costs a strategy token plus 4 resources; Inheritance Systems exhausts, pays 2 resources and ignores prerequisites; everything goes through `canResearch`, so faction restrictions hold |
 | R6 duel changes | `strategicActions.ts`, `componentActions.ts` | Imperial secondary gives 2 trade goods, Diplomacy uses the errata text (opponent's token, ready up to 2 planets you control anywhere), the emergency shipyard is once per game without a space dock for a strategy token plus 4 resources |
+| R4.3 step 4 Infantry II | `board.rollRevival`, `invasion.ts`, `actionPhase.reviveInfantry`, task 7 | one die per destroyed infantry of a player with Infantry II, in ground combat, under bombardment and against space cannon defense; the survivors wait in `pendingInfantry` and arrive on a home planet at the start of that player's next turn, across the round boundary |
 | R7 objectives and victory | `objectives.ts` (task 1), `statusPhase.ts` (task 5), Imperial primary (task 3) | the six predicates, the Mandate, 1 VP per status phase for Mecatol Rex, scored once per objective per game, the immediate Imperial score, victory at 7 VP or after round 6 with the full tie-break chain |
 | R8 trade posts | `componentActions.tradePost`, task 4 | at most 2 commodities 1:1, once per round per post, a controlled planet in a linked system, on your own turn, no turn cost, `tradedThisRound` reset in the status phase |
 
 ### Type consistency
 
-- Exactly two type changes, both in task 2 and both mirrored into `docs/spec/engine-design.md` in the same step: `StrategicParams` gains `tokens`, `objectiveId` and `shareWithOpponent`, and the `research` move narrows to `via: 'inheritance'`. `GameState`, `Player`, `System`, `Planet` and `StatusParams` are untouched; the secondary window rides on the `pendingSecondary` field that plan 1 already put in the state, and who played the card is derived with `cardOwner` instead of a new field.
+- Three type changes, each mirrored into `docs/spec/engine-design.md` in the same step: `StrategicParams` gains `tokens`, `objectiveId` and `shareWithOpponent` and the `research` move narrows to `via: 'inheritance'` (task 2), and `Player` gains `pendingInfantry: number` (task 7). `GameState`, `System`, `Planet` and `StatusParams` are untouched; the secondary window rides on the `pendingSecondary` field that plan 1 already put in the state, and who played the card is derived with `cardOwner` instead of a new field. Handlers return plain `{ ok: false, error }` and forward narrowed error branches unchanged, so the widened `Result` error type with its optional `internal` flag needs no edit anywhere in this plan.
 - `params.tokens` always means the **resulting** command sheet, in Leadership, in Warfare and in the status phase, so a single helper (`economy.distributeTokens`) validates all three; only Warfare passes `redistribute: true`.
 - `params.planets` means "planets this ability exhausts" everywhere except Diplomacy, where the ability readies instead of paying; no card both pays and readies, so the field never carries two meanings in one move.
 - `economy.payCost` is rewritten on top of the new `exhaustPlanets` and keeps its signature, its error strings and its behaviour, so `production.ts` and its tests are unaffected.
@@ -2417,12 +2432,14 @@ git commit -m "feat(engine): Infantry II revival with pending infantry returning
 18. **Starting technologies count.** Objective 1 asks to own 3 technologies and both factions start with 2, so one research fulfils it; objective 6 counts only coloured technologies, unit upgrades have no colour.
 19. **The tie-break speaker is the speaker of the finished round.** `decideWinner` runs before the speaker token moves, so "the speaker's opponent" means the opponent of the player who was speaker during the round that just ended.
 20. **A guardian fleet is rolled while Mecatol Rex is uncontrolled**, including in the status phase that ends the game; the roll is seeded through `deriveSeed(seed, 91)` so replays stay deterministic.
-21. **The smoke test biases towards closing moves after half its budget.** Uniform random play alone would not guarantee that six rounds fit into 3000 moves; the bias only changes which legal move is picked, never which moves are legal, and every game still passes through complete rounds. Up to 5 percent rejected attempts are tolerated, exactly as in the tactical plan, because a template can be filled in a way its handler refuses.
+21. **Responder identity stays the active-seat model** (controller ruling). v1 has no separate responder channel: the `strategic` move flips `active` to the opponent for exactly one `secondary` move, and the defender's Munitions Reserves decision stays a per-side flag on the attacker's `combatRound` move. A dedicated responder move, which online play with two live clients wants, is deferred to plan 4.
+22. **`spentInOneProductionThisRound` records the cost actually paid, after Sarween Tools** (controller ruling). R7 objective 4 therefore needs a production whose cost is still 6 or more once Sarween Tools has taken its point off; task 1 writes that sentence into `game-rules.md` so the rules document and the engine agree.
+23. **The smoke test biases towards closing moves after half its budget.** Uniform random play alone would not guarantee that six rounds fit into 3000 moves; the bias only changes which legal move is picked, never which moves are legal, and every game still passes through complete rounds. Up to 5 percent rejected attempts are tolerated, exactly as in the tactical plan, because a template can be filled in a way its handler refuses.
 
 ### Deferred
 
-- **Infantry II revival** (R4.3 step 4): a destroyed infantry returning on 6+ at the start of the next turn still needs a per-player holding area that the state shape does not have. Deferred again, with the status phase now in place it is a `Player` field plus one hook in `passTurn`.
 - **Action cards, promissory notes, agenda phase, secret objectives**: not in v1 at all (R6).
+- **A dedicated responder move** for online play (see resolved ambiguity 21): plan 4.
 - **Chess clock enforcement** (R6): the engine stays time-free by design; the transport records a timestamp per move and enforces the 15 minutes, the automatic pass at zero and the 3 extra minutes per later round (see `docs/spec/lobby-architecture.md`).
 - **Declining a score**: `scoreAll` takes every fulfilled objective. If a later rule ever makes scoring costly, the choice belongs in `StatusParams`.
 - **Richer enumerator templates**: the enumerator offers one payable variant per card (for example a single infantry for the Warfare secondary, no influence for Leadership). The UI can build better parameters and `validateMove` accepts them; an exhaustive enumeration of every payment split is deliberately out of scope.

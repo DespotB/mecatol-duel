@@ -65,20 +65,36 @@ export function freeFighterSlots(state: GameState, seat: Seat, systemId: string)
 }
 
 /**
+ * R4.4: how many carried fighters and infantry fit. Space Dock II's free slots are fighter-only, so fighters
+ * claim them first; the ships' own capacity then carries the infantry, and whatever capacity is left over
+ * carries the remaining fighters. The one allocation shared by `fleetExcess` and `trimCargo`, so a trimmed
+ * fleet always passes `checkFleet`.
+ */
+function fitCargo(space: Unit[], owner: Owner, stats: StatsOwner, freeSlots: number): { fighters: number; infantry: number; keepFighters: number; keepInfantry: number } {
+  const mine = space.filter(u => u.owner === owner)
+  const fighters = mine.filter(u => u.type === 'fighter').length
+  const infantry = mine.filter(u => u.type === 'infantry').length
+  const cap = capacity(space, owner, stats)
+  const freeFighters = Math.min(freeSlots, fighters)
+  const keepInfantry = Math.min(infantry, cap)
+  const keepFighters = freeFighters + Math.min(fighters - freeFighters, cap - keepInfantry)
+  return { fighters, infantry, keepFighters, keepInfantry }
+}
+
+/**
  * R3.2/R4.4: excess fighters and carried infantry beyond capacity (0 if none), and whether that excess is a
  * hard block (capacity exceeded with no Fighter II rescue). The one piece of capacity/fleet-pool arithmetic
  * shared by `checkFleet` and the production fighter trim, so both apply identical math.
  */
 function fleetExcess(space: Unit[], seat: Seat, stats: StatsOwner, fighterIi: boolean, freeSlots: number): { excess: number; blocked: boolean } {
-  const mine = space.filter(u => u.owner === seat)
-  const fighters = mine.filter(u => u.type === 'fighter').length
-  const infantry = mine.filter(u => u.type === 'infantry').length
-  const cap = capacity(space, seat, stats) + Math.min(freeSlots, fighters)
-  let excess = fighters + infantry - cap
+  const fit = fitCargo(space, seat, stats, freeSlots)
+  const excessInfantry = fit.infantry - fit.keepInfantry
+  const excess = excessInfantry + (fit.fighters - fit.keepFighters)
   if (excess > 0) {
-    // R3.2: only Fighter II turns excess fighters into a fleet pool question instead of an illegal move
-    if (!fighterIi || excess > fighters) return { excess, blocked: true }
-  } else excess = 0
+    // R3.2: only Fighter II turns excess fighters into a fleet pool question instead of an illegal move;
+    // infantry beyond the ships' capacity is always illegal, the free slots never take it.
+    if (!fighterIi || excessInfantry > 0) return { excess, blocked: true }
+  }
   return { excess, blocked: false }
 }
 
@@ -120,9 +136,9 @@ export function maxFightersAllowed(state: GameState, seat: Seat, systemId: strin
 
 /**
  * Destroys carried infantry and fighters above the remaining capacity, when a combat ends or a retreat
- * resolves. Space Dock II's free fighter slots count toward capacity like R4.4 production; with Fighter II,
- * fighters beyond capacity are kept up to the remaining fleet pool room (the excess counts against the pool,
- * matching `checkFleet`), the rest are destroyed and returned to reinforcements.
+ * resolves. Space Dock II's free fighter slots are fighter-only (`fitCargo`), so they never rescue infantry;
+ * with Fighter II, fighters beyond capacity are kept up to the remaining fleet pool room (the excess counts
+ * against the pool, matching `checkFleet`), the rest are destroyed and returned to reinforcements.
  */
 export function trimCargo(state: GameState, systemId: string, owner: Owner): GameState {
   const sys = state.systems[systemId]
@@ -130,13 +146,11 @@ export function trimCargo(state: GameState, systemId: string, owner: Owner): Gam
   const infantry = mine.filter(u => u.type === 'infantry')
   const fighters = mine.filter(u => u.type === 'fighter')
   const free = owner === 'guardian' ? 0 : freeFighterSlots(state, owner, systemId)
-  const cap = capacity(sys.space, owner, statsOwner(state, owner)) + Math.min(free, fighters.length)
-  const keepInfantry = Math.min(infantry.length, cap)
-  const capacityFighters = Math.min(fighters.length, Math.max(0, cap - keepInfantry))
-  let keepFighters = capacityFighters
+  const fit = fitCargo(sys.space, owner, statsOwner(state, owner), free)
+  let keepFighters = fit.keepFighters
   if (owner !== 'guardian' && state.players[owner].techs.includes('fighter_ii')) {
     const poolRoom = Math.max(0, fleetPoolLimit(state.players[owner]) - nonFighterShips(sys.space, owner))
-    keepFighters = capacityFighters + Math.min(fighters.length - capacityFighters, poolRoom)
+    keepFighters += Math.min(fighters.length - keepFighters, poolRoom)
   }
-  return destroyUnits(state, systemId, [...infantry.slice(keepInfantry), ...fighters.slice(keepFighters)])
+  return destroyUnits(state, systemId, [...infantry.slice(fit.keepInfantry), ...fighters.slice(keepFighters)])
 }
