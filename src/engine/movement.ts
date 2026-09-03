@@ -1,7 +1,7 @@
 import { systemDef } from '../data/map'
 import { isShip, unitStats, type StatsOwner } from '../data/units'
 import { neighbours } from './adjacency'
-import { checkFleet, statsOwner } from './board'
+import { checkFleet, statsOwner, trimCargo } from './board'
 import { spaceCannonOffense } from './combat'
 import type { GameState, Result, Seat, System, Unit } from './types'
 
@@ -105,7 +105,10 @@ export function moveShips(state: GameState, specs: MoveSpec[]): Result<GameState
   }
   const dest = systems[tac.systemId]
   systems[tac.systemId] = { ...dest, space: [...dest.space, ...arriving] }
-  const next: GameState = { ...state, systems }
+  let next: GameState = { ...state, systems }
+  // R3.2/16.2: fighters or infantry left behind by a departing ship are excess if the origin's remaining
+  // ships can no longer carry them; trim them the same way a combat or retreat does.
+  for (const from of new Set(specs.map(s => s.from))) next = trimCargo(next, from, seat)
   const fleet = checkFleet(next, seat, tac.systemId)
   if (!fleet.ok) return { ok: false, error: fleet.error }
   return { ok: true, value: next }
