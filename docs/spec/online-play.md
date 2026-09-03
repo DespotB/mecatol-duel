@@ -33,8 +33,11 @@ type Claim = { seats: Seat[]; playerId: string }   // [0,1] for hot-seat, [0] or
 ## 2. What changes inside the game
 
 - Controls for a seat the claim does not hold are disabled, with one line saying whose turn it is.
-- The hot-seat handoff overlay appears only for a claim holding both seats. Online, a seat change is just
-  the other player's turn.
+- The handoff overlay stays, online as well as in hot-seat. The user asked for it explicitly: "den
+  Übergabebildschirm würde ich trotzdem machen, dann sieht man einfach direkt, dass man jetzt dran ist."
+  Its wording follows the claim: a both-seats claim reads "Pass the device to <name>", a single-seat claim
+  reads "Your turn" and only appears for the seat that is now to act, never for the one that just moved.
+  A watcher sees no overlay at all.
 - The log, the board, the clocks and every panel stay fully visible to both players and to a watcher. This
   is an open-information duel: the only secret is what someone is about to do.
 - Undo is a hot-seat courtesy and stays there: online, a move that is out is out.
