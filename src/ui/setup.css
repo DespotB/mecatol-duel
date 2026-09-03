@@ -15,7 +15,7 @@
 .setup-foot{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:20px;margin-top:34px}
 
 /* ---------- the lobby ---------- */
-.lobbyui{--ink-dim:#aaa494;--ink-mute:#948d78;padding-bottom:56px}
+.lobbyui{--ink-dim:#aaa494;--ink-mute:#948d78}
 .lobbyui>*{position:relative;z-index:1}
 
 /* space background: starfield, nebula veils, two galaxies and the planet limb at the bottom right */
@@ -184,7 +184,7 @@
 .lobbyui .chip{font:600 11px/19px var(--hud);letter-spacing:.09em;text-transform:uppercase;padding:0 8px;border:1px solid;border-radius:0}
 .lobbyui .chip.ok{color:var(--gold-hi);border-color:rgba(201,162,77,.6);background:rgba(201,162,77,.10)}
 .lobbyui .chip.pos{color:#8fb4ff;border-color:rgba(61,123,232,.7);background:rgba(61,123,232,.12)}
-.lobbyui .namefield{width:100%;max-width:340px;height:32px;margin-left:-7px;padding:0 6px;
+.lobbyui .namefield{width:100%;max-width:340px;height:30px;margin-left:-7px;padding:0 6px;
   border:1px solid transparent;background:transparent;color:var(--text);font:600 25px/1.05 var(--hud);letter-spacing:.01em}
 .lobbyui .namefield:hover{border-color:rgba(201,162,77,.3)}
 .lobbyui .namefield:focus{outline:none;border-color:var(--gold);background:rgba(0,0,0,.4)}
@@ -240,7 +240,7 @@
 .lobbyui .minimap img.mr{outline:1px solid rgba(201,162,77,.9);outline-offset:-1px;
   clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%)}
 
-.lobbyui .legal{margin:22px 0 0;text-align:center;font:400 11px var(--body);color:rgba(190,184,168,.7);
+.lobbyui .legal{margin:16px 0 0;text-align:center;font:400 11px var(--body);color:rgba(190,184,168,.7);
   letter-spacing:.02em;text-shadow:0 1px 2px rgba(0,0,0,.8)}
 
 @media (max-width:1200px){
