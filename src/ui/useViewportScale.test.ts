@@ -2,7 +2,7 @@
 // @vitest-environment jsdom
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
-import { fitScaleAt, useViewportScale, viewportScale } from './useViewportScale'
+import { fitScale, useViewportScale, viewportScale } from './useViewportScale'
 
 const round3 = (value: number) => Math.round(value * 1000) / 1000
 
@@ -49,7 +49,7 @@ describe('viewportScale', () => {
   })
 
   it('never shrinks the bars below the floor', () => {
-    expect(viewportScale(400, 300).k).toBe(round3(0.55 * 1.25))
+    expect(viewportScale(400, 300).k).toBe(0.55)
   })
 
   it('rounds both factors to three decimals', () => {
@@ -78,36 +78,17 @@ describe('useViewportScale', () => {
   })
 })
 
-describe('fitScaleAt', () => {
-  it('renders the lobby at the size an 80 percent zoom used to give it', () => {
-    expect(fitScaleAt(1440, 900, 2, 2)).toBe(0.8)
+describe('fitScale', () => {
+  it('renders the lobby at its calibrated size', () => {
+    // 0.8 is what the page was drawn to look like; a browser zoom multiplies on top of it, as the browser does
+    expect(fitScale(1440, 900)).toBe(0.8)
+    expect(fitScale(2560, 1440)).toBe(0.8)
+    expect(fitScale(1920, 1080)).toBe(0.8)
   })
 
-  it('shrinks with the window', () => {
-    // no zoom: the ratio has not moved, so a smaller window is simply a smaller window
-    expect(fitScaleAt(1152, 720, 2, 2)).toBe(round3(0.8 * 0.8))
-  })
-
-  /**
-   * A browser zoom reports the same `innerWidth` a smaller window does. Scaling to it would cancel the
-   * zoom exactly, which is the bug: the player zooms and nothing on screen changes size.
-   */
-  it('leaves the fit alone when the viewport shrank because the player zoomed in', () => {
-    // 125% zoom of a 1440x900 window: 1152x720 css pixels at 2.5 device pixels each
-    expect(fitScaleAt(1152, 720, 2.5, 2)).toBe(0.8)
-  })
-
-  it('leaves the fit alone when the player zoomed out', () => {
-    // 80% zoom of the same window
-    expect(fitScaleAt(1800, 1125, 1.6, 2)).toBe(0.8)
-  })
-
-  it('answers a resize that happens while zoomed', () => {
-    // still at 125%, but the window itself is now half as wide
-    expect(fitScaleAt(576, 720, 2.5, 2)).toBe(0.5)   // clamped at the floor
-  })
-
-  it('falls back to the plain fit when the ratio is unusable', () => {
-    expect(fitScaleAt(1152, 720, 0, 0)).toBe(round3(0.8 * 0.8))
+  it('scales the frame down rather than cutting it off in a window too small for it', () => {
+    expect(fitScale(1152, 720)).toBe(0.8)
+    expect(fitScale(900, 600)).toBeLessThan(0.8)
+    expect(fitScale(400, 300)).toBe(0.5)
   })
 })

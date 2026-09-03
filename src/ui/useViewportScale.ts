@@ -34,7 +34,6 @@ const K_MIN = 0.55
  * away from the board, not shrink the heads-up display with it. Only once the stage would fall below the
  * minimum below does the chrome start giving way, so a small window still shows a usable map.
  */
-const K_MAX = 1
 const MIN_STAGE_W = 560
 const MIN_STAGE_H = 380
 const S_MIN = 0.5
@@ -45,8 +44,8 @@ const S_MAX = 2
  * browser shows at 125 percent and the lobby at what it shows at 80, so those are what the page renders at
  * 100. A browser zoom multiplies on top of this, which is what the player expects it to do.
  */
-const BOARD_ZOOM = 1.25
-const LOBBY_TRIM = 0.8
+export const BOARD_ZOOM = 1.25
+export const LOBBY_ZOOM = 0.8
 
 function clamp(min: number, value: number, max: number): number {
   return Math.min(max, Math.max(min, value))
@@ -58,12 +57,9 @@ function round3(value: number): number {
 }
 
 export function viewportScale(width: number, height: number): ViewportScale {
-  // the layout is solved for the viewport a 125 percent zoom would report, then everything is magnified by
-  // that factor again: exactly what the browser does at 125 percent, which is the size this board wants
-  const w = width / BOARD_ZOOM
-  const h = height / BOARD_ZOOM
-  const base = clamp(K_MIN, Math.min(w / (GUTTERS + MIN_STAGE_W), h / (BARS + MIN_STAGE_H)), K_MAX)
-  const k = round3(base * BOARD_ZOOM)
+  // the chrome renders at its calibrated size, full stop. It gives way only on a window too small to carry
+  // it over a usable stage, and a browser zoom is left to the browser: it magnifies everything, as it should
+  const k = round3(clamp(K_MIN, Math.min(width / (GUTTERS + MIN_STAGE_W), height / (BARS + MIN_STAGE_H)), BOARD_ZOOM))
   // the stage's own size in design pixels, i.e. after `k` has been applied to the regions around it
   const stageW = width / k - GUTTERS
   const stageH = height / k - BARS
@@ -79,55 +75,31 @@ const FIT_MIN = 0.5
 const FIT_MAX = 2
 
 /**
- * The lobby page is authored in the same 1440x900 frame but is one block rather than docked regions, so
- * it simply scales until it fills the shorter of the two axes: the credits line then sits just above the
- * bottom edge, which is what the design was drawn for.
+ * The lobby is one block in the same 1440x900 frame and renders at its calibrated size: 0.8, which is what
+ * the page was drawn to look like. Nothing measures the device pixel ratio and nothing cancels a browser
+ * zoom: at 125 percent the browser makes it a quarter bigger, which is exactly what pressing that key means.
+ * The only thing the viewport still decides is the floor: a window too small for the frame gets it scaled
+ * down rather than cut off.
  */
 export function fitScale(width: number, height: number): number {
-  const fill = Math.min(width / PAGE_W, height / PAGE_H)
-  return round3(clamp(FIT_MIN, fill * LOBBY_TRIM, FIT_MAX))
-}
-
-/**
- * A browser zoom reports exactly what a smaller window reports: `innerWidth` and `innerHeight` shrink by
- * the zoom factor. A page that scales itself to those numbers therefore cancels the zoom out precisely,
- * and the player sees nothing move until the clamp below stops the fit from following any further.
- *
- * `devicePixelRatio` is what separates the two cases: it moves with the zoom and stays put when the window
- * is dragged to another size. Measured against the ratio the page first painted at, it turns the viewport
- * back into the size it would have had unzoomed, which leaves the fit where it was and lets the zoom
- * through to the player, while a real resize still answers as before.
- *
- * Dragging the window onto a display with a different pixel ratio reads as a zoom under this rule. That is
- * the one case it gets wrong, a reload corrects it, and it is the right trade: a player reaches for the
- * zoom on purpose, a second monitor is not a request to resize the lobby.
- */
-export function fitScaleAt(width: number, height: number, dpr: number, baseDpr: number): number {
-  const zoom = dpr > 0 && baseDpr > 0 ? dpr / baseDpr : 1
-  return fitScale(width * zoom, height * zoom)
-}
-
-function currentDpr(): number {
-  return typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1
+  const fits = Math.min(width / PAGE_W, height / PAGE_H)
+  return round3(clamp(FIT_MIN, Math.min(LOBBY_ZOOM, fits), FIT_MAX))
 }
 
 export function useFitScale(): number {
-  // the ratio of the first paint is the zero point: whatever zoom the page was opened at is the size it fits
-  const [baseDpr] = useState(currentDpr)
   const [fit, setFit] = useState(
-    () => typeof window === 'undefined' ? 1 : fitScaleAt(window.innerWidth, window.innerHeight, currentDpr(), baseDpr),
+    () => typeof window === 'undefined' ? LOBBY_ZOOM : fitScale(window.innerWidth, window.innerHeight),
   )
   useEffect(() => {
     if (typeof window === 'undefined') return
-    // a browser zoom fires `resize` like any other change to the viewport, so one listener covers both
     const onResize = () => {
-      const next = fitScaleAt(window.innerWidth, window.innerHeight, currentDpr(), baseDpr)
+      const next = fitScale(window.innerWidth, window.innerHeight)
       setFit(prev => prev === next ? prev : next)
     }
     window.addEventListener('resize', onResize)
     onResize()
     return () => { window.removeEventListener('resize', onResize) }
-  }, [baseDpr])
+  }, [])
   return fit
 }
 
