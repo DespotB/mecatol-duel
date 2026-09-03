@@ -60,10 +60,13 @@ describe('the hot-seat store', () => {
     act(() => { result.current.start(CONFIG, 7, 15) })
     for (const card of ['leadership', 'trade', 'technology', 'warfare'] as StrategyCardId[]) {
       act(() => { result.current.apply({ type: 'pickStrategyCard', card }) })
+      // the snake draft has seat 1 pick twice in a row (trade, right after leadership); same seat, still
+      // the strategy phase, so that pick alone is still undoable
+      if (card === 'trade') expect(result.current.canUndo).toBe(true)
     }
     expect(result.current.session?.state.phase).toBe('action')
     expect(result.current.session?.state.active).toBe(0)      // leadership is initiative 1
-    expect(result.current.canUndo).toBe(false)                // the draft changed seats every pick
+    expect(result.current.canUndo).toBe(false)                // warfare closed the strategy phase: undo never crosses a phase boundary
     act(() => { result.current.apply({ type: 'startTactical', systemId: 'bereg' }) })
     expect(result.current.session?.state.players[0].tokens.tactic).toBe(2)
     expect(result.current.canUndo).toBe(true)
