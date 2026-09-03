@@ -3,7 +3,11 @@ import type { GameState, Result, Seat, StrategyCardId } from './types'
 export const INITIATIVE: Record<StrategyCardId, number> = { leadership: 1, diplomacy: 2, trade: 5, warfare: 6, technology: 7, imperial: 8 }
 
 export function initiativeOrder(state: GameState): [Seat, Seat] {
-  const lowest = (seat: Seat) => Math.min(...state.players[seat].strategyCards.map(c => INITIATIVE[c.id]))
+  const lowest = (seat: Seat) => {
+    const cards = state.players[seat].strategyCards
+    if (cards.length === 0) return Infinity   // no card played: goes last
+    return Math.min(...cards.map(c => INITIATIVE[c.id]))
+  }
   return lowest(0) <= lowest(1) ? [0, 1] : [1, 0]
 }
 

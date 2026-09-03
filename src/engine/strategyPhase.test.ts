@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { applyMove, legalMoves } from './index'
 import { createGame } from './setup'
 import { INITIATIVE, initiativeOrder } from './strategyPhase'
+import { deepFreeze } from './testUtils'
 import type { GameConfig, GameState, StrategyCardId } from './types'
 
 const config: GameConfig = { players: [{ faction: 'l1z1x', color: 'blue', name: 'A' }, { faction: 'letnev', color: 'red', name: 'B' }], speaker: 0 }
@@ -15,6 +16,10 @@ function pick(state: GameState, card: StrategyCardId): GameState {
 describe('R3.1 strategy phase', () => {
   it('initiative numbers are the printed ones', () => {
     expect(INITIATIVE).toEqual({ leadership: 1, diplomacy: 2, trade: 5, warfare: 6, technology: 7, imperial: 8 })
+  })
+  it('a player holding no strategy cards goes last in initiative order', () => {
+    const g = createGame(config, 1)
+    expect(initiativeOrder(g)).toEqual([0, 1])
   })
   it('legal moves in the strategy phase are one pick per pool card for the drafting player', () => {
     const g = createGame(config, 1)
@@ -51,5 +56,14 @@ describe('R3.1 strategy phase', () => {
   it('an unknown strategy card is rejected rather than throwing', () => {
     const g = createGame(config, 1)
     expect(applyMove(g, { type: 'pickStrategyCard', card: 'nonsense' as never }, 0).ok).toBe(false)
+  })
+  it('the full four-pick draft succeeds on a deep-frozen game state', () => {
+    const g = deepFreeze(createGame(config, 1))
+    const s1 = deepFreeze(pick(g, 'warfare'))
+    const s2 = deepFreeze(pick(s1, 'leadership'))
+    const s3 = deepFreeze(pick(s2, 'imperial'))
+    const s4 = deepFreeze(pick(s3, 'technology'))
+    expect(s4.phase).toBe('action')
+    expect(s4.draft).toEqual([])
   })
 })
