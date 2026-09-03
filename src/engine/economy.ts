@@ -91,3 +91,26 @@ export function nonFighterShips(units: Unit[], owner: Owner): number {
 export function capacity(units: Unit[], owner: Owner, stats: StatsOwner): number {
   return units.filter(u => u.owner === owner && isShip(u.type)).reduce((sum, u) => sum + unitStats(u.type, stats).capacity, 0)
 }
+
+/**
+ * The cheapest set of ready planets of the seat that covers `cost`: least total resources, then fewest
+ * planets, then map order. Used where a move carries no payment parameters (R6 Inheritance Systems) and by
+ * the enumerator to build payable templates. Seven systems means at most nine planets, so the exact search
+ * over all subsets is cheap and deterministic.
+ */
+export function cheapestPlanets(state: GameState, seat: Seat, cost: number): string[] | null {
+  if (cost <= 0) return []
+  const ready: { id: string; resources: number }[] = []
+  for (const sys of Object.values(state.systems)) {
+    for (const p of sys.planets) if (p.owner === seat && !p.exhausted) ready.push({ id: p.id, resources: p.resources })
+  }
+  let best: { ids: string[]; total: number } | null = null
+  for (let mask = 1; mask < 1 << ready.length; mask++) {
+    let total = 0
+    const ids: string[] = []
+    for (let i = 0; i < ready.length; i++) if (mask & (1 << i)) { total += ready[i].resources; ids.push(ready[i].id) }
+    if (total < cost) continue
+    if (!best || total < best.total || (total === best.total && ids.length < best.ids.length)) best = { ids, total }
+  }
+  return best ? best.ids : null
+}
