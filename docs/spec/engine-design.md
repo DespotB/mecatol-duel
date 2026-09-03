@@ -13,7 +13,7 @@ export function createGame(config: GameConfig, seed: number): GameState
 
 - `applyMove` never mutates its input; it returns a new state (structural sharing is fine, use plain object spreads).
 - All randomness inside a move comes from `seed` (a 32-bit integer) through `mulberry32`; the same state, move and seed always give the same result. Dice are `1 + floor(rng() * 10)`.
-- `legalMoves` enumerates concrete moves for the active player; the UI builds its interaction from this list (highlighted systems, enabled buttons). Movement and production moves carry explicit parameters, so the enumerator returns templates with `params: undefined` for those two kinds and the UI fills them in; `validateMove(state, move)` checks a filled move.
+- `legalMoves` enumerates concrete moves for the active player; the UI builds its interaction from this list (highlighted systems, enabled buttons). Three kinds are templates whose parameters the UI fills in: `moveShips` (`moves: []`), `produce` (`units: {}`, `planets: []`, `tradeGoods: 0`) and `land` (pre-filled with every carried infantry, any subset is legal). `validateMove(state, move)` matches those three by `move.type` and every other kind structurally.
 - The game log is part of the state (`state.log`), append-only, one entry per move plus one per dice roll, so replays and the online transport need only the move list and seeds.
 
 ## State shape (TypeScript, `src/engine/types.ts`)
@@ -126,6 +126,8 @@ export interface StatusParams { tokens: { tactic: number; fleet: number; strateg
 | `src/engine/setup.ts` | `createGame`, guardian fleet table |
 | `src/engine/economy.ts` | cost, payment, production value, fleet pool and capacity checks |
 | `src/engine/strategyPhase.ts` | draft and initiative |
+| `src/engine/actionPhase.ts` | activation, passing, turn alternation |
+| `src/engine/board.ts` | shared unit helpers: stats owner, dice, unit removal, reinforcements, capacity and fleet checks |
 | `src/engine/movement.ts` | adjacency with wormholes, move validation, anomalies |
 | `src/engine/combat.ts` | space combat, anti-fighter barrage, space cannon, hit assignment, retreat |
 | `src/engine/invasion.ts` | bombardment, landing, ground combat, control change |
