@@ -11,8 +11,11 @@ describe('hot-seat courtesies', () => {
     expect(screen.queryByTestId('handoff')).toBeNull()
     fireEvent.click(screen.getByTestId('btn-pass'))
     expect(screen.getByTestId('handoff').textContent).toContain('Pass the device to B')
+    // the board behind the overlay takes no clicks and no focus while it is up
+    expect(screen.getByTestId('board-screen').hasAttribute('inert')).toBe(true)
     fireEvent.click(screen.getByTestId('handoff-continue'))
     expect(screen.queryByTestId('handoff')).toBeNull()
+    expect(screen.getByTestId('board-screen').hasAttribute('inert')).toBe(false)
   })
 
   it('makes the overlay a modal dialog and puts the focus on its continue button', () => {
