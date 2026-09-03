@@ -42,6 +42,24 @@ function useDemoBootstrap() {
       })
       return
     }
+    // `&panel=crowded` is the placement check: Bereg holds a big mixed fleet with the infantry its
+    // carriers are still carrying (all of it belongs in space), Quann has a seat's infantry landed on the
+    // planet under a dock and a PDS, Starpoint is activated by both seats, and Mecatol keeps its guardians.
+    if (panel === 'crowded') {
+      void import('../engine/testUtils').then(({ toActionPhase, withPlanetOwner, withUnits }) => {
+        let state = toActionPhase(1, 0)
+        state = withUnits(state, 'bereg', 0,
+          ['flagship', 'warsun', 'dreadnought', 'dreadnought', 'carrier', 'carrier', 'cruiser', 'destroyer',
+            'fighter', 'fighter', 'fighter', 'fighter', 'infantry', 'infantry', 'infantry'])
+        state = withUnits(state, 'quann', 1, ['infantry', 'infantry', 'infantry', 'spacedock', 'pds'], 'quann')
+        state = withPlanetOwner(state, 'quann', 'quann', 1)
+        state = withUnits(state, 'quann', 1, ['carrier', 'destroyer', 'fighter'])
+        state = { ...state, systems: { ...state.systems, starpoint: { ...state.systems.starpoint, activatedBy: [0, 1] } } }
+        resume({ code: DEMO_CODE, seed: 1, minutes: 15, state, history: [], clockMs: [900000, 900000], handoff: null })
+        navigate(gamePath(DEMO_CODE))
+      })
+      return
+    }
     // `start` puts the new game's code in the URL itself
     start(DEMO_CONFIG, 1, 15)
     // Runs once on mount; `start`, `resume` and `session` come from a stable context store.
