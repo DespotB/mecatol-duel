@@ -153,7 +153,7 @@ export interface StatusParams {
 | `src/engine/economy.ts` | cost, payment, production value, fleet pool and capacity checks |
 | `src/engine/strategyPhase.ts` | draft and initiative |
 | `src/engine/actionPhase.ts` | activation, passing, turn alternation |
-| `src/engine/board.ts` | shared unit helpers: stats owner, dice, unit removal, reinforcements, capacity and fleet checks |
+| `src/engine/board.ts` | shared unit helpers: stats owner, dice, unit removal, reinforcements, capacity and fleet checks, the cargo trim and `enforceFleetPool`/`fleetPoolLoss` for a fleet pool that shrinks |
 | `src/engine/movement.ts` | adjacency with wormholes, move validation, reachability |
 | `src/engine/combat.ts` | space combat, anti-fighter barrage, space cannon, hit assignment, retreat |
 | `src/engine/invasion.ts` | bombardment, landing, ground combat, control change |

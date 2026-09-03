@@ -1,7 +1,7 @@
-import { isShip, type StatsOwner } from '../data/units'
+import { NON_FIGHTER_ORDER, isShip, type StatsOwner } from '../data/units'
 import { capacity, fleetPoolLimit, nonFighterShips } from './economy'
 import { deriveSeed, mulberry32, rollDice, type Rng } from './rng'
-import type { DieRoll, GameState, Owner, Result, Seat, System, Unit, UnitType } from './types'
+import type { DieRoll, GameState, Owner, Player, Result, Seat, System, Unit, UnitType } from './types'
 
 export function statsOwner(state: GameState, owner: Owner): StatsOwner {
   return owner === 'guardian' ? 'guardian' : { faction: state.players[owner].faction, techs: state.players[owner].techs }
@@ -174,4 +174,64 @@ export function trimCargo(state: GameState, systemId: string, owner: Owner): Gam
     keepFighters += Math.min(fighters.length - keepFighters, poolRoom)
   }
   return destroyUnits(state, systemId, [...infantry.slice(fit.keepInfantry), ...fighters.slice(keepFighters)])
+}
+
+/**
+ * R4.4 / LRR 34.3: the non-fighter ships one system has to give up when `limit` no longer holds the fleet
+ * standing in it, cheapest hull first (`NON_FIGHTER_ORDER` is cost order). The one piece of arithmetic
+ * behind both `enforceFleetPool`, which destroys them, and `fleetPoolLoss`, which only reports them.
+ */
+function excessShips(sys: System, seat: Seat, limit: number): Unit[] {
+  const over = nonFighterShips(sys.space, seat) - limit
+  if (over <= 0) return []
+  return NON_FIGHTER_ORDER.flatMap(t => shipsOf(sys, seat).filter(u => u.type === t)).slice(0, over)
+}
+
+/**
+ * R4.4 / LRR 34.3 in one system: the ships beyond the fleet pool are destroyed and returned to the
+ * reinforcements, then the cargo is trimmed against the capacity that is left, because a destroyed carrier
+ * takes its capacity with it. The retreat of R4.1 step 5 runs this on the destination it lands in; a fleet
+ * pool that shrinks (Warfare, the status phase, the charter and the layover) runs it board-wide below.
+ */
+export function enforceFleetPoolIn(state: GameState, systemId: string, seat: Seat): GameState {
+  const victims = excessShips(state.systems[systemId], seat, fleetPoolLimit(state.players[seat]))
+  if (!victims.length) return trimCargo(state, systemId, seat)
+  const next = destroyUnits(state, systemId, victims)
+  const ships = victims.length === 1 ? 'ship' : 'ships'
+  return trimCargo({
+    ...next,
+    log: [...next.log, { t: 'info', text: `seat ${seat} loses ${victims.length} ${ships} beyond the fleet pool in ${systemId}` }],
+  }, systemId, seat)
+}
+
+/**
+ * R4.4 / LRR 34.3 board-wide: giving a command token back out of the fleet pool is a legal move, and the
+ * price is every ship that no longer fits. Every system the seat has ships in is brought back inside the
+ * pool, in map order, each destruction logged with its system. A seat already inside its pool is untouched.
+ */
+export function enforceFleetPool(state: GameState, seat: Seat): GameState {
+  let next = state
+  for (const systemId of Object.keys(state.systems)) {
+    if (!state.systems[systemId].space.some(u => u.owner === seat)) continue
+    next = enforceFleetPoolIn(next, systemId, seat)
+  }
+  return next
+}
+
+/** What one system would cost the seat, and the ships it would cost it. */
+export interface FleetPoolLoss { systemId: string; units: Unit[] }
+
+/**
+ * R4.4: the read-only half of `enforceFleetPool` — the ships a command sheet would cost, system by system,
+ * before anyone confirms it. The interface's fleet-pool warning is this list and nothing of its own, so the
+ * number it names is always the number the engine goes on to destroy.
+ */
+export function fleetPoolLoss(state: GameState, seat: Seat, tokens: Player['tokens']): FleetPoolLoss[] {
+  const limit = fleetPoolLimit({ ...state.players[seat], tokens })
+  const out: FleetPoolLoss[] = []
+  for (const sys of Object.values(state.systems)) {
+    const units = excessShips(sys, seat, limit)
+    if (units.length) out.push({ systemId: sys.id, units })
+  }
+  return out
 }

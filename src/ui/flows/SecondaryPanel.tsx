@@ -83,7 +83,7 @@ export function SecondaryPanel() {
             ]} note={`Costs you ${secondaryTokenCost(card)} strategy token.`} />
             <PayRow state={state} seat={seat} unit="influence" needed={0} planets={pay} onPlanets={ids => { setPlanets(ids); setTokens(null) }}
               tradeGoods={tradeGoods} onTradeGoods={n => { setTradeGoods(n); setTokens(null) }} />
-            <TokenSheet current={player.tokens} gained={gained} value={sheet} onChange={setTokens} />
+            <TokenSheet state={state} seat={seat} current={player.tokens} gained={gained} value={sheet} onChange={setTokens} />
           </>
         ) : null}
         {card === 'diplomacy' ? (

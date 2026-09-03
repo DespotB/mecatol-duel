@@ -331,6 +331,10 @@ button{font-family:inherit}
 .post{position:absolute;display:flex;flex-direction:column;align-items:center;gap:4px;animation:postin .45s ease-out both}
 .post .model{position:relative;display:flex;align-items:center;justify-content:center;width:100%;height:146px}
 .post .model img{object-fit:contain;filter:drop-shadow(0 8px 14px rgba(0,0,0,.8))}
+/* every post faces the map: the renders point right, so the western one is mirrored and the eastern one
+   is left as it came out of the renderer. A station has no bow, but the lit side follows the same rule and
+   the pair reads as two vessels that came in from opposite edges. */
+.post.west .model img{transform:scaleX(-1)}
 .postcard{--c:8px;width:100%}
 .postcard>.in{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 7px 7px;text-align:center}
 .postcard .stamp{font:600 9px/13px var(--hud);letter-spacing:.1em;text-transform:uppercase;color:var(--gold);

@@ -1,5 +1,6 @@
 import { objectiveCost, objectiveDef } from '../data/objectives'
 import { otherSeat } from './actionPhase'
+import { enforceFleetPool } from './board'
 import { distributeTokens, payCost } from './economy'
 import { addVp, controlledPlanets, controlsMecatol, freeScoreable, fulfils, scoreObjective } from './objectives'
 import { deriveSeed } from './rng'
@@ -149,7 +150,10 @@ export function status(state: GameState, params: StatusParams, seed: number): Re
   const distributed = distributeTokens(scored, seat, params.tokens, tokensGained(state, seat))
   if (!distributed.ok) return distributed
   const statusSubmitted = [...state.statusSubmitted, seat]
-  const submitted: GameState = { ...distributed.value, statusSubmitted }
+  // R3.3 step 3 hands out new tokens and `distributeTokens` lets none of the three pools shrink here, so
+  // this is the safety net rather than the rule's home: a status sheet that ever does take a token out of
+  // the fleet pool pays for it in ships (LRR 34.3), exactly like Warfare and the two trade post abilities.
+  const submitted: GameState = { ...enforceFleetPool(distributed.value, seat), statusSubmitted }
   // R3.3: the second submission closes the phase, whichever seat opened it
   if (statusSubmitted.length < 2) return { ok: true, value: { ...submitted, active: otherSeat(seat) } }
   return { ok: true, value: finishStatusPhase(submitted, seed) }
