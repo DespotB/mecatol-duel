@@ -1,7 +1,7 @@
-import { MECATOL_ID, systemDef } from '../data/map'
-import { MANDATE, PUBLIC_OBJECTIVES } from '../data/objectives'
-import { NON_FIGHTER_SHIPS } from '../data/units'
-import { colourCounts } from './research'
+import { MECATOL_ID, homeSystemId, systemDef } from '../data/map'
+import { MANDATE_IDS, objectiveDef } from '../data/objectives'
+import { isShip } from '../data/units'
+import { otherSeat } from './actionPhase'
 import type { GameState, Seat } from './types'
 
 export function controlledPlanets(state: GameState, seat: Seat): { systemId: string; planetId: string }[] {
@@ -16,34 +16,44 @@ export function controlsMecatol(state: GameState, seat: Seat): boolean {
   return state.systems[MECATOL_ID].planets.some(p => p.owner === seat)
 }
 
-/** R7: the six public objectives and the Mandate. An unknown id is false, never a throw. */
+function shipCount(state: GameState, seat: Seat): number {
+  let n = 0
+  for (const sys of Object.values(state.systems)) {
+    for (const u of sys.space) if (u.owner === seat && isShip(u.type)) n += 1
+  }
+  return n
+}
+
+/** R7: the public objectives and the two mandates. An unknown id is false, never a throw. */
 export function fulfils(state: GameState, seat: Seat, objectiveId: string): boolean {
   const player = state.players[seat]
   switch (objectiveId) {
-    case 'own_3_techs':
-      return player.techs.length >= 3
+    case 'win_space_combat':
+      return player.spaceCombatWins >= 1
     case 'control_4_outside_home':
       return controlledPlanets(state, seat).filter(p => systemDef(p.systemId).home !== seat).length >= 4
-    case 'three_ships_mecatol':
-      return state.systems[MECATOL_ID].space.filter(u => u.owner === seat && NON_FIGHTER_SHIPS.includes(u.type)).length >= 3
-    case 'spend_6_production':
-      return player.spentInOneProductionThisRound >= 6
-    case 'control_5_planets':
-      return controlledPlanets(state, seat).length >= 5
-    case 'two_techs_same_colour':
-      return Object.values(colourCounts(player.techs)).some(n => n >= 2)
-    case MANDATE.id:
-      return player.mandateEarnedThisRound
+    case 'spend_6_resources':
+      return player.resourcesSpentThisRound >= 6
+    case 'trade_three_times':
+      return player.trades >= 3
+    case 'more_ships':
+      return shipCount(state, seat) > shipCount(state, otherSeat(seat))
+    case 'first_strike':
+      return state.mecatolCombatWinner === seat
+    case 'foothold':
+      return controlledPlanets(state, seat).some(p => p.systemId === homeSystemId(otherSeat(seat)))
     default:
       return false
   }
 }
 
-/** R3.3 step 1: what the seat may score right now, each public objective once per game. */
+/** R3.3 step 1: what the seat may score right now, each objective and each mandate once per game. */
 export function scoreable(state: GameState, seat: Seat): string[] {
   const player = state.players[seat]
   const out = state.publicObjectives.filter(id => !player.scoredObjectives.includes(id) && fulfils(state, seat, id))
-  if (!player.mandateScored && fulfils(state, seat, MANDATE.id)) out.push(MANDATE.id)
+  for (const id of MANDATE_IDS) {
+    if (!player.scoredMandates.includes(id) && fulfils(state, seat, id)) out.push(id)
+  }
   return out
 }
 
@@ -53,13 +63,12 @@ export function addVp(state: GameState, seat: Seat, points: number, reason: stri
   return { ...state, players, log: [...state.log, { t: 'info', text: `seat ${seat} scores ${points} VP: ${reason}` }] }
 }
 
-/** R7: records the objective (or the Mandate) and adds its victory point. Fulfilment is checked by the caller. */
+/** R7: records the objective (or the mandate) and adds its victory point. Fulfilment is checked by the caller. */
 export function scoreObjective(state: GameState, seat: Seat, objectiveId: string): GameState {
   const players = [...state.players] as GameState['players']
   const player = players[seat]
-  players[seat] = objectiveId === MANDATE.id
-    ? { ...player, mandateScored: true }
+  players[seat] = MANDATE_IDS.includes(objectiveId)
+    ? { ...player, scoredMandates: [...player.scoredMandates, objectiveId] }
     : { ...player, scoredObjectives: [...player.scoredObjectives, objectiveId] }
-  const def = PUBLIC_OBJECTIVES.find(o => o.id === objectiveId)
-  return addVp({ ...state, players }, seat, 1, def ? def.text : MANDATE.text)
+  return addVp({ ...state, players }, seat, 1, objectiveDef(objectiveId)?.text ?? objectiveId)
 }

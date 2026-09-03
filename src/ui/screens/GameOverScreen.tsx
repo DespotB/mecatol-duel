@@ -1,4 +1,4 @@
-import { PUBLIC_OBJECTIVES } from '../../data/objectives'
+import { objectiveDef } from '../../data/objectives'
 import { LogPanel } from '../LogPanel'
 import { navigate } from '../route'
 import { useGame } from '../store'
@@ -30,9 +30,9 @@ export function GameOverScreen() {
             <div className="in">
               <div className="lbl">{state.players[seat].name}</div>
               <div data-testid={`scored-list-${seat}`}>
-                {state.players[seat].scoredObjectives.map(id => PUBLIC_OBJECTIVES.find(o => o.id === id)?.text ?? id).join(', ') || 'No public objective scored'}
+                {state.players[seat].scoredObjectives.map(id => objectiveDef(id)?.text ?? id).join(', ') || 'No public objective scored'}
               </div>
-              {state.players[seat].mandateScored ? <div>Mandate, First Strike</div> : null}
+              {state.players[seat].scoredMandates.map(id => <div key={id}>{objectiveDef(id)?.short ?? id}</div>)}
             </div>
           </div>
         ))}

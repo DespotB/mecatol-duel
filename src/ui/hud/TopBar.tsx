@@ -1,5 +1,5 @@
 import { FACTIONS } from '../../data/factions'
-import { MANDATE, PUBLIC_OBJECTIVES } from '../../data/objectives'
+import { MANDATES, objectiveDef } from '../../data/objectives'
 import { cardOwner } from '../../engine'
 import { MISC, PORTRAIT, SIGIL, strategyCardUrl, tokenUrl } from '../art'
 import { CARD_NAME, formatClock } from '../format'
@@ -84,13 +84,13 @@ function Objectives({ state }: { state: GameState }) {
   return (
     <div className="objs">
       <div className="objrow">
-        {state.publicObjectives.map(id => {
-          const def = PUBLIC_OBJECTIVES.find(o => o.id === id)
+        {state.publicObjectives.map((id, index) => {
+          const def = objectiveDef(id)
           if (!def) return null
           return (
             <div className="obj" key={id} data-testid={`objective-${id}`} title={def.text}
               style={{ ['--bg' as string]: `url(${MISC.objectiveBack})` }}>
-              <div className="tier">Round {def.round}</div>
+              <div className="tier">Round {index + 1}</div>
               <div className="txt">{def.short}</div>
               {scoredBy(seat => state.players[seat].scoredObjectives.includes(id)).map(seat => (
                 <img key={seat} className={`tok s${seat}`} src={tokenUrl(state.players[seat].faction, 'control')} alt="scored"
@@ -100,15 +100,18 @@ function Objectives({ state }: { state: GameState }) {
             </div>
           )
         })}
-        <div className="obj mandate" data-testid="mandate" title={MANDATE.text}
-          style={{ ['--bg' as string]: `url(${MISC.mandateBack})` }}>
-          <div className="tier">Mandate</div>
-          <div className="txt">{MANDATE.short}</div>
-          {scoredBy(seat => state.players[seat].mandateScored).map(seat => (
-            <img key={seat} className={`tok s${seat}`} src={tokenUrl(state.players[seat].faction, 'control')} alt="scored" />
-          ))}
-          <span className="full" aria-hidden="true">{MANDATE.text}</span>
-        </div>
+        {MANDATES.map(def => (
+          <div className="obj mandate" key={def.id} data-testid={`mandate-${def.id}`} title={def.text}
+            style={{ ['--bg' as string]: `url(${MISC.mandateBack})` }}>
+            <div className="tier">{def.id === 'first_strike' ? 'Race' : 'Secret'}</div>
+            <div className="txt">{def.short}</div>
+            {scoredBy(seat => state.players[seat].scoredMandates.includes(def.id)).map(seat => (
+              <img key={seat} className={`tok s${seat}`} src={tokenUrl(state.players[seat].faction, 'control')} alt="scored"
+                data-testid={`scored-${def.id}-${seat}`} />
+            ))}
+            <span className="full" aria-hidden="true">{def.text}</span>
+          </div>
+        ))}
       </div>
     </div>
   )

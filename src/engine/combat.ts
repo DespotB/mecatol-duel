@@ -1,6 +1,5 @@
-import { MECATOL_ID, systemDef } from '../data/map'
+import { MECATOL_ID } from '../data/map'
 import { NON_FIGHTER_SHIPS, isShip, unitStats, type StatsOwner } from '../data/units'
-import { otherSeat } from './actionPhase'
 import { neighbours } from './adjacency'
 import { destroyUnits, dieRolls, hasTech, rollHits, shipsOf, statsOwner, trimCargo } from './board'
 import { fleetPoolLimit, nonFighterShips } from './economy'
@@ -497,20 +496,30 @@ function antiFighterBarrage(state: GameState, ctx: Ctx, seed: number): GameState
 }
 
 /**
- * R7 Mandate First Strike: whoever wins a space combat in Mecatol Rex or in the other seat's home system earns
- * the mandate for the round, attacker or defender alike. Guardians never earn it.
+ * R7: a space combat win feeds two cards. First Strike is a race for one point, so only the first win in
+ * Mecatol Rex counts and beating the guardian fleet counts too. The "win a space combat against your
+ * opponent" objective counts wins over the other seat only, guardians excluded.
  */
-function markMandate(state: GameState, ctx: Ctx, winner: Seat): GameState {
-  if (ctx.systemId !== MECATOL_ID && systemDef(ctx.systemId).home !== otherSeat(winner)) return state
-  const players = [...state.players] as GameState['players']
-  players[winner] = { ...players[winner], mandateEarnedThisRound: true }
-  return { ...state, players, log: [...state.log, { t: 'info', text: `Mandate First Strike earned by seat ${winner}` }] }
+function markCombatWin(state: GameState, ctx: Ctx, winner: Seat): GameState {
+  let next = state
+  if (ctx.systemId === MECATOL_ID && next.mecatolCombatWinner === null) {
+    next = {
+      ...next, mecatolCombatWinner: winner,
+      log: [...next.log, { t: 'info', text: `Mandate First Strike claimed by seat ${winner}` }],
+    }
+  }
+  if (ctx.defender !== 'guardian') {   // seat against seat, so the winner beat the opponent
+    const players = [...next.players] as GameState['players']
+    players[winner] = { ...players[winner], spaceCombatWins: players[winner].spaceCombatWins + 1 }
+    next = { ...next, players }
+  }
+  return next
 }
 
 /** The winner's log line plus the mandate; a guardian victory earns and logs neither. */
 function wonBy(state: GameState, ctx: Ctx, winner: Owner): GameState {
   if (winner === 'guardian') return state
-  const marked = markMandate(state, ctx, winner)
+  const marked = markCombatWin(state, ctx, winner)
   return { ...marked, log: [...marked.log, { t: 'info', text: `space combat in ${ctx.systemId} won by seat ${winner}` }] }
 }
 

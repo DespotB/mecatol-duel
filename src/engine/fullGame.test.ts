@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { FACTIONS } from '../data/factions'
 import { homeSystemId } from '../data/map'
+import { PUBLIC_OBJECTIVES } from '../data/objectives'
 import { otherSeat } from './actionPhase'
 import { checkFleet } from './board'
 import { applyMove, legalMoves, validateMove } from './index'
@@ -19,9 +20,11 @@ function invariants(state: GameState, landed: Map<string, Set<Seat>>): void {
   expect(new Set(units.map(u => u.id)).size).toBe(units.length)
   for (const u of units) expect(u.id).toBeLessThan(state.nextUnitId)
   expect(state.round).toBeLessThanOrEqual(6)
-  // the reveal of R3.3 step 2 happens before the victory check, so a finished round may be one ahead
-  expect(state.publicObjectives.length).toBeGreaterThanOrEqual(Math.min(state.round, 6))
-  expect(state.publicObjectives.length).toBeLessThanOrEqual(6)
+  // R3.3 step 2 reveals before the victory check, so a finished round may be one ahead; the pool of five
+  // runs out before round 6 does, and nothing is revealed after that
+  expect(state.publicObjectives.length).toBeGreaterThanOrEqual(Math.min(state.round, PUBLIC_OBJECTIVES.length))
+  expect(state.publicObjectives.length).toBeLessThanOrEqual(PUBLIC_OBJECTIVES.length)
+  expect(state.publicObjectives).toEqual(state.objectiveOrder.slice(0, state.publicObjectives.length))
   expect(state.phase === 'ended').toBe(state.winner !== null)
   for (const seat of [0, 1] as Seat[]) {
     const p = state.players[seat]
@@ -202,7 +205,7 @@ describe('legal moves in every phase', () => {
 // reach a bombard or a groundCombatRound: every rules fix shifts the deterministic playthroughs (Space Dock I
 // granting its free fighter slots, then R4.1 step 4 handing the hit assignment to the players), and the
 // coverage test below needs the extra seeds to still see every move kind at least once.
-const SEEDS: readonly number[] = [1, 2, 3, 5, 8, 13, 21, 28, 29, 34, 55, 89, 90, 94, 140]
+const SEEDS: readonly number[] = [1, 2, 3, 5, 8, 13, 21, 28, 29, 34, 55, 89, 90, 94, 140, 40]
 const RUNS = new Map<number, GameRun>()
 
 /** The smoke games are shared by the tests below, so each seed is actually played only once. */

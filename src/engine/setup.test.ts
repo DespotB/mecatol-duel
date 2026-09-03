@@ -17,7 +17,7 @@ describe('R2 setup', () => {
     expect(g.round).toBe(1); expect(g.phase).toBe('strategy'); expect(g.active).toBe(0)
     expect(g.draft).toEqual([0, 1, 1, 0])
     expect(g.strategyPool.map(c => c.id)).toEqual(ALL_STRATEGY_CARDS)
-    expect(g.publicObjectives).toEqual(['own_3_techs'])
+    expect(g.publicObjectives).toEqual([g.objectiveOrder[0]])   // R7: the pool is shuffled per game
   })
   it('places the printed starting units', () => {
     const north = g.systems['home-n'], south = g.systems['home-s']

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { FACTIONS } from '../../data/factions'
-import { PUBLIC_OBJECTIVES } from '../../data/objectives'
+import { objectiveDef } from '../../data/objectives'
 import { controlsMecatol } from '../../engine'
 import { BADGE, MISC, strategyCardUrl, techArtUrl, tokenUrl } from '../art'
 import { CARD_NAME, ownedPlanets, planetLabel, systemLabel, techLabel } from '../format'
@@ -175,7 +175,7 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
             <div className="rowline">
               {objectives.map(id => (
                 <button key={id} type="button" className={`pay${objectiveId === id ? ' on' : ''}`} data-testid={`objective-pick-${id}`} onClick={() => setObjectiveId(id)}>
-                  {PUBLIC_OBJECTIVES.find(o => o.id === id)?.text ?? id}
+                  {objectiveDef(id)?.text ?? id}
                 </button>
               ))}
               {objectives.length === 0 ? <span className="sub">No objective is fulfilled right now.</span> : null}

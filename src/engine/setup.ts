@@ -1,7 +1,7 @@
 import { FACTIONS } from '../data/factions'
 import { MECATOL_ID, SYSTEMS } from '../data/map'
 import { PUBLIC_OBJECTIVES } from '../data/objectives'
-import { mulberry32 } from './rng'
+import { deriveSeed, mulberry32 } from './rng'
 import type { GameConfig, GameState, Owner, Planet, Player, Seat, StrategyCardId, System, Unit, UnitType } from './types'
 
 export const START_TOKENS = { tactic: 3, fleet: 3, strategy: 2 }
@@ -29,14 +29,28 @@ function makePlayer(seat: Seat, cfg: GameConfig['players'][number]): Player {
     seat, faction: cfg.faction, color: cfg.color, name: cfg.name, vp: 0,
     tokens: { ...START_TOKENS }, tradeGoods: 0, commodities: f.commodityValue,
     techs: [...f.startingTechs], strategyCards: [], passed: false,
-    scoredObjectives: [], mandateScored: false, mandateEarnedThisRound: false,
-    spentInOneProductionThisRound: 0, tradedThisRound: { west: false, east: false },
+    scoredObjectives: [], scoredMandates: [],
+    resourcesSpentThisRound: 0, spaceCombatWins: 0, trades: 0, tradedThisRound: { west: false, east: false },
     inheritanceExhausted: false, shipyardUsed: false, pendingInfantry: 0, reinforcements,
   }
 }
 
+/** R7: the pool is shuffled from the game seed, so the order of the objectives is different every game. */
+function shuffledObjectives(seed: number): string[] {
+  const rng = mulberry32(deriveSeed(seed, 91))
+  const ids = PUBLIC_OBJECTIVES.map(o => o.id)
+  for (let i = ids.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1))
+    const swap = ids[i]
+    ids[i] = ids[j]
+    ids[j] = swap
+  }
+  return ids
+}
+
 export function createGame(config: GameConfig, seed: number): GameState {
   const counter = { nextUnitId: 1 }
+  const order = shuffledObjectives(seed)
   const systems: Record<string, System> = {}
   for (const def of SYSTEMS) {
     const planets: Planet[] = def.planets.map(p => ({ id: p.id, name: p.name, resources: p.resources, influence: p.influence, owner: def.home, exhausted: false, ground: [], structures: [] }))
@@ -61,7 +75,9 @@ export function createGame(config: GameConfig, seed: number): GameState {
     version: 1, round: 1, phase: 'strategy', speaker: config.speaker, active: config.speaker,
     strategyPool: ALL_STRATEGY_CARDS.map(id => ({ id, bonus: 0 })),
     draft: [config.speaker, other, other, config.speaker],
-    publicObjectives: [PUBLIC_OBJECTIVES[0].id],
+    publicObjectives: [order[0]],
+    objectiveOrder: order,
+    mecatolCombatWinner: null,
     players: [makePlayer(0, config.players[0]), makePlayer(1, config.players[1])],
     systems, tactical: null, pendingSecondary: null, statusSubmitted: [],
     nextUnitId: counter.nextUnitId, guardianRolls: 0, winner: null, log: [],

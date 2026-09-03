@@ -342,22 +342,26 @@ describe('R4.1 space combat', () => {
     expect(after.tactical?.step).toBe('done')
     expect(owned(after, 'bereg', 1)).toHaveLength(attackerLeft ? 0 : 1)
   })
-  it('R7 Mandate: winning a space combat in Mecatol Rex marks the mandate for the round', () => {
+  it('R7 First Strike: the first space combat won in Mecatol Rex claims the race, guardians included', () => {
     const after = fightToEnd(combat('mecatol', ['dreadnought', 'dreadnought', 'cruiser'], ['fighter'], 1, 'guardian'), 200)
-    expect(after.players[0].mandateEarnedThisRound).toBe(owned(after, 'mecatol', 0).length > 0)
+    expect(after.mecatolCombatWinner).toBe(owned(after, 'mecatol', 0).length > 0 ? 0 : null)
+    // a win over the guardians is not a win over the opponent, so the public objective stays unfulfilled
+    expect(after.players[0].spaceCombatWins).toBe(0)
   })
-  it('R7 Mandate: the defender that wipes the attacker at Mecatol Rex earns the mandate as well', () => {
+  it('R7 First Strike: the defender that wipes the attacker at Mecatol Rex claims it as well', () => {
     const after = fightToEnd(combat('mecatol', ['fighter'], ['dreadnought', 'dreadnought', 'dreadnought'], 1, 1), 500)
     expect(owned(after, 'mecatol', 0)).toHaveLength(0)
     expect(after.tactical?.step).toBe('done')
-    expect(after.players[1].mandateEarnedThisRound).toBe(true)
-    expect(after.players[0].mandateEarnedThisRound).toBe(false)
+    expect(after.mecatolCombatWinner).toBe(1)
+    expect(after.players[1].spaceCombatWins).toBe(1)
+    expect(after.players[0].spaceCombatWins).toBe(0)
   })
-  it('R7 Mandate: the defender that wins in the attacker\'s home system earns the mandate', () => {
+  it('R7: a space combat won anywhere else counts for the objective but not for the race', () => {
     const after = fightToEnd(combat('home-n', ['fighter'], ['dreadnought', 'dreadnought', 'dreadnought'], 1, 1), 600)
     expect(owned(after, 'home-n', 0)).toHaveLength(0)
-    expect(after.players[1].mandateEarnedThisRound).toBe(true)
-    expect(after.players[0].mandateEarnedThisRound).toBe(false)
+    expect(after.mecatolCombatWinner).toBeNull()
+    expect(after.players[1].spaceCombatWins).toBe(1)
+    expect(after.players[0].spaceCombatWins).toBe(0)
   })
   it('R4.1 step 5: the retreat is announced before a round and carried out after it', () => {
     expect(applyMove(combat('bereg', ['dreadnought'], ['dreadnought'], 1), { type: 'retreat', to: 'home-n' }, 0).ok).toBe(false)

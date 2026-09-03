@@ -210,7 +210,13 @@ function primary(state: GameState, seat: Seat, card: StrategyCardId, params: Str
       return diplomacyPrimary(state, seat, params)
     case 'trade': {
       let next = replenish(addTradeGoods(state, seat, 3), seat)
-      if (params.shareWithOpponent) next = replenish(next, otherSeat(seat))
+      // R7: sharing the replenish is a trade with the opponent, and it counts for both of them
+      if (params.shareWithOpponent) {
+        next = replenish(next, otherSeat(seat))
+        const players = [...next.players] as GameState['players']
+        for (const s2 of [seat, otherSeat(seat)]) players[s2] = { ...players[s2], trades: players[s2].trades + 1 }
+        next = { ...next, players }
+      }
       return { ok: true, value: next }
     }
     case 'warfare':
