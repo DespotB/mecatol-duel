@@ -249,32 +249,51 @@ button{font-family:inherit}
 .tile.active svg.line polygon{stroke:var(--gold-hi);stroke-width:1.6}
 .tile.selectable{cursor:pointer}
 .tile.selectable svg.line polygon{stroke:rgba(232,207,138,.55);stroke-dasharray:6 5}
-/* scoped to the tile: the setup screen's seat card has a `row fleet` of its own */
-.tile .fleet{position:absolute;display:flex;flex-wrap:wrap;align-items:flex-end;gap:4px;width:164px}
-.row-ground,.row-structures{position:absolute;display:flex;align-items:flex-end;gap:3px}
+/* scoped to the tile: the setup screen's seat card has a `row fleet` of its own.
+   The fleet lives in its system's SPACE_BOX and nowhere else: `overflow:hidden` is what guarantees that no
+   ship ever crosses the drawn hexagon, and the inner box carries the `zoom` from `fleetScale()`, so a
+   crowded system draws smaller ships instead of spilling out of the tile. */
+.tile .fleet{position:absolute;overflow:hidden;display:flex;align-items:center;justify-content:center;z-index:2}
+.tile .fleet>.in{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:center;gap:4px;overflow:hidden}
+/* what stands on a planet is centred on the planet, and drawn over the fleet so a ship never hides it */
+.row-ground,.row-structures{position:absolute;display:flex;align-items:flex-end;gap:3px;
+  transform:translate(-50%,-50%);z-index:4}
 .stk{position:relative;display:inline-block;filter:drop-shadow(0 2px 2px rgba(0,0,0,.85))}
 .stk .cnt{position:absolute;right:-9px;bottom:-5px;min-width:16px;height:16px;padding:0 3px;border-radius:8px;background:#0b1020;border:1px solid var(--gold);color:#f1ead8;font:700 10px/14px var(--hud);text-align:center}
-.planet{position:absolute;object-fit:contain}
+.planet{position:absolute;object-fit:contain;z-index:1}
 .ctl{width:26px}
 /*
- * Planet nameplate, copied off the printed tiles: the resource hexagon sits low and left of the influence
- * shield, the two barely touching, and the name rides a thin outlined banner whose colour is the planet's
- * trait. The badge art is the printed one, the number is drawn on top.
+ * Planet nameplate, rebuilt off the printed tiles (35_Bereg, 18_MR, 06_000, 10_ArcPime): the two value
+ * hexagons ride the disc's outward rim, gold resource low and left of the influence shield, and the name
+ * runs off them on a filled banner in the planet's trait colour with a hairline edge, a cut outer end and
+ * the trait's emblem block beyond it. A lower-right planet prints the whole plate mirrored, which is what
+ * `.flip` does. The badge art is the printed one, the number is drawn on top.
  */
-.plate{position:absolute;display:flex;align-items:center;height:30px;--trait:#8fb4dd}
-.plate.hazardous{--trait:#e05a4a}
-.plate.cultural{--trait:#4fa3e8}
-.plate.industrial{--trait:#54b06a}
+.plate{position:absolute;display:flex;align-items:center;height:30px;z-index:5;
+  --trait:#8fb4dd;--fill:rgba(9,16,32,.82)}
+.plate.hazardous{--trait:#e0705a;--fill:rgba(84,20,24,.86)}
+.plate.cultural{--trait:#5aa8e8;--fill:rgba(14,42,78,.86)}
+.plate.industrial{--trait:#5ab070;--fill:rgba(16,56,32,.86)}
 .plate .vals{position:relative;width:36px;height:30px;flex:none;z-index:2}
 .plate .badge{position:absolute;width:22px;height:22px;font:700 12px/22px var(--body);color:#fff;
   text-shadow:0 1px 2px rgba(0,0,0,.9);filter:drop-shadow(0 1px 2px rgba(0,0,0,.8))}
 .plate .badge.res{left:0;top:8px}
 .plate .badge.inf{left:14px;top:0}
-.plate .nm{margin-left:-4px;height:19px;padding:0 14px 0 9px;
-  font:600 11px/18px var(--hud);letter-spacing:.1em;color:#fff;text-transform:uppercase;white-space:nowrap;
-  background:rgba(6,10,22,.72);border:1px solid var(--trait);border-left:0;
-  clip-path:polygon(0 0,100% 0,calc(100% - 12px) 100%,0 100%);
+.plate .nm{display:flex;align-items:center;gap:5px;margin-left:-4px;height:18px;padding:0 8px 0 8px;
+  font:600 10px/17px var(--hud);letter-spacing:.09em;color:#fff;text-transform:uppercase;white-space:nowrap;
+  background:var(--fill);border:1px solid var(--trait);border-left:0;
+  clip-path:polygon(0 0,100% 0,calc(100% - 9px) 100%,0 100%);
   text-shadow:0 1px 2px rgba(0,0,0,.95)}
+/* the trait emblem the print puts at the banner's outer end; a home planet and Mecatol Rex have none */
+.plate .em{width:9px;height:12px;flex:none;background:var(--trait);
+  clip-path:polygon(0 0,100% 26%,100% 74%,0 100%,34% 50%)}
+.plate.none .em{display:none}
+.plate.flip{flex-direction:row-reverse}
+.plate.flip .nm{margin-left:0;margin-right:-4px;flex-direction:row-reverse;
+  border-left:1px solid var(--trait);border-right:0;
+  clip-path:polygon(9px 0,100% 0,100% 100%,0 100%)}
+/* the badges keep their printed diagonal even when the banner is mirrored: gold low and left of the shield */
+.plate.flip .em{clip-path:polygon(100% 0,66% 50%,100% 100%,0 74%,0 26%)}
 .plate.exh{filter:grayscale(.7) brightness(.8)}
 .sigil{position:absolute;opacity:.8;filter:drop-shadow(0 1px 2px rgba(0,0,0,.9))}
 .wh{position:absolute}
