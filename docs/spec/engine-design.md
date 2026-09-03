@@ -150,6 +150,6 @@ export interface StatusParams { tokens: { tactic: number; fleet: number; strateg
 | `src/engine/componentActions.ts` | Inheritance Systems research, emergency shipyard, trade posts |
 | `src/engine/statusPhase.ts` | one status move per player: scoring, token distribution, readying, guardian respawn, victory and round advance |
 | `src/engine/legalMoves.ts` | enumerator and `validateMove` |
-| `src/engine/index.ts` | `applyMove` dispatcher, re-exports |
+| `src/engine/index.ts` | `applyMove` dispatcher, re-exports, and the read-only query helpers the UI builds its controls from |
 
 Tests live next to each module as `*.test.ts` (Vitest). Every rule in `docs/spec/game-rules.md` has at least one test that quotes its section number in the test name.
