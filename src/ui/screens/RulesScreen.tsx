@@ -1,4 +1,5 @@
 import { PUBLIC_OBJECTIVES } from '../../data/objectives'
+import { POST_IDS, POSTS } from '../../data/posts'
 import { navigate } from '../route'
 import '../setup.css'
 import '../rules.css'
@@ -130,16 +131,45 @@ export function RulesScreen() {
 
           <Group label="Trade posts">
             <p>
-              Two neutral posts sit outside the map, west and east. On your own turn, once per round per post,
-              you may sell up to two commodities for one trade good each, as long as you control a planet in
-              one of the systems linked to that post. The posts are not systems. Nothing moves there and
-              nothing fights there.
+              Two neutral posts are in play at a time, west and east, and a new pair is rolled every round. On
+              your own turn, once per round per post, you may sell commodities for one trade good each, as
+              long as you control a planet in one of the systems linked to that post. The posts are not
+              systems. Nothing moves there and nothing fights there. All six posts, their pictures and their
+              abilities are below, under Trade posts.
             </p>
           </Group>
 
           <Group label="Not in this version">
             <p>Action cards, promissory notes, the agenda phase and secret objectives.</p>
           </Group>
+        </Section>
+
+        <Section title="Trade posts">
+          <p>
+            Every round rolls two of them, one west and one east, drawn from the four that were not in play
+            the round before, so the same pair cannot come right back immediately. An ability nobody used
+            goes with the post when it turns over, that pressure is deliberate. Selling commodities is once
+            per round per player. A post{"'"}s special ability is once per round for the table, whoever gets
+            there first.
+          </p>
+          <div className="posts">
+            {POST_IDS.map(id => {
+              const post = POSTS[id]
+              return (
+                <div className="postrow" key={id}>
+                  <img className="art" src={post.art} alt={post.name} />
+                  <div className="body">
+                    <div className="name">{post.name}</div>
+                    <div className="limit">Sells up to {post.commodityLimit} commodities</div>
+                    <p className="ability">
+                      {post.abilityName ? <b>{post.abilityName}. </b> : null}
+                      {post.abilityText}
+                    </p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </Section>
 
         <Section title="Victory points">
