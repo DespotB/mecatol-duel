@@ -4,6 +4,7 @@ import { navigate } from '../route'
 import { useGame } from '../store'
 import { useFitScale } from '../useViewportScale'
 import type { Seat } from '../../engine/types'
+import { SpaceBackdrop } from '../SpaceBackdrop'
 
 export function GameOverScreen() {
   const fit = useFitScale()
@@ -16,7 +17,7 @@ export function GameOverScreen() {
   const winner = state.players[winnerSeat]
   return (
     <div className="setup" data-testid="game-over" style={{ zoom: fit }}>
-      <div className="space"><div className="stars" /><div className="neb" /><div className="limb" /><div className="dust" /></div>
+      <SpaceBackdrop />
       <header className="hero">
         <h1 className="title goldtext" data-testid="winner">{winner.name} wins</h1>
         <p className="tagline" data-testid="final-score">

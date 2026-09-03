@@ -9,6 +9,7 @@ import { useFitScale } from '../useViewportScale'
 import '../setup.css'
 import type { CSSProperties, ReactElement } from 'react'
 import type { Color, FactionId, Seat, TechColor, UnitType } from '../../engine/types'
+import { SpaceBackdrop } from '../SpaceBackdrop'
 
 const COLOURS: Color[] = ['red', 'blue', 'green', 'yellow', 'purple', 'black', 'orange', 'pink']
 const COLOUR_NAMES: Record<Color, string> = {
@@ -122,10 +123,7 @@ export function SetupScreen() {
 
   return (
     <div className="setup lobbyui" data-testid="setup-screen" style={{ zoom: fit }}>
-      <div className="space">
-        <div className="base" /><div className="stars" /><div className="galaxy a" /><div className="galaxy b" />
-        <div className="veil" /><div className="dust" /><div className="limb" /><div className="vig" />
-      </div>
+      <SpaceBackdrop />
 
       <header className="hero">
         <h1 className="title goldtext">Mecatol Duel</h1>

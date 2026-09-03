@@ -12,23 +12,62 @@ img{display:block}
 button{font-family:inherit}
 
 /* space */
+/* space background: starfield, nebula veils, two galaxies and the planet limb at the bottom right */
 .space{position:fixed;inset:0;overflow:hidden;background:#05070f;z-index:0}
-.space .stars{position:absolute;inset:-40px;background:url(/assets/misc/starfield.png) center/cover no-repeat;opacity:.95;filter:saturate(.8) brightness(.95)}
-.space .neb{position:absolute;inset:0;background:
-  radial-gradient(900px 520px at 22% 78%,rgba(56,84,190,.26),transparent 65%),
-  radial-gradient(700px 480px at 78% 26%,rgba(110,70,170,.24),transparent 65%),
-  linear-gradient(180deg,#05070f 0%,#070c1e 45%,#0b1430 100%)}
-.space .swirl{position:absolute;left:-420px;top:120px;width:1300px;height:700px;border-radius:50%;
-  background:conic-gradient(from 20deg,transparent 0 40%,rgba(120,150,255,.14) 48%,transparent 56%,transparent 80%,rgba(180,140,255,.11) 88%,transparent 96%);
-  filter:blur(28px);transform:rotate(-18deg) scaleY(.45)}
-.space .limb{position:absolute;left:-520px;top:560px;width:1100px;height:1100px;border-radius:50%;
-  background:radial-gradient(circle at 70% 22%,#414a66 0%,#232a42 18%,#111729 38%,#070a1a 60%);
-  box-shadow:14px -14px 70px rgba(130,150,215,.22),inset -18px 18px 90px rgba(150,170,235,.22)}
-.space .dust{position:absolute;inset:0;background-image:
-  radial-gradient(1px 1px at 12% 33%,rgba(255,255,255,.7),transparent 60%),
-  radial-gradient(1.5px 1.5px at 61% 22%,rgba(255,255,255,.7),transparent 60%),
-  radial-gradient(1px 1px at 84% 64%,rgba(255,255,255,.6),transparent 60%),
-  radial-gradient(1px 1px at 47% 88%,rgba(255,255,255,.55),transparent 60%);opacity:.8}
+.space .base{position:absolute;inset:0;background:linear-gradient(180deg,#05070f 0%,#060a18 40%,#08102a 100%)}
+.space .stars{position:absolute;inset:0;filter:none;opacity:.62;mix-blend-mode:screen;
+  background:url(/assets/misc/starfield.png) center 38%/cover no-repeat}
+.space .veil{position:absolute;inset:0;background:
+  radial-gradient(ellipse 560px 340px at 16% 24%,rgba(70,110,220,.09),transparent 70%),
+  radial-gradient(ellipse 640px 380px at 80% 22%,rgba(122,72,196,.08),transparent 70%),
+  radial-gradient(ellipse 900px 260px at 48% 66%,rgba(46,72,160,.05),transparent 70%)}
+.space .galaxy{position:absolute;border-radius:50%;opacity:.14;filter:blur(2px)}
+.space .galaxy.a{left:-260px;top:120px;width:980px;height:360px;transform:rotate(-16deg);
+  background:radial-gradient(ellipse 50% 50% at 50% 50%,rgba(170,190,255,.22) 0%,rgba(110,130,220,.10) 35%,transparent 70%)}
+.space .galaxy.b{right:-180px;top:-80px;width:760px;height:260px;transform:rotate(22deg);
+  background:radial-gradient(ellipse 50% 50% at 50% 50%,rgba(200,170,255,.16) 0%,rgba(140,100,220,.08) 40%,transparent 70%)}
+.space .dust{position:absolute;inset:0;opacity:1;background-image:
+  radial-gradient(1px 1px at 120px 80px,rgba(255,255,255,.7),transparent 60%),
+  radial-gradient(1px 1px at 300px 640px,rgba(255,255,255,.55),transparent 60%),
+  radial-gradient(1.5px 1.5px at 980px 120px,rgba(255,255,255,.75),transparent 60%),
+  radial-gradient(1px 1px at 1320px 300px,rgba(255,255,255,.6),transparent 60%),
+  radial-gradient(1px 1px at 60px 460px,rgba(255,255,255,.5),transparent 60%),
+  radial-gradient(1.5px 1.5px at 720px 40px,rgba(255,255,255,.8),transparent 60%),
+  radial-gradient(1px 1px at 1120px 860px,rgba(255,255,255,.5),transparent 60%),
+  radial-gradient(1px 1px at 420px 820px,rgba(255,255,255,.6),transparent 60%),
+  radial-gradient(1px 1px at 1400px 700px,rgba(255,255,255,.55),transparent 60%),
+  radial-gradient(1px 1px at 860px 500px,rgba(255,255,255,.45),transparent 60%)}
+/* the mockup anchors the planet at left 700 / top 600 of its 1440x900 canvas; from the bottom right
+   corner that is the same limb at any viewport size */
+.space .limb{left:auto;top:auto;right:-900px;bottom:-1340px;width:1640px;height:1640px;border-radius:50%;
+  background:
+    repeating-linear-gradient(-24deg,rgba(255,255,255,.012) 0 9px,transparent 9px 22px),
+    radial-gradient(circle at 27% 23%,#55648a 0%,#2c3858 14%,#161d36 34%,#090d1a 58%,#05070f 78%);
+  box-shadow:
+    inset 34px 34px 90px rgba(160,185,245,.30),inset 10px 10px 30px rgba(201,162,77,.10),
+    inset -80px -80px 160px rgba(0,0,0,.7),
+    0 0 140px rgba(70,110,220,.16),
+    0 0 1px rgba(210,225,255,.55)}
+.space .limb::after{content:"";position:absolute;inset:-1px;border-radius:50%;border:1px solid rgba(215,222,255,.62);
+  -webkit-mask:linear-gradient(135deg,#000 0%,#000 30%,transparent 52%);mask:linear-gradient(135deg,#000 0%,#000 30%,transparent 52%)}
+.space .limb::before{content:"";position:absolute;inset:-10px;border-radius:50%;
+  background:radial-gradient(circle at 27% 23%,rgba(130,165,255,.30) 0%,rgba(120,160,255,.08) 30%,transparent 55%);
+  -webkit-mask:radial-gradient(circle,transparent 61.5%,#000 62%);mask:radial-gradient(circle,transparent 61.5%,#000 62%)}
+.space .vig{position:absolute;inset:0;background:radial-gradient(ellipse 78% 68% at 50% 44%,transparent 45%,rgba(3,5,12,.72) 100%)}
+
+/* a real planet render for colour, the way the board's planets look, held far back in the mix */
+.space .bigplanet{position:absolute;left:-260px;bottom:-320px;width:820px;height:820px;
+  opacity:.42;filter:saturate(1.15) brightness(.85) blur(.4px);object-fit:contain;pointer-events:none}
+.space .farplanet{position:absolute;right:6%;top:-90px;width:280px;height:280px;
+  opacity:.3;filter:saturate(1.2) brightness(.8) blur(.6px);object-fit:contain;pointer-events:none}
+/* ships crossing far away: slow, small, and never bright enough to be mistaken for a unit on the board */
+.space .drift img{position:absolute;opacity:.16;filter:brightness(1.5) blur(.3px);will-change:transform}
+.space .drift .d1{top:18%;width:46px;animation:drift 132s linear infinite}
+.space .drift .d2{top:62%;width:34px;animation:drift 168s linear infinite -40s}
+.space .drift .d3{top:81%;width:56px;animation:driftback 196s linear infinite -90s}
+@keyframes drift{from{transform:translateX(-12vw) rotate(6deg)}to{transform:translateX(112vw) rotate(6deg)}}
+@keyframes driftback{from{transform:translateX(112vw) scaleX(-1) rotate(-4deg)}to{transform:translateX(-12vw) scaleX(-1) rotate(-4deg)}}
+@media (prefers-reduced-motion: reduce){.space .drift img{animation:none;transform:translateX(40vw)}}
 
 /* gold primitives */
 .cut{--c:10px;position:relative;padding:1px;
