@@ -59,7 +59,10 @@ describe('R3.3 status phase', () => {
     const dirty = deepFreeze({
       ...base,
       players: [
-        { ...base.players[0], inheritanceExhausted: true, spentInOneProductionThisRound: 8, tradedThisRound: { west: true, east: true }, passed: true, mandateEarnedThisRound: true, mandateScored: true },
+        {
+          ...base.players[0], inheritanceExhausted: true, spentInOneProductionThisRound: 8, tradedThisRound: { west: true, east: true },
+          passed: true, mandateEarnedThisRound: true, mandateScored: true, scoredObjectives: ['own_3_techs'], shipyardUsed: true,
+        },
         { ...base.players[1], passed: true },
       ] as GameState['players'],
       systems: { ...base.systems, bereg: { ...base.systems.bereg, activatedBy: [0 as const], planets: base.systems.bereg.planets.map(p => ({ ...p, exhausted: true })) } },
@@ -68,6 +71,8 @@ describe('R3.3 status phase', () => {
     expect(done.systems.bereg.activatedBy).toEqual([])
     expect(done.systems.bereg.planets.every(p => !p.exhausted)).toBe(true)
     expect(done.players[0]).toMatchObject({ inheritanceExhausted: false, spentInOneProductionThisRound: 0, passed: false, mandateEarnedThisRound: false, tradedThisRound: { west: false, east: false } })
+    // these are once-per-game (or once-ever) flags, not per-round state: the reset must leave them untouched
+    expect(done.players[0]).toMatchObject({ mandateScored: true, scoredObjectives: ['own_3_techs'], shipyardUsed: true })
     expect(done.players.every(p => p.strategyCards.length === 0)).toBe(true)
     // R3.1: warfare, leadership, imperial and technology were played and come back at 0; the two unpicked
     // cards keep the trade good each of them collected at the end of the draft
@@ -84,6 +89,15 @@ describe('R3.3 status phase', () => {
     const done = bothSubmit(owned)
     expect(done.guardianRolls).toBe(1)
     expect(done.nextUnitId).toBe(owned.nextUnitId)              // no new guardian units were made
+  })
+  it('R4.2: the guardian reroll is deterministic, same seed gives the same fleet', () => {
+    const composition = (state: GameState) =>
+      state.systems.mecatol.space.filter(u => u.owner === 'guardian').map(u => u.type).sort()
+    const runOnce = () => bothSubmit(toStatusPhase(toActionPhase()), 42)
+    const a = runOnce()
+    const b = runOnce()
+    expect(composition(a)).toEqual(composition(b))
+    expect(a.guardianRolls).toBe(b.guardianRolls)
   })
   it('R3.3 step 6 / R7: 7 victory points end the game, round 6 ends it in any case', () => {
     const rich = withPlayer(toActionPhase(), 1, { vp: 7 })
@@ -107,6 +121,16 @@ describe('R3.3 status phase', () => {
     const even = withPlanetOwner(tied, 'bereg', 'bereg', 0)
     expect(decideWinner(even)).toBe(1)                                                  // the speaker's opponent
     expect(decideWinner({ ...even, speaker: 1 })).toBe(0)
+  })
+  it('R7: both players reach 7 VP in the same status phase through real submissions, tie-break decides', () => {
+    let s = withPlayer(toActionPhase(), 0, { vp: 6 })
+    s = withPlayer(s, 1, { vp: 6, mandateEarnedThisRound: true })
+    s = withPlanetOwner(s, 'mecatol', 'mecatol-rex', 0)                // player 0's own scoreAll() call scores this
+    const done = bothSubmit(toStatusPhase(s))
+    expect(done.players[0].vp).toBe(7)                                // 6 + 1 for Mecatol Rex
+    expect(done.players[1].vp).toBe(7)                                // 6 + 1 for the Mandate
+    expect(done.phase).toBe('ended')
+    expect(done.winner).toBe(0)                                       // tied at 7, decided by the Mecatol Rex controller
   })
   it('R3.1/R3.3 step 6: the speaker changes and the next round starts with a fresh draft', () => {
     const done = bothSubmit(toStatusPhase(toActionPhase()))
