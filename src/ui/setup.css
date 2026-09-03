@@ -226,9 +226,13 @@
 .lobbyui .techlist .ti img{width:16px;display:block}
 .lobbyui .techlist .sep{color:var(--ink-mute);margin:0 2px}
 
-/* map, clock, target and the start button */
-.lobbyui .settings{display:grid;grid-template-columns:1.25fr 1fr 1fr auto;gap:18px;align-items:center;
+/* map, clock, target, rules and the start button */
+.lobbyui .settings{display:grid;grid-template-columns:1.15fr .8fr .95fr 1.1fr auto;gap:18px;align-items:center;
   border-top:1px solid rgba(201,162,77,.28);padding-top:16px}
+/* the rules entry point: the fourth cell's line is a button, so it wraps inside its cell instead of
+   running past it the way a one-line `.btn` would */
+.lobbyui .cell .btn.rules{height:auto;min-height:32px;margin:3px 0 1px;padding:6px 13px;
+  font-size:12px;line-height:1.25;white-space:normal;text-align:left}
 .lobbyui .cell{display:flex;align-items:center;gap:14px;min-width:0}
 .lobbyui .cell .lbl{display:flex;align-items:center;gap:7px;margin-bottom:5px}
 .lobbyui .cell .val{font:600 17px/1.1 var(--hud);color:var(--text);letter-spacing:.01em}
