@@ -75,9 +75,15 @@ export function finishStatusPhase(state: GameState, seed: number): GameState {
   return { ...next, round: next.round + 1, phase: 'strategy', speaker, active: speaker, draft: [speaker, other, other, speaker] }
 }
 
+// R3.3: the status phase opens with `active === speaker` (set by `pass()` on the action phase's last
+// pass, and by `toStatusPhase()` in tests); the speaker's own status move flips `active` to the other
+// seat, and that seat's status move closes the phase. Everything below reads `state.active` to tell the
+// two submissions apart, so a state whose active seat is neither the speaker nor the speaker's opponent
+// must be rejected here, rather than silently treated as the closing move.
 export function status(state: GameState, params: StatusParams, seed: number): Result<GameState> {
   if (state.phase !== 'status') return { ok: false, error: 'not in the status phase' }
   const seat = state.active
+  if (seat !== state.speaker && seat !== otherSeat(state.speaker)) return { ok: false, error: 'invalid active seat for the status phase' }
   const scored = scoreAll(state, seat)
   const distributed = distributeTokens(scored, seat, params.tokens, tokensGained(state, seat))
   if (!distributed.ok) return distributed
