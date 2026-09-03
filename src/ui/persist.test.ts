@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { toActionPhase } from '../engine/testUtils'
 import {
   CODE_ALPHABET, INDEX_KEY, LEGACY_KEY, MAX_GAMES,
-  deleteGame, gameKey, hasGame, latestGameCode, listGames, loadGame, newGameCode, saveGame,
+  clockKey, deleteGame, gameKey, hasGame, latestGameCode, listGames, loadGame, newGameCode, saveClock, saveGame,
 } from './persist'
 import type { Session } from './store'
 
@@ -165,5 +165,27 @@ describe('a game saved by an older version of the rules', () => {
     window.localStorage.setItem('md:game:OLDONE', JSON.stringify(raw))
     expect(loadGame('OLDONE')).toBeNull()
     expect(listGames().map(g => g.code)).not.toContain('OLDONE')
+  })
+})
+
+describe('the clock survives a reload', () => {
+  it('is written on its own and beats the clock stored with the game', () => {
+    saveGame(session('CLOCKY', [900000, 900000]))
+    saveClock('CLOCKY', [412000, 900000])
+    expect(loadGame('CLOCKY')?.clockMs).toEqual([412000, 900000])
+  })
+  it('is ignored when it is older than the game itself', () => {
+    saveClock('OLDCLK', [1000, 1000])
+    const record = JSON.parse(window.localStorage.getItem(clockKey('OLDCLK')) ?? '{}') as { at: number }
+    record.at = 0
+    window.localStorage.setItem(clockKey('OLDCLK'), JSON.stringify(record))
+    saveGame(session('OLDCLK', [900000, 900000]))
+    expect(loadGame('OLDCLK')?.clockMs).toEqual([900000, 900000])
+  })
+  it('goes with the game when the game is deleted', () => {
+    saveGame(session('GONE'))
+    saveClock('GONE', [5, 5])
+    deleteGame('GONE')
+    expect(window.localStorage.getItem(clockKey('GONE'))).toBeNull()
   })
 })

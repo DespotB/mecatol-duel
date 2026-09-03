@@ -18,6 +18,35 @@ export function gameKey(code: string): string {
   return `md:game:${code}`
 }
 
+/**
+ * The clock is written on its own, and often, because it moves ten times a second while the whole game is
+ * only written when a move changes it. Without this a reload would hand back every second the player spent
+ * thinking since their last move, which is a way to buy time by pressing F5. The record is tiny, so writing
+ * it every couple of seconds costs nothing.
+ */
+export function clockKey(code: string): string {
+  return `md:clock:${code}`
+}
+
+interface ClockRecord { clockMs: [number, number]; at: number }
+
+function isClockRecord(value: unknown): value is ClockRecord {
+  if (typeof value !== 'object' || value === null) return false
+  const c = value as Partial<ClockRecord>
+  return Array.isArray(c.clockMs) && c.clockMs.length === 2
+    && typeof c.clockMs[0] === 'number' && typeof c.clockMs[1] === 'number'
+    && typeof c.at === 'number'
+}
+
+export function saveClock(code: string, clockMs: [number, number]): void {
+  write(clockKey(code), { clockMs, at: Date.now() })
+}
+
+export function readClock(code: string): ClockRecord | null {
+  const parsed = read(clockKey(code))
+  return isClockRecord(parsed) ? parsed : null
+}
+
 /** What the lobby needs to list a game without parsing the whole state. */
 export interface GameSummary {
   code: string
@@ -203,14 +232,18 @@ export function loadGame(code: string): Session | null {
   migrate()
   const parsed = read(gameKey(code))
   if (!isPayload(parsed)) return null
+  // the clock record is younger than the game whenever the player was thinking, so it wins
+  const clock = readClock(code)
+  const clockMs = clock && clock.at >= parsed.updatedAt ? clock.clockMs : parsed.clockMs
   return {
     code: parsed.code, seed: parsed.seed, minutes: parsed.minutes,
-    state: normalise(parsed.state), history: parsed.history.map(normalise), clockMs: parsed.clockMs, handoff: null,
+    state: normalise(parsed.state), history: parsed.history.map(normalise), clockMs, handoff: null,
   }
 }
 
 export function deleteGame(code: string): void {
   migrate()
   remove(gameKey(code))
+  remove(clockKey(code))
   write(INDEX_KEY, readIndex().filter(entry => entry.code !== code))
 }

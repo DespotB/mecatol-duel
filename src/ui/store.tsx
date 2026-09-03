@@ -4,7 +4,7 @@ import { applyMove, createGame, deriveSeed, legalMoves, postDef } from '../engin
 import type { GameConfig, GameState, Move, Seat } from '../engine/types'
 import { timeTradeCost } from './format'
 import { moveCount, undoable } from './history'
-import { deleteGame, hasGame, newGameCode, saveGame } from './persist'
+import { deleteGame, hasGame, newGameCode, saveClock, saveGame } from './persist'
 import { gamePath, navigate } from './route'
 
 export type { GameConfig } from '../engine/types'
@@ -16,6 +16,8 @@ function onlyEndTurn(state: GameState): boolean {
 }
 
 const TICK_MS = 100
+/** How often the running clock is written on its own; a reload can then cost at most this much. */
+const CLOCK_SAVE_MS = 2000
 // R6: a player whose clock ran out gets three more minutes at the start of every later round
 const ROUND_BONUS_MS = 180000
 // R8: the Vandel Bulk Tanker's layover, the same three minutes, bought with a command token
@@ -173,6 +175,23 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     }, TICK_MS)
     return () => clearInterval(id)
   }, [ticking, running, seat])
+
+  // R6: the clock on its own, written every few seconds while it runs. The whole game is only written when
+  // a move changes it, so without this a reload would refund the thinking time since the last move.
+  const code = session?.code ?? null
+  const clockMs = session?.clockMs ?? null
+  const clockRef = useRef<[number, number] | null>(null)
+  clockRef.current = clockMs
+  useEffect(() => {
+    if (!ticking || !running || code === null) return
+    const id = setInterval(() => {
+      if (clockRef.current) saveClock(code, clockRef.current)
+    }, CLOCK_SAVE_MS)
+    return () => {
+      clearInterval(id)
+      if (clockRef.current) saveClock(code, clockRef.current)
+    }
+  }, [ticking, running, code])
 
   // R6: at zero the player passes automatically; while passing is illegal (another phase, an unused strategy
   // card, an open secondary window, a running tactical action) the clock stays at zero until it becomes legal
