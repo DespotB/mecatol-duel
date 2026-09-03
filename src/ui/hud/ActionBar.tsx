@@ -1,4 +1,7 @@
+import { useState } from 'react'
+import { navigate } from '../route'
 import { useGame } from '../store'
+import { useEscape } from '../useEscape'
 
 export type ActionMode = 'tactical' | 'strategic' | 'component' | null
 
@@ -11,6 +14,8 @@ export interface ActionBarProps {
 
 export function ActionBar({ mode, onMode, hint, onLog }: ActionBarProps) {
   const { session, legal, apply, canUndo, undo, error } = useGame()
+  const [menu, setMenu] = useState(false)
+  useEscape(() => { setMenu(false) })
   if (!session) return null
   const state = session.state
   const can = {
@@ -26,6 +31,24 @@ export function ActionBar({ mode, onMode, hint, onLog }: ActionBarProps) {
       <div style={{ display: 'flex', gap: 8 }}>
         <button type="button" className="btn quiet" data-testid="btn-undo" disabled={!canUndo} onClick={undo}>Undo</button>
         <button type="button" className="btn quiet" data-testid="btn-log" onClick={onLog}>Log</button>
+        <div className="menuwrap">
+          <button type="button" className="btn quiet" data-testid="btn-menu" aria-expanded={menu}
+            onClick={() => { setMenu(!menu) }}>Menu</button>
+          {menu ? (
+            // the game stays saved under its own code, so leaving is always a way back, never a loss
+            <div className="menu-pop cut" data-testid="game-menu">
+              <div className="in">
+                <span className="lbl dim">Game {session.code}</span>
+                <button type="button" className="btn quiet" data-testid="btn-menu-lobby"
+                  onClick={() => { navigate('#/') }}>Back to the lobby</button>
+                <button type="button" className="btn quiet" data-testid="btn-menu-rules"
+                  onClick={() => { navigate('#/rules') }}>Rules</button>
+                <button type="button" className="btn quiet" data-testid="btn-menu-close"
+                  onClick={() => { setMenu(false) }}>Close</button>
+              </div>
+            </div>
+          ) : null}
+        </div>
       </div>
       <div className="actions">
         <button type="button" className={`btn${mode === 'tactical' ? ' gold' : ''}`} data-testid="btn-tactical"
