@@ -13,7 +13,7 @@ const produce = (state: GameState, units: Partial<Record<UnitType, number>>, pla
 const fighters = (state: GameState) => state.systems['home-n'].space.filter(u => u.owner === 0 && u.type === 'fighter').length
 
 describe('R4.4 production', () => {
-  it('produces ships into the space and infantry onto the dock planet, then finishes the step', () => {
+  it('R4.4: produces ships into the space and infantry onto the dock planet, then finishes the step', () => {
     const s = producing()
     const r = produce(s, { cruiser: 1, infantry: 2 }, ['000'])
     if (!r.ok) throw new Error(r.error)
@@ -42,7 +42,10 @@ describe('R4.4 production', () => {
     expect(produce(rich, { warsun: 1 }, [], 12).ok).toBe(false)
     expect(produce(withTechs(rich, 0, ['war_sun']), { warsun: 1 }, [], 12).ok).toBe(true)    // 3 non-fighter ships is exactly the fleet pool
     expect(produce(rich, { flagship: 2 }, [], 16).ok).toBe(false)
-    expect(produce(withUnits(rich, 'home-n', 0, ['flagship']), { flagship: 1 }, [], 8).ok).toBe(false)
+    const hasFlagship = withUnits(rich, 'home-n', 0, ['flagship'])
+    // restore the reinforcement spent by the fixture so this hits the uniqueness guard, not a reinforcement shortage
+    const canAffordAnother = withPlayer(hasFlagship, 0, { reinforcements: { ...hasFlagship.players[0].reinforcements, flagship: 1 } })
+    expect(produce(canAffordAnother, { flagship: 1 }, [], 8).ok).toBe(false)
   })
   it('R4.4: reinforcements and the fleet pool limit the production', () => {
     const s = producing()
@@ -65,6 +68,36 @@ describe('R4.4 production', () => {
     const none = produce(withPlayer(rich, 0, { tradeGoods: 10 }), { fighter: 0 }, [])
     expect(none.ok).toBe(false)
   })
+  it('R4.4: a new ship\'s own capacity is pooled into the trim, so it can keep fighters that would otherwise be cut', () => {
+    const sixFighters = withUnits(producing(), 'home-n', 0, ['fighter', 'fighter', 'fighter'])   // 3 existing + 3 more = 6, exactly capacity 6
+    expect(fighters(sixFighters)).toBe(6)
+    const r = produce(sixFighters, { carrier: 1, fighter: 4 }, ['000'])
+    if (!r.ok) throw new Error(r.error)
+    expect(fighters(r.value)).toBe(10)                              // the new carrier's +4 capacity covers all 4 new fighters
+    expect(r.value.log.some(e => e.t === 'info' && e.text.includes('not produced'))).toBe(false)
+  })
+  it('R4.4: a new ship\'s capacity, not just the pre-existing fleet, sets the exact fighter trim', () => {
+    const s1 = withTactical(toActionPhase(1, 1), { systemId: 'home-s', step: 'production' })
+    const packed = withUnits(s1, 'home-s', 1, ['fighter', 'fighter', 'fighter', 'fighter'])   // 1 existing + 4 more = 5, exactly fills capacity 5 (dreadnought 1 + carrier 4)
+    const rich = withPlayer(packed, 1, { tradeGoods: 10 })
+    const fightersS = (state: GameState) => state.systems['home-s'].space.filter(u => u.owner === 1 && u.type === 'fighter').length
+    expect(fightersS(rich)).toBe(5)
+    const r = produce(rich, { dreadnought: 1, fighter: 2 }, [], 5)
+    if (!r.ok) throw new Error(r.error)
+    expect(fightersS(r.value)).toBe(6)                              // only the new dreadnought's +1 capacity fits one more
+    expect(r.value.log.some(e => e.t === 'info' && e.text.includes('not produced'))).toBe(true)
+  })
+  it('R4.4: Space Dock II free slots admit fighters even when carried infantry already fill the ship capacity', () => {
+    const s = producing()
+    const dockOnly = s.systems['home-n'].space.filter(u => u.owner !== 0 || u.type === 'dreadnought')   // drop the carrier and starting fighters, keep the capacity-2 dreadnought
+    const packed: GameState = { ...s, systems: { ...s.systems, 'home-n': { ...s.systems['home-n'], space: dockOnly } } }
+    const withInfantry = withUnits(packed, 'home-n', 0, ['infantry', 'infantry'])   // 2 infantry aboard, exactly filling the dreadnought's capacity of 2
+    const withDockII = withTechs(withInfantry, 0, ['space_dock_ii'])
+    const r = produce(withDockII, { fighter: 2 }, ['000'])
+    if (!r.ok) throw new Error(r.error)
+    expect(fighters(r.value)).toBe(2)                               // 0 pre-existing fighters, both new ones ride the free slots, never rejected after trimming
+    expect(r.value.log.some(e => e.t === 'info' && e.text.includes('not produced'))).toBe(false)
+  })
   it('R4.4: PDS and space docks cannot be produced in the duel', () => {
     const s = producing()
     expect(produce(s, { pds: 1 }, ['000']).ok).toBe(false)
@@ -82,7 +115,7 @@ describe('R4.4 production', () => {
     expect(second.value.systems['home-n'].space.filter(u => u.owner === 0 && u.type === 'dreadnought')).toHaveLength(2)
     expect(second.value.systems['home-n'].planets[0].ground.filter(u => u.owner === 0)).toHaveLength(11)
   })
-  it('production needs a space dock of your own in the active system and the production step', () => {
+  it('R4.4: production needs a space dock of your own in the active system and the production step', () => {
     const s = producing()
     expect(produce(withTactical(s, { systemId: 'bereg', step: 'production' }), { infantry: 2 }, ['000']).ok).toBe(false)
     expect(produce(withTactical(s, { systemId: 'home-n', step: 'movement' }), { infantry: 2 }, ['000']).ok).toBe(false)
