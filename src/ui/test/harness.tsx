@@ -12,11 +12,13 @@ function Probe() {
 }
 
 /** Renders `node` inside a provider whose session is the given state; the clock is off unless asked for. */
+export const TEST_CODE = 'TESTAA'
+
 export function renderWithSession(state: GameState, node: ReactNode, options?: { seed?: number; clockMs?: [number, number] }) {
   const view = render(<GameProvider ticking={false}><Probe />{node}</GameProvider>)
   act(() => {
     const session: Session = {
-      seed: options?.seed ?? 7, minutes: 15, state, history: [],
+      code: TEST_CODE, seed: options?.seed ?? 7, minutes: 15, state, history: [],
       clockMs: options?.clockMs ?? [900000, 900000], handoff: null,
     }
     current?.resume(session)

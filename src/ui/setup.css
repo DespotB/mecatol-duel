@@ -75,6 +75,25 @@
 .lobbyui .tagline{margin:0;font:600 15px/1 var(--hud);letter-spacing:.14em;text-transform:uppercase;color:var(--gold);opacity:.88}
 .lobbyui .hero .btn{margin-top:16px}
 
+/* the games this browser holds: one row each, newest first */
+.lobbyui .saved{margin-top:30px}
+.lobbyui .saved .panel{padding:22px 22px 14px;display:flex;flex-direction:column}
+/* three and a half rows, then the list scrolls: the page keeps its height however many games are saved */
+.lobbyui .glist{max-height:182px;overflow-y:auto;overscroll-behavior:contain}
+.lobbyui .gamerow{display:flex;align-items:center;gap:16px;padding:11px 2px;border-top:1px solid rgba(201,162,77,.22)}
+.lobbyui .gamerow:first-child{border-top:0}
+.lobbyui .gcode{flex:none;width:104px;font:600 15px/1 var(--hud);letter-spacing:.22em;color:var(--gold-hi)}
+.lobbyui .gwho{flex:1;min-width:0;font:600 17px/1.2 var(--hud);letter-spacing:.01em;color:var(--text);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lobbyui .gwho .vs{margin:0 10px;font:500 11px/1 var(--hud);font-style:normal;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ink-mute)}
+.lobbyui .gmeta{flex:none;display:flex;align-items:center;gap:9px;font:600 11px/1 var(--hud);
+  letter-spacing:.09em;text-transform:uppercase;color:var(--ink-mute)}
+.lobbyui .gmeta .sep{width:1px;height:12px;background:rgba(201,162,77,.35)}
+.lobbyui .gacts{flex:none;display:flex;align-items:center;gap:8px}
+.lobbyui .btn.plain{background:none;color:var(--ink-mute)}
+.lobbyui .btn.plain:hover{color:var(--gold-hi)}
+
 /* the three menu boxes */
 .lobbyui .menu{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:28px}
 .lobbyui .menu .box{min-height:150px}
@@ -202,6 +221,13 @@
 .lobbyui .minimap img.mr{outline:1px solid rgba(201,162,77,.9);outline-offset:-1px;
   clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%)}
 
+/* a code this browser does not hold */
+.lobbyui .notfound{width:min(640px,100%);margin:34px auto 0}
+.lobbyui .notfound .panel{padding:28px 26px 22px;display:flex;flex-direction:column;gap:12px}
+.lobbyui .nf-head{margin:0;font:700 24px/1.2 var(--display);letter-spacing:.04em}
+.lobbyui .notfound .line{margin:0;font:400 14px/1.5 var(--body);color:var(--ink-dim)}
+.lobbyui .notfound .foot{display:flex;align-items:center;gap:14px;margin-top:6px;flex-wrap:wrap}
+
 .lobbyui .legal{margin:16px 0 0;text-align:center;font:400 11px var(--body);color:rgba(190,184,168,.7);
   letter-spacing:.02em;text-shadow:0 1px 2px rgba(0,0,0,.8)}
 
@@ -215,6 +241,8 @@
   .lobbyui .settings .btn.big{grid-column:1/-1;justify-self:start}
   .lobbyui .fleet-caption{white-space:normal;margin-left:0}
   .lobbyui .lobby-head{flex-wrap:wrap}
+  .lobbyui .gamerow{flex-wrap:wrap;gap:10px}
+  .lobbyui .gwho{flex:1 0 100%;order:-1}
 }
 @media (max-width:760px){
   .lobbyui .settings{grid-template-columns:1fr}

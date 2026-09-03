@@ -42,7 +42,8 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
     return sum + (planet ? planet.influence : 0)
   }, 0) + tradeGoods
   const gained = card === 'leadership' ? 3 + Math.floor(influence / 3) : card === 'warfare' ? (systemId ? 1 : 0) : 0
-  const sheet = tokens ?? { ...player.tokens, tactic: player.tokens.tactic + gained }
+  // the new tokens start unplaced: the player adds them pool by pool
+  const sheet = tokens ?? { ...player.tokens }
 
   function params(): StrategicParams {
     switch (card) {
@@ -58,6 +59,12 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
   // A parameter is required exactly when the enumerator offers values for it: Technology needs a
   // technology, Imperial a fulfilled objective, Diplomacy and Warfare a system. Confirming without one
   // is a move the engine rejects, so the button stays dead until the choice is made.
+  // Leadership and Warfare hand out tokens the player has to place; the engine rejects a sheet that does
+  // not add up, so the button waits until every new token has a pool.
+  const tokenTarget = player.tokens.tactic + player.tokens.fleet + player.tokens.strategy + gained
+  const tokensPlaced = sheet.tactic + sheet.fleet + sheet.strategy
+  const tokensPending = (card === 'leadership' || card === 'warfare') && tokensPlaced !== tokenTarget
+
   const missing =
     card === 'technology' ? techOptions.length > 0 && techId === null
       : card === 'imperial' ? objectives.length > 0 && objectiveId === null
@@ -70,7 +77,7 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
         <div className="dhead">
           <span className="tab">{CARD_NAME[card]}, primary</span>
           <div className="right">
-            <button type="button" className="btn gold" data-testid="btn-strategic-confirm" disabled={missing}
+            <button type="button" className="btn gold" data-testid="btn-strategic-confirm" disabled={missing || tokensPending}
               onClick={() => { if (apply({ type: 'strategic', card, params: params() })) onClose() }}>Play the card</button>
             <button type="button" className="btn quiet" data-testid="btn-strategic-cancel" onClick={onClose}>Cancel</button>
           </div>

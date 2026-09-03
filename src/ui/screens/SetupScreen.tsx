@@ -2,7 +2,9 @@ import { Fragment, useRef, useState } from 'react'
 import { FACTIONS } from '../../data/factions'
 import { SYSTEMS, systemDef } from '../../data/map'
 import { techDef } from '../../data/techs'
-import { navigate, seedFromRoute, useHashRoute } from '../route'
+import { relativeTime } from '../format'
+import { deleteGame, listGames } from '../persist'
+import { gamePath, navigate, seedFromRoute, useHashRoute } from '../route'
 import { spriteSize } from '../sprites'
 import { useGame } from '../store'
 import { useFitScale } from '../useViewportScale'
@@ -51,6 +53,19 @@ const TECH_ICON: Record<TechColor, string> = {
 // public/assets/sprites/manifest.json's world scale.
 const FLEET_SPRITE_SCALE = 14
 
+/**
+ * The lobby is drawn in a 1440x900 frame and `useFitScale` scales that frame to the viewport. The
+ * saved-games block makes the page taller than the frame, so the page is scaled down by whatever it adds
+ * and keeps fitting instead of growing a scrollbar. The three numbers mirror `.saved` in setup.css.
+ */
+const PAGE_H = 900
+/** the block's top margin plus its panel padding */
+const SAVED_BLOCK_H = 68
+/** one `.gamerow` */
+const SAVED_ROW_H = 52
+/** `.glist` stops at three and a half rows and scrolls; the page never grows past that */
+const SAVED_LIST_H = 182
+
 const MAP_NAME = 'Bereg Standoff'
 /** The flower layout of src/data/map.ts, drawn as a 76x80 hex preview: home north, Mecatol in the middle. */
 const MINIMAP: { id: string; left: number; top: number }[] = [
@@ -89,10 +104,12 @@ function factionTitle(name: string): (string | ReactElement)[] {
 }
 
 export function SetupScreen() {
-  const { start, session } = useGame()
+  const { start } = useGame()
   const route = useHashRoute()
   // the page is drawn for a 1440x900 frame; scale it until it fills the viewport (credits line at the foot)
   const fit = useFitScale()
+  // the games this browser holds, read once per visit to the lobby
+  const [saved, setSaved] = useState(() => ({ games: listGames(), now: Date.now() }))
   const [names, setNames] = useState<[string, string]>(['Player 1', 'Player 2'])
   const [factions, setFactions] = useState<[FactionId, FactionId]>(['l1z1x', 'letnev'])
   const [colours, setColours] = useState<[Color, Color]>(['blue', 'red'])
@@ -114,25 +131,63 @@ export function SetupScreen() {
       ],
       speaker: 0,
     }, seed, minutes)
-    navigate('#/play')
+  }
+  function forget(code: string) {
+    deleteGame(code)
+    setSaved({ games: listGames(), now: Date.now() })
   }
   function goToSeats() {
     const node = seatConfigRef.current
     if (node && typeof node.scrollIntoView === 'function') node.scrollIntoView({ behavior: 'smooth' })
   }
 
+  const pageHeight = saved.games.length === 0
+    ? PAGE_H
+    : PAGE_H + SAVED_BLOCK_H + Math.min(SAVED_LIST_H, SAVED_ROW_H * saved.games.length)
+  const zoom = Math.round(fit * (PAGE_H / pageHeight) * 1000) / 1000
+
   return (
-    <div className="setup lobbyui" data-testid="setup-screen" style={{ zoom: fit }}>
+    <div className="setup lobbyui" data-testid="setup-screen" style={{ zoom }}>
       <SpaceBackdrop />
 
       <header className="hero">
         <h1 className="title goldtext">Mecatol Duel</h1>
         <div className="rule"><span /><i className="dia" /><span /></div>
         <p className="tagline">Twilight Imperium for two players, thirty minutes</p>
-        {session ? (
-          <button type="button" className="btn ghost sm" data-testid="btn-resume" onClick={() => navigate('#/play')}>Resume the saved game</button>
-        ) : null}
       </header>
+
+      {saved.games.length > 0 ? (
+        <section className="box saved" aria-label="Saved games" data-testid="saved-games">
+          <div className="frame panel">
+            <div className="glist">
+              {saved.games.map(game => (
+                <div className="gamerow" key={game.code} data-testid={`saved-game-${game.code}`}>
+                  <span className="gcode">{game.code}</span>
+                  <span className="gwho">{game.names[0]}<i className="vs">vs</i>{game.names[1]}</span>
+                  <span className="gmeta">
+                    Round {game.round}<span className="sep" />{relativeTime(game.updatedAt, saved.now)}
+                  </span>
+                  <div className="gacts">
+                    <button
+                      type="button" className="btn ghost sm" data-testid={`btn-resume-${game.code}`}
+                      onClick={() => { navigate(gamePath(game.code)) }}
+                    >
+                      Resume
+                    </button>
+                    <button
+                      type="button" className="btn plain sm" data-testid={`btn-delete-${game.code}`}
+                      onClick={() => { forget(game.code) }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="tab"><b>Saved games</b>&nbsp; On this device</div>
+        </section>
+      ) : null}
 
       <section className="menu" aria-label="Game mode">
         <div className="box" data-testid="landing-hotseat">

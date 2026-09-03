@@ -75,6 +75,9 @@ describe('a scripted hot-seat game', () => {
     // turn 3: R6 Leadership primary
     click('btn-strategic')
     click('strategic-pick-leadership')
+    // the new tokens start unplaced; here all three go into the tactic pool
+    expect(text('token-tactic')).toBe('2')
+    for (let i = 0; i < 3; i++) click('token-tactic-plus')
     expect(text('token-tactic')).toBe('5')
     click('btn-strategic-confirm')
     expect(text('tokens-0-tactic')).toBe('5')
@@ -96,6 +99,8 @@ describe('a scripted hot-seat game', () => {
     click('btn-strategic')
     click('strategic-pick-warfare')
     click('system-pick-bereg')
+    // Warfare's token comes back unplaced too, so it is put into the tactic pool by hand
+    click('token-tactic-plus')
     click('btn-strategic-confirm')
     expect(text('tokens-0-tactic')).toBe('6')
     handoff()
@@ -133,9 +138,15 @@ describe('a scripted hot-seat game', () => {
     click('btn-pass')
     expect(text('round')).toBe('Round 1 of 6, status phase')
     expect(screen.getByTestId('status-dialog').textContent).toContain('2 command tokens')
+    // both new tokens start unplaced and go into the tactic pool here
+    expect(screen.getByTestId('btn-status-confirm').hasAttribute('disabled')).toBe(true)
+    click('token-tactic-plus')
+    click('token-tactic-plus')
     click('btn-status-confirm')
     handoff()
     expect(screen.getByTestId('status-scoring').textContent).toContain('Own 3 technologies')
+    click('token-fleet-plus')
+    click('token-fleet-plus')
     click('btn-status-confirm')
 
     // R3.3: scoring, the reveal and the next round

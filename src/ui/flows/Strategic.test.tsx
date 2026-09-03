@@ -24,6 +24,10 @@ describe('strategic actions', () => {
     const s = withCards(withCards(toActionPhase(), 0, ['leadership']), 1, [])
     renderWithSession(s, <BoardScreen />)
     playCard('leadership')
+    // the three new tokens start unplaced, so the player puts each one where they want it
+    expect(screen.getByTestId('token-tactic').textContent).toBe('3')
+    expect(screen.getByTestId('btn-strategic-confirm').hasAttribute('disabled')).toBe(true)
+    for (let i = 0; i < 3; i++) fireEvent.click(screen.getByTestId('token-tactic-plus'))
     expect(screen.getByTestId('token-tactic').textContent).toBe('6')
     fireEvent.click(screen.getByTestId('btn-strategic-confirm'))
     expect(screen.getByTestId('tokens-0-tactic').textContent).toBe('6')
@@ -116,8 +120,8 @@ describe('strategic actions', () => {
   it('R3.3: the status dialog distributes the new command tokens, speaker first', () => {
     renderWithSession(toStatusPhase(toActionPhase()), <BoardScreen />)
     expect(screen.getByTestId('status-dialog').textContent).toContain('2 command tokens')
-    expect(screen.getByTestId('token-tactic').textContent).toBe('5')
-    fireEvent.click(screen.getByTestId('token-tactic-minus'))
+    expect(screen.getByTestId('token-tactic').textContent).toBe('3')
+    fireEvent.click(screen.getByTestId('token-tactic-plus'))
     fireEvent.click(screen.getByTestId('token-fleet-plus'))
     fireEvent.click(screen.getByTestId('btn-status-confirm'))
     expect(screen.getByTestId('tokens-0-tactic').textContent).toBe('4')

@@ -35,7 +35,8 @@ export function SecondaryPanel() {
     return sum + (planet ? planet.influence : 0)
   }, 0) + tradeGoods
   const gained = card === 'leadership' ? Math.floor(influence / 3) : 0
-  const sheet = tokens ?? { ...player.tokens, tactic: player.tokens.tactic + gained }
+  // the new tokens start unplaced: the player adds them pool by pool
+  const sheet = tokens ?? { ...player.tokens }
   const techOptions = legal.flatMap(m => m.type === 'secondary' && m.accept && m.params?.techId ? [m.params.techId] : [])
 
   function params(): StrategicParams {
@@ -57,6 +58,9 @@ export function SecondaryPanel() {
   const needed = card === 'technology' ? 4 : card === 'warfare' ? warfareCost : 0
   const paidResources = pay.reduce((sum, id) => sum + (ownedPlanets(state, seat).find(p => p.id === id)?.resources ?? 0), 0) + tradeGoods
   const warfareBlocked = card === 'warfare' && (warfareCount === 0 || warfareCount > warfareLimit || paidResources < warfareCost)
+  // the Leadership secondary also hands out tokens, and they must all be placed before it can be accepted
+  const tokenTarget = player.tokens.tactic + player.tokens.fleet + player.tokens.strategy + gained
+  const tokensPending = card === 'leadership' && sheet.tactic + sheet.fleet + sheet.strategy !== tokenTarget
   return (
     <div className={card === 'technology' ? 'drawer full cut' : 'dialog cut'} data-testid="secondary-panel">
       <div className="in">
@@ -66,7 +70,7 @@ export function SecondaryPanel() {
             {owner === null ? 'Your opponent' : state.players[owner].name} played {CARD_NAME[card]}.
           </span>
           <div className="right">
-            <button type="button" className="btn gold" data-testid="btn-secondary-accept" disabled={offer.accept === null || warfareBlocked}
+            <button type="button" className="btn gold" data-testid="btn-secondary-accept" disabled={offer.accept === null || warfareBlocked || tokensPending}
               onClick={() => apply({ type: 'secondary', card, accept: true, params: params() })}>Use the secondary</button>
             <button type="button" className="btn quiet" data-testid="btn-secondary-decline"
               onClick={() => apply({ type: 'secondary', card, accept: false })}>Decline</button>
