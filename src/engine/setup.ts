@@ -63,7 +63,7 @@ export function createGame(config: GameConfig, seed: number): GameState {
     draft: [config.speaker, other, other, config.speaker],
     publicObjectives: [PUBLIC_OBJECTIVES[0].id],
     players: [makePlayer(0, config.players[0]), makePlayer(1, config.players[1])],
-    systems, tactical: null, pendingSecondary: null,
+    systems, tactical: null, pendingSecondary: null, statusSubmitted: [],
     nextUnitId: counter.nextUnitId, guardianRolls: 0, winner: null, log: [],
   }
   return rollGuardianFleet(state, seed)

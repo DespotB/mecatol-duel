@@ -80,6 +80,7 @@ export interface GameState {
   systems: Record<string, System>
   tactical: TacticalContext | null
   pendingSecondary: StrategyCardId | null                // opponent may respond
+  statusSubmitted: Seat[]                                // seats whose status move is in; the phase closes at two
   nextUnitId: number
   guardianRolls: number
   winner: Seat | null

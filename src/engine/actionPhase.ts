@@ -87,7 +87,7 @@ export function pass(state: GameState): Result<GameState> {
   const players = [...state.players] as GameState['players']
   players[seat] = { ...players[seat], passed: true }
   const other = otherSeat(seat)
-  if (players[other].passed) return { ok: true, value: { ...state, players, phase: 'status', active: state.speaker } }
+  if (players[other].passed) return { ok: true, value: { ...state, players, phase: 'status', active: state.speaker, statusSubmitted: [] } }
   return { ok: true, value: reviveInfantry({ ...state, players, active: other }, other) }
 }
 

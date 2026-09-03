@@ -151,6 +151,30 @@ describe('R3.3 status phase', () => {
     expect(second.phase).toBe('strategy')
     expect(submit({ ...toActionPhase(), phase: 'action' }, plain(5)).ok).toBe(false)
   })
+  it('R3.3: a seat may not submit twice, and the submissions are tracked in statusSubmitted', () => {
+    const s = toStatusPhase(toActionPhase())
+    expect(s.statusSubmitted).toEqual([])
+    const first = value(submit(s, plain(5, 3, 2)))
+    expect(first.statusSubmitted).toEqual([0])
+    // the same seat again, whatever the active seat says
+    const again = submit({ ...first, active: 0 }, plain(7, 3, 2))
+    expect(again.ok).toBe(false)
+    if (!again.ok) expect(again.error).toMatch(/already submitted/)
+    const second = value(submit(first, plain(5, 3, 2)))
+    expect(second.phase).toBe('strategy')
+    expect(second.statusSubmitted).toEqual([])                        // the round advance clears it again
+  })
+  it('R3.3: a phase entered on the speaker\'s opponent still needs both submissions', () => {
+    const s = deepFreeze({ ...toStatusPhase(toActionPhase()), active: 1 as const })
+    expect(s.speaker).toBe(0)
+    const first = value(submit(s, plain(3, 3, 4)))                    // seat 1 goes first here
+    expect(first.phase).toBe('status')                                // not closed after one move
+    expect(first.active).toBe(0)
+    expect(first.statusSubmitted).toEqual([1])
+    const second = value(submit(first, plain(5, 3, 2)))
+    expect(second.phase).toBe('strategy')
+    expect(second.players[0].tokens.tactic).toBe(5)                   // seat 0's own submission was applied
+  })
   it('R7 objective 3 and 4 are scored from the round they were fulfilled in', () => {
     let s = { ...toActionPhase(), round: 4, publicObjectives: ['own_3_techs', 'control_4_outside_home', 'three_ships_mecatol', 'spend_6_production'] }
     s = withPlayer(s, 0, { spentInOneProductionThisRound: 6 })

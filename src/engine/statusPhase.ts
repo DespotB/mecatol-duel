@@ -62,7 +62,7 @@ export function finishStatusPhase(state: GameState, seed: number): GameState {
   }
   // R3.1: the played cards come back with bonus 0, the unpicked ones keep the trade goods they collected
   const strategyPool = ALL_STRATEGY_CARDS.map(id => ({ id, bonus: next.strategyPool.find(c => c.id === id)?.bonus ?? 0 }))
-  next = { ...next, systems, players, strategyPool, tactical: null, pendingSecondary: null }
+  next = { ...next, systems, players, strategyPool, tactical: null, pendingSecondary: null, statusSubmitted: [] }
   // R3.3 step 5 / R4.2: a fresh guardian fleet as long as nobody controls Mecatol Rex
   if (!controlsMecatol(next, 0) && !controlsMecatol(next, 1)) next = rollGuardianFleet(next, deriveSeed(seed, GUARDIAN_REROLL_SALT))
   const winner = victoryCheck(next)
@@ -75,19 +75,20 @@ export function finishStatusPhase(state: GameState, seed: number): GameState {
   return { ...next, round: next.round + 1, phase: 'strategy', speaker, active: speaker, draft: [speaker, other, other, speaker] }
 }
 
-// R3.3: the status phase opens with `active === speaker` (set by `pass()` on the action phase's last
-// pass, and by `toStatusPhase()` in tests); the speaker's own status move flips `active` to the other
-// seat, and that seat's status move closes the phase. Everything below reads `state.active` to tell the
-// two submissions apart, so a state whose active seat is neither the speaker nor the speaker's opponent
-// must be rejected here, rather than silently treated as the closing move.
+// R3.3: the status phase normally opens with `active === speaker` (set by `pass()` on the action phase's last
+// pass, and by `toStatusPhase()` in tests), but the phase is closed by counting the submissions in
+// `statusSubmitted`, not by comparing the active seat against the speaker: a state that entered the phase on
+// the other seat still needs two moves, and no seat may submit twice.
 export function status(state: GameState, params: StatusParams, seed: number): Result<GameState> {
   if (state.phase !== 'status') return { ok: false, error: 'not in the status phase' }
   const seat = state.active
-  if (seat !== state.speaker && seat !== otherSeat(state.speaker)) return { ok: false, error: 'invalid active seat for the status phase' }
+  if (state.statusSubmitted.includes(seat)) return { ok: false, error: `R3.3: seat ${seat} has already submitted its status move` }
   const scored = scoreAll(state, seat)
   const distributed = distributeTokens(scored, seat, params.tokens, tokensGained(state, seat))
   if (!distributed.ok) return distributed
-  // R3.3: the speaker submits first; the second move closes the phase
-  if (seat === state.speaker) return { ok: true, value: { ...distributed.value, active: otherSeat(seat) } }
-  return { ok: true, value: finishStatusPhase(distributed.value, seed) }
+  const statusSubmitted = [...state.statusSubmitted, seat]
+  const submitted: GameState = { ...distributed.value, statusSubmitted }
+  // R3.3: the second submission closes the phase, whichever seat opened it
+  if (statusSubmitted.length < 2) return { ok: true, value: { ...submitted, active: otherSeat(seat) } }
+  return { ok: true, value: finishStatusPhase(submitted, seed) }
 }
