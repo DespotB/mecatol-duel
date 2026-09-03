@@ -67,6 +67,22 @@ describe('the saved games of one browser', () => {
     expect(listGames().map(g => g.code)).toEqual(['KEE222'])
   })
 
+  it('R3.2: a game saved before turnDone existed loads with the flag cleared, not rejected', () => {
+    // exactly what a deployed payload from before that change looks like: no `turnDone`, in the state and in
+    // every history entry the undo stack still holds
+    saveGame({ ...session('OLD222'), history: [session('OLD222').state] })
+    const raw = JSON.parse(window.localStorage.getItem(gameKey('OLD222')) ?? '') as {
+      state: Record<string, unknown>; history: Record<string, unknown>[]
+    }
+    delete raw.state.turnDone
+    delete raw.history[0].turnDone
+    window.localStorage.setItem(gameKey('OLD222'), JSON.stringify(raw))
+    const loaded = loadGame('OLD222')
+    expect(loaded).not.toBeNull()
+    expect(loaded?.state.turnDone).toBe(false)
+    expect(loaded?.history[0].turnDone).toBe(false)
+  })
+
   it('migrates the single game of the first version to a coded game', () => {
     const legacy = { version: 1, seed: 42, minutes: 20, clockMs: [1000, 2000], state: toActionPhase(), history: [] }
     window.localStorage.setItem(LEGACY_KEY, JSON.stringify(legacy))
@@ -121,5 +137,6 @@ describe('the game code', () => {
     const random = vi.spyOn(Math, 'random').mockImplementation(() => values[i++] ?? 0.5)
     expect(newGameCode(code => code === 'AAAAAA')).toBe('SSSSSS')
     random.mockRestore()
+
   })
 })

@@ -55,6 +55,15 @@ function isSummary(value: unknown): value is GameSummary {
     && typeof s.round === 'number' && typeof s.updatedAt === 'number'
 }
 
+/**
+ * R3.2: `turnDone` arrived after the first deploys, so a payload written before it has no such field. It
+ * loads as a turn whose action is still open, the only safe reading, which keeps a game in progress playable
+ * across the deploy; rejecting the payload would throw the game away instead.
+ */
+function normalise(state: GameState): GameState {
+  return typeof (state as { turnDone?: unknown }).turnDone === 'boolean' ? state : { ...state, turnDone: false }
+}
+
 function isPayload(value: unknown): value is Payload {
   return isLegacy(value) && isSummary(value)
 }
@@ -147,7 +156,7 @@ function migrate(): void {
   if (isLegacy(parsed)) {
     store({
       code: newGameCode(hasGame), seed: parsed.seed, minutes: parsed.minutes,
-      state: parsed.state, history: parsed.history, clockMs: parsed.clockMs, handoff: null,
+      state: normalise(parsed.state), history: parsed.history.map(normalise), clockMs: parsed.clockMs, handoff: null,
     })
   }
   remove(LEGACY_KEY)
@@ -174,7 +183,7 @@ export function loadGame(code: string): Session | null {
   if (!isPayload(parsed)) return null
   return {
     code: parsed.code, seed: parsed.seed, minutes: parsed.minutes,
-    state: parsed.state, history: parsed.history, clockMs: parsed.clockMs, handoff: null,
+    state: normalise(parsed.state), history: parsed.history.map(normalise), clockMs: parsed.clockMs, handoff: null,
   }
 }
 

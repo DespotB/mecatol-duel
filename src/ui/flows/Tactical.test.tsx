@@ -2,7 +2,7 @@
 // @vitest-environment jsdom
 import { fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { toActionPhase, withPlayer, withTactical, withUnits } from '../../engine/testUtils'
+import { toActionPhase, withPlanetOwner, withPlayer, withTactical, withUnits } from '../../engine/testUtils'
 import { BoardScreen } from '../screens/BoardScreen'
 import { renderWithSession } from '../test/harness'
 
@@ -93,6 +93,29 @@ describe('the tactical action', () => {
     fireEvent.click(screen.getByTestId('btn-produce'))
     expect(screen.getByTestId('forces-0-infantry').textContent).toBe('7 Infantry I')
     expect(screen.getByTestId('planet-0-000').className).toContain('exh')
+  })
+
+  it('R3.2/R8: ending the tactical action leaves the turn open for a trade post sale', () => {
+    let s = withPlanetOwner(toActionPhase(), 'bereg', 'bereg', 0)   // a planet linked to the east post
+    s = withTactical(s, { systemId: 'bereg', step: 'done' })
+    renderWithSession(s, <BoardScreen />)
+    fireEvent.click(screen.getByTestId('btn-end-tactical'))
+    // the turn is still seat 0's: no device handoff, and the bar says what is left
+    expect(screen.queryByTestId('handoff')).toBeNull()
+    expect(screen.getByTestId('turn-0').textContent).toBe('Your turn')
+    expect(screen.getByTestId('hint').textContent).toBe('Your action is spent. Trade at a post or end your turn.')
+    expect(screen.getByTestId('btn-tactical').hasAttribute('disabled')).toBe(true)
+    expect(screen.getByTestId('btn-strategic').hasAttribute('disabled')).toBe(true)
+    expect(screen.getByTestId('btn-pass').hasAttribute('disabled')).toBe(true)
+    // R8: the free sale is still reachable through the component panel
+    expect(screen.getByTestId('btn-component').hasAttribute('disabled')).toBe(false)
+    fireEvent.click(screen.getByTestId('btn-component'))
+    fireEvent.click(screen.getByTestId('btn-tradepost-east'))
+    expect(screen.getByTestId('economy-0-tradegoods').textContent).toBe('2')
+    expect(screen.getByTestId('turn-0').textContent).toBe('Your turn')
+    // only "End turn" hands the device over
+    fireEvent.click(screen.getByTestId('btn-end-turn'))
+    expect(screen.getByTestId('handoff').textContent).toContain('Pass the device to B')
   })
 
   it('R4.1: the combat dialog fights rounds and offers Munitions Reserves from round 1', () => {

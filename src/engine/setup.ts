@@ -79,7 +79,7 @@ export function createGame(config: GameConfig, seed: number): GameState {
     objectiveOrder: order,
     mecatolCombatWinner: null,
     players: [makePlayer(0, config.players[0]), makePlayer(1, config.players[1])],
-    systems, tactical: null, pendingSecondary: null, statusSubmitted: [],
+    systems, tactical: null, turnDone: false, pendingSecondary: null, statusSubmitted: [],
     nextUnitId: counter.nextUnitId, guardianRolls: 0, winner: null, log: [],
   }
   return rollGuardianFleet(state, seed)

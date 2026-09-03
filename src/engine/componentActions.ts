@@ -1,6 +1,6 @@
 import { TRADE_POSTS } from '../data/map'
 import { TECHS } from '../data/techs'
-import { passTurn } from './actionPhase'
+import { ACTION_SPENT } from './actionPhase'
 import { cheapestPlanets, payCost } from './economy'
 import { controlledPlanets } from './objectives'
 import { canResearch } from './research'
@@ -12,10 +12,12 @@ const INHERITANCE_COST = 2
 export const SHIPYARD_COST = 4
 
 /**
- * R3.2: a component action needs your own turn, with no tactical action and no open secondary window.
- * Narrowing: R8 calls trading at a post free rather than an action, so TI4 would allow it in the middle of a
- * tactical action too. The duel engine only allows it on a clean turn, which keeps the move list unambiguous
- * and costs the player nothing but the order in which they do the two things.
+ * R3.2/R8: your own turn in the action phase, with no tactical action running and no open secondary window.
+ * A spent turn (`turnDone`) passes this check on purpose: R8 calls trading at a post free rather than an
+ * action, and the whole point of ending an action without ending the turn is that the free moves are still
+ * open afterwards. Narrowing kept from TI4: the sale still needs a quiet moment, so it is refused in the
+ * middle of a tactical action, inside a secondary window and after the seat has passed for the round.
+ * The two real component actions add their own `turnDone` guard on top, because they are actions.
  */
 function turnReady(state: GameState): Result<Seat> {
   if (state.phase !== 'action') return { ok: false, error: 'not in the action phase' }
@@ -24,6 +26,14 @@ function turnReady(state: GameState): Result<Seat> {
   const seat = state.active
   if (state.players[seat].passed) return { ok: false, error: 'this player has passed' }
   return { ok: true, value: seat }
+}
+
+/** R3.2: a component action is an action, so a turn that already spent one may not take another. */
+function actionReady(state: GameState): Result<Seat> {
+  const ready = turnReady(state)
+  if (!ready.ok) return ready
+  if (state.turnDone) return { ok: false, error: ACTION_SPENT }
+  return ready
 }
 
 export function canInheritance(state: GameState, seat: Seat): boolean {
@@ -38,7 +48,7 @@ export function inheritanceTechs(state: GameState, seat: Seat): string[] {
 }
 
 export function research(state: GameState, techId: string): Result<GameState> {
-  const ready = turnReady(state)
+  const ready = actionReady(state)
   if (!ready.ok) return ready
   const seat = ready.value
   const player = state.players[seat]
@@ -52,7 +62,8 @@ export function research(state: GameState, techId: string): Result<GameState> {
   if (!granted.ok) return granted
   const players = [...granted.value.players] as GameState['players']
   players[seat] = { ...players[seat], inheritanceExhausted: true }
-  return { ok: true, value: passTurn({ ...granted.value, players }) }
+  // R3.2: the action is spent, the turn is not; `endTurn` hands it over
+  return { ok: true, value: { ...granted.value, players, turnDone: true } }
 }
 
 export function canShipyard(state: GameState, seat: Seat): boolean {
@@ -69,7 +80,7 @@ export function shipyardPlanets(state: GameState, seat: Seat): string[] {
 
 /** R6: once per game, only without a space dock, one strategy token plus 4 resources. */
 export function shipyard(state: GameState, planetId: string, planets: string[], tradeGoods: number): Result<GameState> {
-  const ready = turnReady(state)
+  const ready = actionReady(state)
   if (!ready.ok) return ready
   const seat = ready.value
   const player = state.players[seat]
@@ -92,16 +103,17 @@ export function shipyard(state: GameState, planetId: string, planets: string[], 
     reinforcements: { ...me.reinforcements, spacedock: me.reinforcements.spacedock - 1 },
   }
   const sys = paid.value.systems[sysId]
+  // R3.2: the action is spent, the turn is not; `endTurn` hands it over
   return {
     ok: true,
-    value: passTurn({
-      ...paid.value, players, nextUnitId: paid.value.nextUnitId + 1,
+    value: {
+      ...paid.value, players, nextUnitId: paid.value.nextUnitId + 1, turnDone: true,
       systems: {
         ...paid.value.systems,
         [sysId]: { ...sys, planets: sys.planets.map(p => p.id === planetId ? { ...p, structures: [...p.structures, dock] } : p) },
       },
       log: [...paid.value.log, { t: 'info', text: `seat ${seat} builds an emergency space dock on ${planetId}` }],
-    }),
+    },
   }
 }
 

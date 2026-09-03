@@ -34,6 +34,8 @@ describe('strategic actions', () => {
     expect(screen.getByTestId('secondary-panel')).toBeTruthy()
     fireEvent.click(screen.getByTestId('btn-secondary-decline'))
     expect(screen.queryByTestId('secondary-panel')).toBeNull()
+    // R3.2: the action is over and this seat has no free move left, so the turn ends by itself rather
+    // than sending the device back for one dead click
     expect(screen.getByTestId('turn-1').textContent).toBe('Your turn')
   })
 

@@ -5,6 +5,9 @@ export function otherSeat(seat: Seat): Seat {
   return seat === 0 ? 1 : 0
 }
 
+/** R3.2: the one rejection every "you already acted this turn" guard hands back, so the UI reads one text. */
+export const ACTION_SPENT = 'R3.2: your action is already spent, end your turn'
+
 /** R3.2: a player may not pass while they still hold an unused strategy card. */
 export function canPass(state: GameState, seat: Seat): boolean {
   return state.players[seat].strategyCards.every(c => c.used)
@@ -41,11 +44,14 @@ export function reviveInfantry(state: GameState, seat: Seat): GameState {
   }
 }
 
-/** The turn goes to the other seat unless that seat has already passed; either way a turn starts (R4.3 step 4). */
+/**
+ * The turn goes to the other seat unless that seat has already passed; either way a turn starts (R4.3 step 4).
+ * Handing the turn over is the only thing that clears `turnDone`, so the seat that receives it starts fresh.
+ */
 export function passTurn(state: GameState): GameState {
   const other = otherSeat(state.active)
   const next: Seat = state.players[other].passed ? state.active : other
-  return reviveInfantry({ ...state, active: next }, next)
+  return reviveInfantry({ ...state, active: next, turnDone: false }, next)
 }
 
 export function activatableSystems(state: GameState, seat: Seat): string[] {
@@ -57,6 +63,7 @@ export function startTactical(state: GameState, systemId: string): Result<GameSt
   if (state.phase !== 'action') return { ok: false, error: 'not in the action phase' }
   if (state.tactical) return { ok: false, error: 'a tactical action is already running' }
   if (state.pendingSecondary) return { ok: false, error: 'R3.2: the opponent still has to answer the last strategy card' }
+  if (state.turnDone) return { ok: false, error: ACTION_SPENT }
   const seat = state.active
   const player = state.players[seat]
   if (player.passed) return { ok: false, error: 'this player has passed' }
@@ -77,10 +84,12 @@ export function startTactical(state: GameState, systemId: string): Result<GameSt
   }
 }
 
+/** R3.2: you pass instead of taking an action, never after one, so a spent turn cannot pass either. */
 export function pass(state: GameState): Result<GameState> {
   if (state.phase !== 'action') return { ok: false, error: 'not in the action phase' }
   if (state.tactical) return { ok: false, error: 'finish the tactical action first' }
   if (state.pendingSecondary) return { ok: false, error: 'R3.2: the opponent still has to answer the last strategy card' }
+  if (state.turnDone) return { ok: false, error: ACTION_SPENT }
   const seat = state.active
   if (state.players[seat].passed) return { ok: false, error: 'this player has already passed' }
   if (!canPass(state, seat)) return { ok: false, error: 'R3.2: cannot pass while holding an unused strategy card' }
@@ -91,9 +100,19 @@ export function pass(state: GameState): Result<GameState> {
   return { ok: true, value: reviveInfantry({ ...state, players, active: other }, other) }
 }
 
+/** R3.2: an action ends the action, not the turn; the seat keeps it, spent, until `endTurn`. */
 export function endTactical(state: GameState): Result<GameState> {
   const tac = state.tactical
   if (state.phase !== 'action' || !tac) return { ok: false, error: 'no tactical action is running' }
   if (tac.step !== 'done' && tac.step !== 'production') return { ok: false, error: `the ${tac.step} step is not finished` }
-  return { ok: true, value: passTurn({ ...state, tactical: null }) }
+  return { ok: true, value: { ...state, tactical: null, turnDone: true } }
+}
+
+/** R3.2: the deliberate end of a turn whose action is spent, after any free move of R8 the seat still wanted. */
+export function endTurn(state: GameState): Result<GameState> {
+  if (state.phase !== 'action') return { ok: false, error: 'not in the action phase' }
+  if (state.tactical) return { ok: false, error: 'finish the tactical action first' }
+  if (state.pendingSecondary) return { ok: false, error: 'R3.2: the opponent still has to answer the last strategy card' }
+  if (!state.turnDone) return { ok: false, error: 'R3.2: take an action before ending your turn' }
+  return { ok: true, value: passTurn(state) }
 }

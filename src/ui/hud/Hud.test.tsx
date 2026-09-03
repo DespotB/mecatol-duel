@@ -90,4 +90,15 @@ describe('the HUD', () => {
     fireEvent.mouseLeave(screen.getByTestId('forces-0-carrier'))
     expect(screen.queryByTestId('unitcard-0-carrier')).toBeNull()
   })
+
+  it('R3.2: the menu offers the way back to the lobby without abandoning the game', () => {
+    renderWithSession(toActionPhase(), <BoardScreen />)
+    expect(screen.queryByTestId('game-menu')).toBeNull()
+    fireEvent.click(screen.getByTestId('btn-menu'))
+    expect(screen.getByTestId('game-menu')).toBeTruthy()
+    expect(screen.getByTestId('btn-menu-lobby')).toBeTruthy()
+    expect(screen.getByTestId('btn-menu-rules')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('btn-menu-close'))
+    expect(screen.queryByTestId('game-menu')).toBeNull()
+  })
 })

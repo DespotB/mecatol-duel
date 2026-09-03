@@ -133,6 +133,11 @@ button{font-family:inherit}
 .stage>.flows-4b{display:contents}
 .map{position:relative;width:940px;height:698px;zoom:var(--s);z-index:1}
 .actions{display:flex;gap:10px;margin:0 auto}
+/* the in-game menu: the way back to the lobby and the rules without abandoning the game */
+.menuwrap{position:relative}
+.menu-pop{position:absolute;left:0;bottom:42px;width:212px;z-index:30}
+.menu-pop .in{padding:10px;display:flex;flex-direction:column;gap:7px;align-items:stretch}
+.menu-pop .btn{justify-content:flex-start}
 .hintbox{width:390px;text-align:right}
 .hintbox .h{font:500 13px/1.25 var(--body);color:#d8d2c2}
 .hintbox .h.err{color:#f1a3a3}

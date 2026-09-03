@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { canShipyard, tradePostOptions } from './componentActions'
-import { applyMove } from './index'
+import { applyMove, legalMoves } from './index'
 import { deepFreeze, toActionPhase, withCards, withExhausted, withPlanetOwner, withPlayer, withTechs } from './testUtils'
 import type { GameState, Result } from './types'
 
@@ -23,14 +23,18 @@ function withoutDocks(state: GameState, seat: 0 | 1): GameState {
 }
 
 describe('R6/R8 component actions', () => {
-  it('R6: Inheritance Systems exhausts, pays 2 resources, ignores prerequisites and ends the turn', () => {
+  it('R6: Inheritance Systems exhausts, pays 2 resources, ignores prerequisites and spends the action', () => {
     const s = withTechs(toActionPhase(), 0, ['inheritance_systems'])
     const done = value(inherit(s, 'carrier_ii'))                    // blue 2 is missing
     expect(done.players[0].techs).toContain('carrier_ii')
     expect(done.players[0].inheritanceExhausted).toBe(true)
     expect(done.systems['home-n'].planets[0].exhausted).toBe(true)  // [0.0.0] is the only ready planet
-    expect(done.active).toBe(1)
-    expect(inherit({ ...done, active: 0 }, 'sarween_tools').ok).toBe(false)   // the card stays exhausted this round
+    // R3.2: the component action spends the action, the seat keeps the turn until it ends it
+    expect(done.active).toBe(0)
+    expect(done.turnDone).toBe(true)
+    expect(value(applyMove(done, { type: 'endTurn' }, 0)).active).toBe(1)
+    // the card stays exhausted for the round, so a fresh turn of seat 0 still cannot use it again
+    expect(inherit({ ...done, turnDone: false }, 'sarween_tools').ok).toBe(false)
   })
   it('R6: without the technology, without resources or with a known technology the action is illegal', () => {
     expect(inherit(toActionPhase(), 'carrier_ii').ok).toBe(false)   // seat 0 does not own the card
@@ -48,7 +52,10 @@ describe('R6/R8 component actions', () => {
     expect(done.systems['home-n'].planets[0].structures.some(u => u.type === 'spacedock' && u.owner === 0)).toBe(true)
     expect(done.players[0]).toMatchObject({ shipyardUsed: true, tokens: { tactic: 3, fleet: 3, strategy: 1 } })
     expect(done.systems['home-n'].planets[0].exhausted).toBe(true)
-    expect(done.active).toBe(1)
+    // R3.2: the action is spent, the turn is not; `endTurn` is what hands it over
+    expect(done.active).toBe(0)
+    expect(done.turnDone).toBe(true)
+    expect(value(applyMove(done, { type: 'endTurn' }, 0)).active).toBe(1)
     expect(canShipyard(done, 0)).toBe(false)
     expect(build(withPlayer(s, 0, { tokens: { tactic: 3, fleet: 3, strategy: 0 } }), '000', ['000']).ok).toBe(false)
     expect(build(s, 'arc-prime', ['000']).ok).toBe(false)           // not controlled
@@ -78,6 +85,30 @@ describe('R6/R8 component actions', () => {
     expect(sell(window, 'east', 1).ok).toBe(false)
     expect(build(window, '000', ['000']).ok).toBe(false)
     expect(sell(withPlayer(s, 0, { passed: true }), 'east', 1).ok).toBe(false)
+  })
+  it('R8: the trade post is still open after the action is spent, but never during one', () => {
+    // seat 0 takes Sakulag, so the west post is linked; the tactical action then ends without passing the turn
+    const s = withPlanetOwner(toActionPhase(), 'sakulag', 'sakulag', 0)
+    const running: GameState = deepFreeze({ ...s, tactical: { systemId: 'bereg', step: 'done' } })
+    expect(sell(running, 'west', 2).ok).toBe(false)                 // R8: not while a tactical action runs
+    const spent = value(applyMove(running, { type: 'endTactical' }, 0))
+    expect(spent.turnDone).toBe(true)
+    const sold = value(sell(spent, 'west', 2))
+    expect(sold.players[0]).toMatchObject({ commodities: 0, tradeGoods: 2 })
+    expect(sold.active).toBe(0)                                     // R8: trading is free, the turn goes on
+    expect(sold.turnDone).toBe(true)                                // and the action stays spent
+    expect(legalMoves(spent).some(m => m.type === 'tradePost' && m.post === 'west')).toBe(true)
+    expect(legalMoves(sold)).toEqual([{ type: 'endTurn' }])         // the post is used up, only the handover is left
+  })
+  it('R3.2: a spent turn takes no second component action', () => {
+    const base = withTechs(withoutDocks(toActionPhase(), 0), 0, ['inheritance_systems'])
+    const spent = value(applyMove(deepFreeze({ ...base, tactical: { systemId: 'bereg', step: 'done' } }), { type: 'endTactical' }, 0))
+    const research = inherit(spent, 'war_sun')
+    expect(research.ok).toBe(false)
+    if (!research.ok) expect(research.error).toMatch(/already spent/)
+    const build = applyMove(spent, { type: 'shipyard', planetId: '000', planets: ['000'], tradeGoods: 0 }, 0)
+    expect(build.ok).toBe(false)
+    if (!build.ok) expect(build.error).toMatch(/already spent/)
   })
   it('R3.2: research is rejected while a secondary window is open', () => {
     const s = withTechs(toActionPhase(), 0, ['inheritance_systems'])

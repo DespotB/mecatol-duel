@@ -8,6 +8,12 @@ import { gamePath, navigate } from './route'
 
 export type { GameConfig } from '../engine/types'
 
+/** The turn is spent and nothing free is left: only ending it remains, so the UI does not ask. */
+function onlyEndTurn(state: GameState): boolean {
+  const moves = legalMoves(state)
+  return moves.length === 1 && moves[0].type === 'endTurn'
+}
+
 const TICK_MS = 100
 // R6: a player whose clock ran out gets three more minutes at the start of every later round
 const ROUND_BONUS_MS = 180000
@@ -78,7 +84,17 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
       setError(result.error)
       return false
     }
-    const next = result.value
+    let next = result.value
+    // R3.2: an action ends the action, not the turn, so the player can still take a free move such as a
+    // trade post sale. When nothing free is open, ending the turn is the only thing left and asking for a
+    // click (in hot-seat: a device handoff) buys nothing, so the engine's own verdict decides it here.
+    // A free move is the player's own detour, so it never ends the turn behind their back: after a trade
+    // they press End turn themselves.
+    while (move.type !== 'tradePost' && next.winner === null && onlyEndTurn(next)) {
+      const ended = applyMove(next, { type: 'endTurn' }, deriveSeed(session.seed, moveCount(next)))
+      if (!ended.ok) break
+      next = ended.value
+    }
     const keep = undoable(session.state, next)
     setError(null)
     setSession({

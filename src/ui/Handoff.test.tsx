@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { cardsUsed, toActionPhase } from '../engine/testUtils'
+import { cardsUsed, toActionPhase, withTactical } from '../engine/testUtils'
 import { gameKey } from './persist'
 import { BoardScreen } from './screens/BoardScreen'
 import { TEST_CODE, renderWithSession } from './test/harness'
@@ -17,6 +17,16 @@ describe('hot-seat courtesies', () => {
     fireEvent.click(screen.getByTestId('handoff-continue'))
     expect(screen.queryByTestId('handoff')).toBeNull()
     expect(screen.getByTestId('board-screen').hasAttribute('inert')).toBe(false)
+  })
+
+  it('R3.2: ends a turn with nothing left in it instead of asking for a dead click', () => {
+    // this seat has no free move open once the action is spent, so ending the turn is the only thing
+    // left and the device goes over straight away; Tactical.test covers the case where a trade is open
+    const done = withTactical(cardsUsed(toActionPhase()), { systemId: 'bereg', step: 'done' })
+    renderWithSession(done, <BoardScreen />)
+    fireEvent.click(screen.getByTestId('btn-end-tactical'))
+    expect(screen.queryByTestId('btn-end-turn')).toBeNull()
+    expect(screen.getByTestId('handoff').textContent).toContain('Pass the device to B')
   })
 
   it('makes the overlay a modal dialog and puts the focus on its continue button', () => {
