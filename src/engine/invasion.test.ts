@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { applyMove } from './index'
+import { bombardablePlanets, groundCombatPending, landablePlanets } from './invasion'
 import { carriedIds, deepFreeze, hitsIn, toActionPhase, withPlanetOwner, withTactical, withTechs, withUnits } from './testUtils'
 import type { GameState, Move, Seat, UnitType } from './types'
 
@@ -127,5 +128,59 @@ describe('R4.3 invasion', () => {
     const base = withUnits(invasion('bereg', ['carrier'], 2), 'bereg', 1, ['infantry', 'infantry', 'infantry', 'infantry', 'infantry'], 'bereg')
     const landed = apply(base, { type: 'land', planetId: 'bereg', infantryIds: carriedIds(base, 'bereg', 0) })
     expect(applyMove(landed, { type: 'endInvasion' }, 0).ok).toBe(false)
+  })
+  it('R4.3: bombardment ends once landing has begun this invasion', () => {
+    const base = withUnits(invasion('bereg', ['carrier', 'dreadnought'], 3), 'bereg', 1, ['infantry', 'infantry', 'infantry'], 'bereg')
+    const after = apply(base, { type: 'land', planetId: 'bereg', infantryIds: carriedIds(base, 'bereg', 0) })
+    expect(applyMove(after, { type: 'bombard', planetId: 'bereg' }, 5).ok).toBe(false)
+    expect(bombardablePlanets(after)).toEqual([])
+  })
+  it('R4.3 step 1: bombardment resolves control immediately when it clears the last defenders and the attacker already holds ground', () => {
+    const withDefender = withUnits(invasion('bereg', ['dreadnought'], 0), 'bereg', 1, ['infantry'], 'bereg')
+    const s = withUnits(withDefender, 'bereg', 0, ['infantry'], 'bereg')
+    let after = apply(s, { type: 'bombard', planetId: 'bereg' }, 1)
+    for (let seed = 2; hitsIn(after, 'bombardment of bereg') < 1 && seed < 50; seed++) after = apply(s, { type: 'bombard', planetId: 'bereg' }, seed)
+    expect(hitsIn(after, 'bombardment of bereg')).toBeGreaterThanOrEqual(1)
+    expect(groundOf(after, 'bereg', 'bereg', 1)).toHaveLength(0)
+    expect(planet(after, 'bereg', 'bereg').owner).toBe(0)
+    expect(planet(after, 'bereg', 'bereg').exhausted).toBe(true)
+  })
+  it('R4.3 step 1: bombardment only ever kills the defender\'s ground forces, never the attacker\'s own', () => {
+    const s = withUnits(withUnits(invasion('bereg', ['dreadnought'], 0), 'bereg', 1, ['infantry', 'infantry'], 'bereg'), 'bereg', 0, ['infantry'], 'bereg')
+    const after = apply(s, { type: 'bombard', planetId: 'bereg' })
+    expect(groundOf(after, 'bereg', 'bereg', 0)).toHaveLength(1)
+    expect(groundOf(after, 'bereg', 'bereg', 1)).toHaveLength(2 - hitsIn(after, 'bombardment of bereg'))
+  })
+  it('R4.3 step 3: a landing party wiped out by space cannon defense leaves the invasion without a selected planet', () => {
+    const base = withUnits(invasion('bereg', ['carrier'], 1), 'bereg', 1, ['pds'], 'bereg')
+    const after = apply(base, { type: 'land', planetId: 'bereg', infantryIds: carriedIds(base, 'bereg', 0) })
+    const wiped = hitsIn(after, 'space cannon defense on bereg') >= 1
+    expect(groundOf(after, 'bereg', 'bereg', 0)).toHaveLength(wiped ? 0 : 1)
+    expect(after.tactical?.invasion?.planetId).toBe(wiped ? null : 'bereg')
+  })
+  it('the enumerators mirror the validators exactly: every enumerated move is legal', () => {
+    const seed = 7
+    const scenarios: GameState[] = [
+      invasion('bereg', ['dreadnought'], 0),                                                                                       // before any landing
+      withUnits(invasion('bereg', ['dreadnought'], 0), 'bereg', 1, ['infantry'], 'bereg'),                                          // enemy ground present
+      withUnits(withUnits(invasion('bereg', ['dreadnought'], 0), 'bereg', 1, ['infantry'], 'bereg'), 'bereg', 1, ['pds'], 'bereg'),  // shielded planet
+      invasion('bereg', ['carrier'], 3),                                                                                            // no bombardment ship
+    ]
+    for (const s of scenarios) {
+      for (const planetId of bombardablePlanets(s)) {
+        expect(applyMove(s, { type: 'bombard', planetId }, seed).ok).toBe(true)
+      }
+      for (const { planetId, infantryIds } of landablePlanets(s)) {
+        expect(applyMove(s, { type: 'land', planetId, infantryIds }, seed).ok).toBe(true)
+      }
+      expect(applyMove(s, { type: 'groundCombatRound' }, seed).ok).toBe(groundCombatPending(s))
+    }
+    const base = withUnits(invasion('bereg', ['carrier', 'dreadnought'], 2), 'bereg', 1, ['infantry', 'infantry'], 'bereg')
+    const landed = apply(base, { type: 'land', planetId: 'bereg', infantryIds: carriedIds(base, 'bereg', 0) })
+    expect(bombardablePlanets(landed)).toEqual([])   // R4.3: landing has begun
+    for (const { planetId, infantryIds } of landablePlanets(landed)) {
+      expect(applyMove(landed, { type: 'land', planetId, infantryIds }, seed).ok).toBe(true)
+    }
+    expect(applyMove(landed, { type: 'groundCombatRound' }, seed).ok).toBe(groundCombatPending(landed))
   })
 })
