@@ -67,6 +67,20 @@ describe('the saved games of one browser', () => {
     expect(listGames().map(g => g.code)).toEqual(['KEE222'])
   })
 
+  it('R8: a game saved before the trade posts had names loads with a pair, not a crash', () => {
+    saveGame(session('OLD333'))
+    const raw = JSON.parse(window.localStorage.getItem(gameKey('OLD333')) ?? '') as { state: Record<string, unknown> }
+    delete raw.state.posts
+    delete raw.state.postAbilityUsed
+    raw.state.version = 2
+    window.localStorage.setItem(gameKey('OLD333'), JSON.stringify(raw))
+    const loaded = loadGame('OLD333')
+    expect(loaded).not.toBeNull()
+    expect(loaded?.state.posts.west).not.toBe(loaded?.state.posts.east)
+    expect(loaded?.state.postAbilityUsed).toEqual({ west: false, east: false })
+    expect(loaded?.state.version).toBe(3)
+  })
+
   it('R3.2: a game saved before turnDone existed loads with the flag cleared, not rejected', () => {
     // exactly what a deployed payload from before that change looks like: no `turnDone`, in the state and in
     // every history entry the undo stack still holds

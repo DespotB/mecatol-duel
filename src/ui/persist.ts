@@ -45,7 +45,7 @@ function isLegacy(value: unknown): value is Legacy {
     && Array.isArray(p.history)
     // R7 changed the objectives and with them the shape of a player, so a game saved under version 1 is
     // not readable any more and is dropped rather than crashed into
-    && typeof p.state === 'object' && p.state !== null && p.state.version === 2
+    && typeof p.state === 'object' && p.state !== null && [2, 3].includes((p.state as { version: number }).version)
 }
 
 function isSummary(value: unknown): value is GameSummary {
@@ -62,8 +62,21 @@ function isSummary(value: unknown): value is GameSummary {
  * loads as a turn whose action is still open, the only safe reading, which keeps a game in progress playable
  * across the deploy; rejecting the payload would throw the game away instead.
  */
+/**
+ * A payload written by an older build lacks the fields that version's rules did not have yet. Reading it as
+ * the current shape keeps a game in progress playable across a deploy, which is the whole point of saving it;
+ * rejecting it would throw the game away. Each step states what the missing field must mean:
+ * `turnDone` false (the action is still open), and for a game from before the trade posts had names, the
+ * pair the status phase would have rolled anyway, unused.
+ */
 function normalise(state: GameState): GameState {
-  return typeof (state as { turnDone?: unknown }).turnDone === 'boolean' ? state : { ...state, turnDone: false }
+  const raw = state as unknown as Partial<GameState> & { turnDone?: unknown; posts?: unknown }
+  let next = state
+  if (typeof raw.turnDone !== 'boolean') next = { ...next, turnDone: false }
+  if (typeof raw.posts !== 'object' || raw.posts === null) {
+    next = { ...next, posts: { west: 'sarnex', east: 'kesh' }, postAbilityUsed: { west: false, east: false } }
+  }
+  return next.version === 3 ? next : { ...next, version: 3 }
 }
 
 function isPayload(value: unknown): value is Payload {

@@ -58,6 +58,7 @@ function signature(move: Move): string {
   if (move.type === 'strategic') return `strategic:${move.card}`
   if (move.type === 'secondary') return `secondary:${move.card}:${move.accept ? 'accept' : 'decline'}`
   if (move.type === 'tradePost') return `tradePost:${move.post}`
+  if (move.type === 'postAbility') return `postAbility:${move.post}`
   return move.type
 }
 
@@ -204,7 +205,9 @@ describe('legal moves in every phase', () => {
 // The seeds past the Fibonacci run are coverage ballast: every rules or flow change reshuffles these
 // deterministic playthroughs, so the tail is retuned whenever one of them stops reaching a rare move kind.
 // Two sessions have retuned it on the same day, which is why the list is longer than it looks it should be.
-const SEEDS: readonly number[] = [1, 2, 3, 5, 8, 13, 21, 34, 40, 55, 71, 89]
+// 59 came in with the trade post abilities: the new free move reshuffles every playthrough, and `bombard`
+// fell out of the old tail. Of the seeds 1 to 80 only 59 and 67 still reach it.
+const SEEDS: readonly number[] = [1, 2, 3, 5, 8, 13, 21, 34, 40, 55, 59, 71, 89]
 const RUNS = new Map<number, GameRun>()
 
 /** The smoke games are shared by the tests below, so each seed is actually played only once. */
@@ -219,7 +222,7 @@ function runGame(seed: number): GameRun {
 const ALL_MOVE_TYPES: readonly Move['type'][] = [
   'pickStrategyCard', 'startTactical', 'moveShips', 'endMovement', 'combatRound', 'assignHits', 'retreat', 'bombard',
   'land', 'groundCombatRound', 'endInvasion', 'produce', 'endTactical', 'endTurn', 'strategic', 'secondary', 'research',
-  'shipyard', 'tradePost', 'pass', 'status',
+  'shipyard', 'tradePost', 'postAbility', 'pass', 'status',
 ]
 const ALL_CARDS: readonly StrategyCardId[] = ['leadership', 'diplomacy', 'trade', 'warfare', 'technology', 'imperial']
 
@@ -236,6 +239,8 @@ const COUNTERS: readonly [string, RegExp][] = [
   ['commodities sold at a post', /sells \d+ commodities at the (west|east) post/],
   ['guardian fleet rolled', /^Guardian fleet:/],
   ['technology researched', /^seat \d researches /],
+  ['trade posts rolled', /^Trade posts: /],
+  ['a post ability used', /^seat \d uses .+ at the (west|east) post/],
 ]
 
 describe('R3.1 to R3.3 full game', () => {
@@ -310,3 +315,4 @@ describe('R3.1 to R3.3 full game', () => {
     }
   })
 })
+
