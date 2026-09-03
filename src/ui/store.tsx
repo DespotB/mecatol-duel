@@ -46,7 +46,9 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
   const [error, setError] = useState<string | null>(null)
   const roundRef = useRef<number | null>(null)
 
-  const legal = useMemo(() => session ? legalMoves(session.state) : [], [session])
+  // keyed on the game state alone: the clock ticks ten times a second and must not re-enumerate the moves
+  const state = session?.state ?? null
+  const legal = useMemo(() => state ? legalMoves(state) : [], [state])
 
   const start = useCallback((config: GameConfig, seed: number, minutes: number) => {
     const ms = minutes * 60000
@@ -105,10 +107,15 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     setSession(saved)
   }, [])
 
+  // Keyed on the game itself, not on the session object: a clock tick makes a new session every 100ms and
+  // must not serialise the whole state into localStorage ten times a second. The callback that runs is the
+  // one from the render whose state or history changed, so the clock it writes is current.
+  const history = session?.history ?? null
   useEffect(() => {
     if (session) saveSession(session)
     else clearSession()
-  }, [session])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, history])
 
   // R6: the clock runs only for the seat to act, and only during the action phase
   const running = session !== null && session.state.phase === 'action' && session.state.winner === null && session.handoff === null

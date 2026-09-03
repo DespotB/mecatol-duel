@@ -2,6 +2,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
+import * as engine from '../engine'
 import { applyMove, createGame, deriveSeed } from '../engine'
 import { cardsUsed, toActionPhase } from '../engine/testUtils'
 import { GameProvider, useGame } from './store'
@@ -96,6 +97,25 @@ describe('the hot-seat store', () => {
     expect(result.current.session?.clockMs[0]).toBe(0)
     expect(result.current.session?.state.players[0].passed).toBe(true)
     expect(result.current.session?.state.active).toBe(1)
+    vi.useRealTimers()
+  })
+
+  it('R6: a clock tick neither re-enumerates the moves nor rewrites the saved game', () => {
+    vi.useFakeTimers()
+    const { result } = renderHook(() => useGame(), { wrapper: wrapper(true) })
+    act(() => { result.current.resume(session(cardsUsed(toActionPhase()), [60000, 60000])) })
+    const enumerate = vi.spyOn(engine, 'legalMoves')
+    const write = vi.spyOn(Storage.prototype, 'setItem')
+    act(() => { vi.advanceTimersByTime(1000) })
+    expect(result.current.session?.clockMs[0]).toBe(59000)      // the clock still runs
+    expect(enumerate).not.toHaveBeenCalled()
+    expect(write).not.toHaveBeenCalled()
+    // a real move still enumerates and still saves
+    act(() => { result.current.apply({ type: 'pass' }) })
+    expect(enumerate).toHaveBeenCalled()
+    expect(write).toHaveBeenCalled()
+    enumerate.mockRestore()
+    write.mockRestore()
     vi.useRealTimers()
   })
 })
