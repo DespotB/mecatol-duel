@@ -33,9 +33,10 @@ const HINTS: Record<string, string> = {
 export function BoardScreen() {
   const { session, legal, apply } = useGame()
   const [mode, setMode] = useState<ActionMode>(null)
-  // `?panel=log` is a manual/visual QA hook (see App.tsx's demo bootstrap) so a headless screenshot
-  // can land on the open log panel without a click.
-  const [showLog, setShowLog] = useState(() => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('panel') === 'log')
+  // `?panel=log` is a dev-only manual/visual QA hook (see App.tsx's demo bootstrap) so a headless
+  // screenshot can land on the open log panel without a click.
+  const [showLog, setShowLog] = useState(() => import.meta.env.DEV
+    && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('panel') === 'log')
   const [card, setCard] = useState<StrategyCardId | null>(null)
   if (!session) return null
   const state = session.state

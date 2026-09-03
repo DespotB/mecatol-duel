@@ -4,7 +4,6 @@ import { navigate, useHashRoute } from './route'
 import { BoardScreen } from './screens/BoardScreen'
 import { GameOverScreen } from './screens/GameOverScreen'
 import { SetupScreen } from './screens/SetupScreen'
-import { cardsUsed, toActionPhase } from '../engine/testUtils'
 import type { GameConfig } from './store'
 import type { Move, StrategyCardId } from '../engine/types'
 
@@ -18,19 +17,26 @@ const DEMO_CONFIG: GameConfig = {
 function useDemoBootstrap() {
   const { session, start, resume } = useGame()
   useEffect(() => {
+    // The whole hook is dev-only: `import.meta.env.DEV` folds to `false` in a production build, so this
+    // body and the dynamic `../engine/testUtils` import below are dropped from the shipped bundle.
+    if (!import.meta.env.DEV) return
     if (session || typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
     if (params.get('demo') !== '1') return
     const panel = params.get('panel')
     // `&panel=handoff` / `&panel=log` are manual/visual QA hooks: they resume straight into a state
     // that already shows the overlay or has log entries, so a headless screenshot needs no clicks.
-    if (panel === 'handoff') {
-      resume({ seed: 1, minutes: 15, state: cardsUsed(toActionPhase(1, 0)), history: [], clockMs: [900000, 900000], handoff: 1 })
-    } else if (panel === 'log') {
-      resume({ seed: 1, minutes: 15, state: toActionPhase(1, 0), history: [], clockMs: [900000, 900000], handoff: null })
-    } else {
-      start(DEMO_CONFIG, 1, 15)
+    if (panel === 'handoff' || panel === 'log') {
+      void import('../engine/testUtils').then(({ cardsUsed, toActionPhase }) => {
+        const state = toActionPhase(1, 0)
+        resume(panel === 'handoff'
+          ? { seed: 1, minutes: 15, state: cardsUsed(state), history: [], clockMs: [900000, 900000], handoff: 1 }
+          : { seed: 1, minutes: 15, state, history: [], clockMs: [900000, 900000], handoff: null })
+        navigate('#/play')
+      })
+      return
     }
+    start(DEMO_CONFIG, 1, 15)
     navigate('#/play')
     // Runs once on mount; `start`, `resume` and `session` come from a stable context store.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -60,6 +66,7 @@ function useDemoScript() {
   const { session, legal, apply } = useGame()
   const step = useRef(0)
   useEffect(() => {
+    if (!import.meta.env.DEV) return
     if (typeof window === 'undefined' || !session) return
     const panel = new URLSearchParams(window.location.search).get('panel')
     const script = panel ? DEMO_SCRIPTS[panel] : undefined
