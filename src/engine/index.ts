@@ -66,7 +66,7 @@ export { bombardablePlanets, groundCombatPending, landablePlanets } from './inva
 export { movableShips, movementObstacle, shipsThatCanReach } from './movement'
 export { CHARTER_TRADE_GOODS, TIME_TRADE_VP, postAbilityOptions, postAbilityReady, refitValue } from './postAbilities'
 export type { MovementObstacle } from './movement'
-export { controlledPlanets, controlsMecatol, scoreable } from './objectives'
+export { controlledPlanets, controlsMecatol, freeScoreable, paidScoreable, scoreable } from './objectives'
 export { PRODUCIBLE } from './production'
 export { researchable } from './research'
 export { deriveSeed } from './rng'

@@ -130,7 +130,10 @@ export interface StrategicParams {
   objectiveId?: string              // Imperial primary: the public objective to score
   shareWithOpponent?: boolean       // Trade primary: the opponent replenishes without paying
 }
-export interface StatusParams { tokens: { tactic: number; fleet: number; strategy: number } }
+export interface StatusParams {
+  tokens: { tactic: number; fleet: number; strategy: number }
+  score?: { objectiveId: string; planets?: string[]; tradeGoods?: number }[]   // R7: the paid objectives this seat buys, and what pays for each
+}
 ```
 
 ## Module layout

@@ -37,7 +37,7 @@ export interface Player {
   strategyCards: { id: StrategyCardId; used: boolean }[]
   passed: boolean
   scoredObjectives: string[]; scoredMandates: string[]
-  resourcesSpentThisRound: number        // R7: the "spend 6 resources" objective counts a whole round
+  resourcesSpentThisRound: number        // what this round's payments actually cost; the status phase resets it
   spaceCombatWins: number                // R7: space combats won against the opponent, guardians excluded
   trades: number                         // R7: trade post uses plus trades with the opponent, over the game
   tradedThisRound: { west: boolean; east: boolean }
@@ -72,7 +72,7 @@ export interface GameState {
   strategyPool: { id: StrategyCardId; bonus: number }[]   // unpicked cards with trade goods
   draft: Seat[]                                          // remaining pick order in the strategy phase
   publicObjectives: string[]                             // revealed ids, in the order they were revealed
-  objectiveOrder: string[]                               // R7: the shuffled pool, one revealed per round
+  objectiveOrder: string[]                               // R7: the six drawn from the pool, one revealed per round
   mecatolCombatWinner: Seat | null                       // R7 First Strike: the race is over once this is set
   players: [Player, Player]
   systems: Record<string, System>
@@ -126,7 +126,14 @@ export interface StrategicParams {
   objectiveId?: string              // Imperial primary: the public objective to score
   shareWithOpponent?: boolean       // Trade primary: the opponent replenishes without paying
 }
-export interface StatusParams { tokens: { tactic: number; fleet: number; strategy: number } }
+export interface StatusParams {
+  tokens: { tactic: number; fleet: number; strategy: number }
+  // R7: the objectives that cost something are scored only on request, each with what pays for it. The free
+  // ones score themselves; an unrequested or unpayable paid one simply is not scored.
+  score?: { objectiveId: string; planets?: string[]; tradeGoods?: number }[]
+}
+/** R7: one entry of `StatusParams.score`: the objective to buy, and the planets and trade goods that buy it. */
+export type ScoreRequest = NonNullable<StatusParams['score']>[number]
 
 /**
  * R8: the parameters of a `postAbility` move. Which of them matter is decided by the ability of the post

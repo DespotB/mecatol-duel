@@ -1,5 +1,6 @@
 import { FACTIONS } from '../data/factions'
 import { MECATOL_ID, SYSTEM_IDS, homeSystemId } from '../data/map'
+import { isPaidObjective } from '../data/objectives'
 import { ACTION_SPENT, otherSeat } from './actionPhase'
 import { checkFleet } from './board'
 import { distributeTokens, exhaustPlanets, payCost } from './economy'
@@ -195,6 +196,9 @@ function imperialPrimary(state: GameState, seat: Seat, params: StrategicParams):
   if (id !== undefined) {
     if (!state.publicObjectives.includes(id)) return { ok: false, error: `R7: ${id} is not a revealed public objective` }
     if (state.players[seat].scoredObjectives.includes(id)) return { ok: false, error: `R7: ${id} is already scored` }
+    // R7: an objective you pay for is scored in the status phase, where the payment goes with it; Imperial
+    // hands out its point for free and must not be a way around the price
+    if (isPaidObjective(id)) return { ok: false, error: `R7: ${id} is only scored in the status phase, where you pay for it` }
     if (!fulfils(state, seat, id)) return { ok: false, error: `R7: ${id} is not fulfilled` }
     next = scoreObjective(next, seat, id)
   }

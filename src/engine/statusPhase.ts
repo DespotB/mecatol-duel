@@ -1,10 +1,10 @@
-import { objectiveDef } from '../data/objectives'
+import { objectiveCost, objectiveDef } from '../data/objectives'
 import { otherSeat } from './actionPhase'
-import { distributeTokens } from './economy'
-import { addVp, controlledPlanets, controlsMecatol, scoreObjective, scoreable } from './objectives'
+import { distributeTokens, payCost } from './economy'
+import { addVp, controlledPlanets, controlsMecatol, freeScoreable, fulfils, scoreObjective } from './objectives'
 import { deriveSeed } from './rng'
 import { ALL_STRATEGY_CARDS, postRollEntry, rollGuardianFleet, rollPosts } from './setup'
-import type { GameState, Result, Seat, StatusParams, System } from './types'
+import type { GameState, Result, ScoreRequest, Seat, StatusParams, System } from './types'
 
 // R3.3 step 5 / R4.2: seed salt for the status-phase guardian reroll, kept distinct from other seeded rolls
 const GUARDIAN_REROLL_SALT = 91
@@ -20,12 +20,51 @@ export function tokensGained(state: GameState, seat: Seat): number {
   return state.players[seat].techs.includes('hyper_metabolism') ? 3 : 2
 }
 
-/** R3.3 step 1: every objective the seat may score, plus 1 VP for Mecatol Rex. */
+/**
+ * R3.3 step 1: every objective the seat scores for free, plus 1 VP for Mecatol Rex. The paid ones are not in
+ * here: they cost something, so they are scored only where the player asked for them and covered the cost.
+ */
 export function scoreAll(state: GameState, seat: Seat): GameState {
   let next = state
-  for (const id of scoreable(state, seat)) next = scoreObjective(next, seat, id)
+  for (const id of freeScoreable(state, seat)) next = scoreObjective(next, seat, id)
   if (controlsMecatol(next, seat)) next = addVp(next, seat, 1, 'Mecatol Rex')
   return next
+}
+
+/**
+ * R7: the objectives the seat asked to buy, in the order it named them. Each request is checked on the state
+ * the earlier ones left behind (a payment exhausts planets, so the second request sees the thinner purse) and
+ * the whole move is rejected if any one of them does not hold: paying is a choice, but a half-paid choice is
+ * not one of the options.
+ */
+function scoreRequested(state: GameState, seat: Seat, requests: ScoreRequest[]): Result<GameState> {
+  let next = state
+  const bought: string[] = []
+  for (const request of requests) {
+    const id = request.objectiveId
+    const cost = objectiveCost(id)
+    if (!cost) return { ok: false, error: `R7: ${id} is not an objective you pay for` }
+    if (bought.includes(id)) return { ok: false, error: `R7: ${id} is requested twice` }
+    if (!next.publicObjectives.includes(id)) return { ok: false, error: `R7: ${id} is not a revealed public objective` }
+    if (next.players[seat].scoredObjectives.includes(id)) return { ok: false, error: `R7: ${id} is already scored` }
+    if (!fulfils(next, seat, id)) return { ok: false, error: `R7: ${id} is not fulfilled` }
+    if (cost.kind === 'resources') {
+      const paid = payCost(next, seat, cost.amount, request.planets ?? [], request.tradeGoods ?? 0)
+      if (!paid.ok) return paid
+      next = paid.value
+    } else {
+      // R6: the engine is time-free. It grants the point and records the debt; the client that owns the clock
+      // (src/ui/store.tsx) takes the time when it applies the move.
+      if ((request.planets?.length ?? 0) > 0 || (request.tradeGoods ?? 0) !== 0) {
+        return { ok: false, error: `R7: ${id} is paid in time, not in planets or trade goods` }
+      }
+      const fraction = `${String(Math.round(cost.fraction * 100))}%`
+      next = { ...next, log: [...next.log, { t: 'info', text: `seat ${seat} pays a fifth of the time left on its clock (${fraction})` }] }
+    }
+    next = scoreObjective(next, seat, id)
+    bought.push(id)
+  }
+  return { ok: true, value: next }
 }
 
 /** R7: higher VP, then the Mecatol Rex controller, then more planets, then the speaker's opponent. */
@@ -103,7 +142,10 @@ export function status(state: GameState, params: StatusParams, seed: number): Re
   if (state.phase !== 'status') return { ok: false, error: 'not in the status phase' }
   const seat = state.active
   if (state.statusSubmitted.includes(seat)) return { ok: false, error: `R3.3: seat ${seat} has already submitted its status move` }
-  const scored = scoreAll(state, seat)
+  // R7: what the seat bought first, because paying exhausts planets; the free objectives never read them
+  const bought = scoreRequested(state, seat, params.score ?? [])
+  if (!bought.ok) return bought
+  const scored = scoreAll(bought.value, seat)
   const distributed = distributeTokens(scored, seat, params.tokens, tokensGained(state, seat))
   if (!distributed.ok) return distributed
   const statusSubmitted = [...state.statusSubmitted, seat]

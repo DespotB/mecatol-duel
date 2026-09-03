@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { TRADE_POSTS } from '../../data/map'
 import { SHIP_TYPES } from '../../data/units'
 import { postAbilityOptions, postDef, postLinked, refitValue } from '../../engine'
-import { formatClock, planetLabel, systemLabel, techLabel, timeTradeCost, unitLabel } from '../format'
+import { formatClock, planetLabel, systemLabel, techLabel, timeCost, unitLabel } from '../format'
 import { inheritanceTechIds, shipyardOffers } from '../moveOptions'
 import { ProductionPicker } from './ProductionPicker'
 import { Stepper } from './Stepper'
@@ -194,7 +194,7 @@ export function ComponentPanel({ onClose }: { onClose: () => void }) {
   }
 
   function confirmLabel(def: PostDef): string {
-    if (def.ability === 'timeTrade') return `Pay ${formatClock(timeTradeCost(session?.clockMs[seat] ?? 0))} for 1 victory point`
+    if (def.ability === 'timeTrade') return `Pay ${formatClock(timeCost(session?.clockMs[seat] ?? 0, 0.5))} for 1 victory point`
     return `Use ${def.abilityName}`
   }
 

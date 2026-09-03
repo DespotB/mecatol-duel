@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { FACTIONS } from '../data/factions'
 import { homeSystemId } from '../data/map'
-import { PUBLIC_OBJECTIVES } from '../data/objectives'
 import { otherSeat } from './actionPhase'
 import { checkFleet } from './board'
 import { applyMove, legalMoves, validateMove } from './index'
-import { createGame, unitsOf } from './setup'
+import { OBJECTIVES_PER_GAME, createGame, unitsOf } from './setup'
 import { DUEL_CONFIG, fillTemplate, shuffle, toActionPhase, toStatusPhase, withCards, withExhausted, withPlanetOwner, withPlayer, withTechs } from './testUtils'
 import type { GameState, Move, Seat, StrategyCardId } from './types'
 
@@ -20,10 +19,10 @@ function invariants(state: GameState, landed: Map<string, Set<Seat>>): void {
   expect(new Set(units.map(u => u.id)).size).toBe(units.length)
   for (const u of units) expect(u.id).toBeLessThan(state.nextUnitId)
   expect(state.round).toBeLessThanOrEqual(6)
-  // R3.3 step 2 reveals before the victory check, so a finished round may be one ahead; the pool of five
-  // runs out before round 6 does, and nothing is revealed after that
-  expect(state.publicObjectives.length).toBeGreaterThanOrEqual(Math.min(state.round, PUBLIC_OBJECTIVES.length))
-  expect(state.publicObjectives.length).toBeLessThanOrEqual(PUBLIC_OBJECTIVES.length)
+  // R3.3 step 2 reveals before the victory check, so a finished round may be one ahead; the six drawn from
+  // the pool run out with round 6, which reveals nothing itself
+  expect(state.publicObjectives.length).toBeGreaterThanOrEqual(Math.min(state.round, OBJECTIVES_PER_GAME))
+  expect(state.publicObjectives.length).toBeLessThanOrEqual(OBJECTIVES_PER_GAME)
   expect(state.publicObjectives).toEqual(state.objectiveOrder.slice(0, state.publicObjectives.length))
   expect(state.phase === 'ended').toBe(state.winner !== null)
   for (const seat of [0, 1] as Seat[]) {
@@ -52,13 +51,15 @@ function invariants(state: GameState, landed: Map<string, Set<Seat>>): void {
 
 /**
  * What an applied move proves about coverage: the kind, plus the card for a strategic action or a secondary
- * answer (an accepted secondary is a different code path from a declined one) and the post for a trade.
+ * answer (an accepted secondary is a different code path from a declined one), the post for a trade, and
+ * whether a status move bought a paid objective (R7), which is a different code path from the bare one.
  */
 function signature(move: Move): string {
   if (move.type === 'strategic') return `strategic:${move.card}`
   if (move.type === 'secondary') return `secondary:${move.card}:${move.accept ? 'accept' : 'decline'}`
   if (move.type === 'tradePost') return `tradePost:${move.post}`
   if (move.type === 'postAbility') return `postAbility:${move.post}`
+  if (move.type === 'status' && move.params.score?.length) return 'status:paid'
   return move.type
 }
 
@@ -205,9 +206,10 @@ describe('legal moves in every phase', () => {
 // The seeds past the Fibonacci run are coverage ballast: every rules or flow change reshuffles these
 // deterministic playthroughs, so the tail is retuned whenever one of them stops reaching a rare move kind.
 // Two sessions have retuned it on the same day, which is why the list is longer than it looks it should be.
-// 59 came in with the trade post abilities: the new free move reshuffles every playthrough, and `bombard`
-// fell out of the old tail. Of the seeds 1 to 80 only 59 and 67 still reach it.
-const SEEDS: readonly number[] = [1, 2, 3, 5, 8, 13, 21, 34, 40, 55, 59, 71, 89]
+// 246 is the one seed off the end: merging the paid objectives into the trade post abilities reshuffled every
+// playthrough again and the tail lost both `bombard` and `groundCombatRound`. Of the seeds 1 to 250 it is the
+// only one that still reaches both, which is why one large number replaces the two the merge invalidated.
+const SEEDS: readonly number[] = [1, 2, 3, 5, 8, 13, 21, 34, 40, 55, 71, 89, 246]
 const RUNS = new Map<number, GameRun>()
 
 /** The smoke games are shared by the tests below, so each seed is actually played only once. */
@@ -295,6 +297,9 @@ describe('R3.1 to R3.3 full game', () => {
       expect([...union], `${card} was never played as a primary`).toContain(`strategic:${card}`)
       expect([...union], `${card} was never accepted as a secondary`).toContain(`secondary:${card}:accept`)
     }
+    // R7: the bare status move and the one that buys a paid objective are two different code paths
+    expect([...union], 'no seeded game ever paid for an objective').toContain('status:paid')
+    expect([...union], 'no seeded game ever submitted a bare status move').toContain('status')
     for (const [name] of COUNTERS) expect(counters.get(name) ?? 0, `${name} never happened`).toBeGreaterThanOrEqual(1)
     // the two template kinds must mostly fill in, otherwise the run only looks like it moves ships and produces
     expect(templateAttempts).toBeGreaterThan(0)

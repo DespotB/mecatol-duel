@@ -43,8 +43,7 @@ export function payCost(state: GameState, seat: Seat, cost: number, planets: str
   const paid = tradeGoods + spent.value.resources
   if (paid < cost) return { ok: false, error: `paid ${paid} of ${cost}` }
   const players = [...spent.value.state.players] as GameState['players']
-  // R7: the "spend 6 resources in a single round" objective counts what the payment actually cost, so an
-  // overpaid planet does not inflate it
+  // the round's ledger counts what the payment actually cost, so an overpaid planet does not inflate it
   const me = spent.value.state.players[seat]
   players[seat] = {
     ...me, tradeGoods: me.tradeGoods - tradeGoods,
@@ -129,4 +128,21 @@ export function cheapestPlanets(state: GameState, seat: Seat, cost: number): str
     if (!best || total < best.total || (total === best.total && ids.length < best.ids.length)) best = { ids, total }
   }
   return best ? best.ids : null
+}
+
+/**
+ * The cheapest way the seat can cover `cost` right now: the cheapest ready planets, topped up with trade goods
+ * only when the planets alone cannot reach it. Null when the seat cannot pay at all. The enumerator builds its
+ * payable templates from this, so a move it offers is one `payCost` accepts.
+ */
+export function cheapestPayment(state: GameState, seat: Seat, cost: number): { planets: string[]; tradeGoods: number } | null {
+  const planets = cheapestPlanets(state, seat, cost)
+  if (planets) return { planets, tradeGoods: 0 }
+  const short = cost - readyResources(state, seat)
+  if (short > state.players[seat].tradeGoods) return null
+  const all: string[] = []
+  for (const sys of Object.values(state.systems)) {
+    for (const p of sys.planets) if (p.owner === seat && !p.exhausted) all.push(p.id)
+  }
+  return { planets: all, tradeGoods: short }
 }
