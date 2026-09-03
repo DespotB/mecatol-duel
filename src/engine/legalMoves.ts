@@ -1,4 +1,4 @@
-import { activatableSystems, canPass } from './actionPhase'
+import { ACTION_SPENT, activatableSystems, canPass } from './actionPhase'
 import { canMunitions, defaultAssignment, pendingFor, retreatTargets } from './combat'
 import { SHIPYARD_COST, canInheritance, canShipyard, inheritanceTechs, shipyardPlanets, tradePostOptions } from './componentActions'
 import { cheapestPlanets, productionCost, productionLimit, readyInfluence } from './economy'
@@ -164,6 +164,15 @@ export function legalMoves(state: GameState): Move[] {
   }
   if (state.players[seat].passed) return []
   if (state.tactical) return tacticalMoves(state)
+  // R3.2/R8: the action is spent but the turn is not over. Only the free moves and the handover are left:
+  // no second action, and no `pass` either, because you pass instead of taking an action, never after one.
+  if (state.turnDone) {
+    const spent: Move[] = [{ type: 'endTurn' }]
+    for (const post of tradePostOptions(state, seat)) {
+      spent.push({ type: 'tradePost', post, commodities: Math.min(2, state.players[seat].commodities) })
+    }
+    return spent
+  }
   const out: Move[] = activatableSystems(state, seat).map(id => ({ type: 'startTactical', systemId: id }))
   for (const card of unusedCards(state, seat)) out.push(...primaryMoves(state, seat, card))
   if (canInheritance(state, seat)) {
@@ -220,5 +229,10 @@ function matches(candidate: Move, move: Move): boolean {
 export function validateMove(state: GameState, move: Move): Result<true> {
   if (pendingFor(state) && move.type !== 'assignHits') return { ok: false, error: 'hits must be assigned first' }
   const ok = legalMoves(state).some(candidate => matches(candidate, move))
-  return ok ? { ok: true, value: true } : { ok: false, error: `illegal move ${move.type}` }
+  if (ok) return { ok: true, value: true }
+  // R3.2: a spent turn is the one rejection worth naming, because the player still has moves, just not this one
+  if (state.phase === 'action' && state.turnDone && !state.tactical && state.pendingSecondary === null) {
+    return { ok: false, error: ACTION_SPENT }
+  }
+  return { ok: false, error: `illegal move ${move.type}` }
 }

@@ -9,7 +9,7 @@ import { DUEL_CONFIG, fillTemplate, shuffle, toActionPhase, toStatusPhase, withC
 import type { GameState, Move, Seat, StrategyCardId } from './types'
 
 const MAX_MOVES = 3000
-const CLOSERS: readonly Move['type'][] = ['pass', 'status', 'endTactical', 'endMovement', 'endInvasion', 'secondary']
+const CLOSERS: readonly Move['type'][] = ['pass', 'status', 'endTactical', 'endTurn', 'endMovement', 'endInvasion', 'secondary']
 // the only two kinds legalMoves still leaves as templates (docs/spec/engine-design.md, Contract); every other
 // enumerated move is already concrete, so it must never be rejected by the handler that offered it
 const TEMPLATE_TYPES: readonly Move['type'][] = ['moveShips', 'produce']
@@ -198,11 +198,11 @@ describe('legal moves in every phase', () => {
   })
 })
 
-// seeds 90, 94 and 140 are appended (outside the Fibonacci run) because the Fibonacci ones alone no longer
-// reach a bombard or a groundCombatRound: every rules fix shifts the deterministic playthroughs (Space Dock I
-// granting its free fighter slots, then R4.1 step 4 handing the hit assignment to the players), and the
-// coverage test below needs the extra seeds to still see every move kind at least once.
-const SEEDS: readonly number[] = [1, 2, 3, 5, 8, 13, 21, 28, 29, 34, 55, 89, 90, 94, 140]
+// The seeds past the Fibonacci run are coverage ballast: every rules or flow change reshuffles these
+// deterministic playthroughs, so the tail is retuned whenever one of them stops reaching a rare move kind.
+// Today 3 carries the bombard and 71 the ground combat, both found by scanning seeds 1 to 220 after the
+// turn was split from the action; nothing about the numbers themselves matters.
+const SEEDS: readonly number[] = [1, 2, 3, 5, 8, 13, 21, 34, 55, 71, 89]
 const RUNS = new Map<number, GameRun>()
 
 /** The smoke games are shared by the tests below, so each seed is actually played only once. */
@@ -216,7 +216,7 @@ function runGame(seed: number): GameRun {
 
 const ALL_MOVE_TYPES: readonly Move['type'][] = [
   'pickStrategyCard', 'startTactical', 'moveShips', 'endMovement', 'combatRound', 'assignHits', 'retreat', 'bombard',
-  'land', 'groundCombatRound', 'endInvasion', 'produce', 'endTactical', 'strategic', 'secondary', 'research',
+  'land', 'groundCombatRound', 'endInvasion', 'produce', 'endTactical', 'endTurn', 'strategic', 'secondary', 'research',
   'shipyard', 'tradePost', 'pass', 'status',
 ]
 const ALL_CARDS: readonly StrategyCardId[] = ['leadership', 'diplomacy', 'trade', 'warfare', 'technology', 'imperial']
@@ -237,8 +237,8 @@ const COUNTERS: readonly [string, RegExp][] = [
 ]
 
 describe('R3.1 to R3.3 full game', () => {
-  // this first test pays for every seed's full playthrough (the rest reuse RUNS); two extra seeds (see SEEDS
-  // above) push it close to the default 5s timeout under parallel load, so it gets a generous one of its own.
+  // this first test pays for every seed's full playthrough (the rest reuse RUNS); the appended coverage seeds
+  // (see SEEDS above) push it close to the default 5s timeout under parallel load, so it gets its own.
   it('plays every seeded game to the end and keeps every invariant', { timeout: 30000 }, () => {
     let byPoints = 0
     let byRound6 = 0

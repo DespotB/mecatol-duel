@@ -84,6 +84,7 @@ export interface GameState {
   players: [Player, Player]
   systems: Record<string, System>
   tactical: TacticalContext | null
+  turnDone: boolean                                      // R3.2: the action is spent, free moves and endTurn are left
   pendingSecondary: StrategyCardId | null                // opponent may respond
   statusSubmitted: Seat[]                                // seats whose status move is in; the phase closes at two
   nextUnitId: number
@@ -111,6 +112,7 @@ export type Move =
   | { type: 'endInvasion' }
   | { type: 'produce'; units: Partial<Record<UnitType, number>>; planets: string[]; tradeGoods: number }
   | { type: 'endTactical' }
+  | { type: 'endTurn' }                                  // R3.2: the action is spent, hand the turn over
   | { type: 'strategic'; card: StrategyCardId; params?: StrategicParams }
   | { type: 'secondary'; card: StrategyCardId; accept: boolean; params?: StrategicParams }
   | { type: 'research'; techId: string; via: 'inheritance' }   // component action; the Technology card carries its technologies in StrategicParams

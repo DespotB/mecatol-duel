@@ -107,6 +107,9 @@ describe('R4.3 step 4 Infantry II revival', () => {
     expect(played.active).toBe(1)
     expect(played.players[1].pendingInfantry).toBe(1)                // the window is a response, not a turn
     const answered = ok(applyMove(played, { type: 'secondary', card: 'trade', accept: false }, 0))
-    expect(answered.players[1].pendingInfantry).toBe(0)              // now seat 1 takes its turn
+    expect(answered.active).toBe(0)                                  // the card holder's turn is not over yet
+    expect(answered.players[1].pendingInfantry).toBe(1)              // so seat 1's turn has not started either
+    const handed = ok(applyMove(answered, { type: 'endTurn' }, 0))
+    expect(handed.players[1].pendingInfantry).toBe(0)                // now seat 1 takes its turn
   })
 })
