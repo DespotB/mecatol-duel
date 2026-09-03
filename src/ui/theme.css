@@ -61,14 +61,6 @@ button{font-family:inherit}
   opacity:.7;filter:saturate(1.15) brightness(.85) blur(.4px);object-fit:contain;pointer-events:none}
 .space .farplanet{position:absolute;right:6%;top:-90px;width:280px;height:280px;
   opacity:.5;filter:saturate(1.2) brightness(.8) blur(.6px);object-fit:contain;pointer-events:none}
-/* ships crossing far away: slow, small, and never bright enough to be mistaken for a unit on the board */
-.space .drift img{position:absolute;opacity:.16;filter:brightness(1.5) blur(.3px);will-change:transform}
-.space .drift .d1{top:18%;width:46px;animation:drift 132s linear infinite}
-.space .drift .d2{top:62%;width:34px;animation:drift 168s linear infinite -40s}
-.space .drift .d3{top:81%;width:56px;animation:driftback 196s linear infinite -90s}
-@keyframes drift{from{transform:translateX(-12vw) rotate(6deg)}to{transform:translateX(112vw) rotate(6deg)}}
-@keyframes driftback{from{transform:translateX(112vw) scaleX(-1) rotate(-4deg)}to{transform:translateX(-12vw) scaleX(-1) rotate(-4deg)}}
-@media (prefers-reduced-motion: reduce){.space .drift img{animation:none;transform:translateX(40vw)}}
 
 /* gold primitives */
 .cut{--c:10px;position:relative;padding:1px;
