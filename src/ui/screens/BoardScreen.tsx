@@ -31,7 +31,7 @@ export function BoardScreen() {
   return (
     <div className="app" data-testid="board-screen">
       <div className="space"><div className="stars" /><div className="neb" /><div className="swirl" /><div className="limb" /><div className="dust" /></div>
-      <TopBar state={state} clockMs={session.clockMs} onPick={onPick} />
+      <TopBar state={state} clockMs={session.clockMs} clockMinutes={session.minutes} handoff={session.handoff} onPick={onPick} />
       <SidePanel state={state} seat={0} />
       <SidePanel state={state} seat={1} />
       <BoardMap
