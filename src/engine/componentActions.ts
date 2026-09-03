@@ -15,7 +15,7 @@ const SHIPYARD_COST = 4
 function turnReady(state: GameState): Result<Seat> {
   if (state.phase !== 'action') return { ok: false, error: 'not in the action phase' }
   if (state.tactical) return { ok: false, error: 'finish the tactical action first' }
-  if (state.pendingSecondary) return { ok: false, error: 'R3.2: the opponent still has to answer the last strategy card' }
+  if (state.pendingSecondary) return { ok: false, error: 'R3.2: a secondary window is open' }
   const seat = state.active
   if (state.players[seat].passed) return { ok: false, error: 'this player has passed' }
   return { ok: true, value: seat }
