@@ -1,4 +1,5 @@
 import { endTactical, pass, startTactical } from './actionPhase'
+import { endMovement, moveShips } from './movement'
 import { pickStrategyCard } from './strategyPhase'
 import type { GameState, Move, Result } from './types'
 
@@ -12,6 +13,8 @@ export function applyMove(state: GameState, move: Move, seed: number): Result<Ga
       case 'startTactical': result = startTactical(state, move.systemId); break
       case 'pass': result = pass(state); break
       case 'endTactical': result = endTactical(state); break
+      case 'moveShips': result = moveShips(state, move.moves); break
+      case 'endMovement': result = endMovement(state); break
       default: result = { ok: false, error: `not implemented: ${move.type}` }
     }
     if (!result.ok) return result
