@@ -3,7 +3,8 @@ import type { ReactNode } from 'react'
 import { applyMove, createGame, deriveSeed, legalMoves } from '../engine'
 import type { GameConfig, GameState, Move, Seat } from '../engine/types'
 import { moveCount, undoable } from './history'
-import { deleteGame, hasGame, latestGameCode, loadGame, newGameCode, saveGame } from './persist'
+import { deleteGame, hasGame, newGameCode, saveGame } from './persist'
+import { gamePath, navigate } from './route'
 
 export type { GameConfig } from '../engine/types'
 
@@ -60,6 +61,8 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     roundRef.current = 1
     setError(null)
     setSession({ code, seed, minutes, state: createGame(config, seed), history: [], clockMs: [ms, ms], handoff: null })
+    // the URL names the game from the first move on, so the code and the address cannot drift apart
+    navigate(gamePath(code))
   }, [])
 
   const resume = useCallback((next: Session) => {
@@ -105,15 +108,6 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     setError(null)
     setSession(null)
   }, [session])
-
-  // resume the game in progress after a reload; a broken payload is simply ignored
-  useEffect(() => {
-    const code = latestGameCode()
-    const saved = code === null ? null : loadGame(code)
-    if (!saved) return
-    roundRef.current = saved.state.round
-    setSession(saved)
-  }, [])
 
   // Keyed on the game itself, not on the session object: a clock tick makes a new session every 100ms and
   // must not serialise the whole state into localStorage ten times a second. The callback that runs is the

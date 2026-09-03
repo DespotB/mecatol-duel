@@ -241,6 +241,13 @@
 .lobbyui .minimap img.mr{outline:1px solid rgba(201,162,77,.9);outline-offset:-1px;
   clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%)}
 
+/* a code this browser does not hold */
+.lobbyui .notfound{width:min(640px,100%);margin:34px auto 0}
+.lobbyui .notfound .panel{padding:28px 26px 22px;display:flex;flex-direction:column;gap:12px}
+.lobbyui .nf-head{margin:0;font:700 24px/1.2 var(--display);letter-spacing:.04em}
+.lobbyui .notfound .line{margin:0;font:400 14px/1.5 var(--body);color:var(--ink-dim)}
+.lobbyui .notfound .foot{display:flex;align-items:center;gap:14px;margin-top:6px;flex-wrap:wrap}
+
 .lobbyui .legal{margin:16px 0 0;text-align:center;font:400 11px var(--body);color:rgba(190,184,168,.7);
   letter-spacing:.02em;text-shadow:0 1px 2px rgba(0,0,0,.8)}
 

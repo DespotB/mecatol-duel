@@ -113,7 +113,6 @@ export function SetupScreen() {
       ],
       speaker: 0,
     }, seed, minutes)
-    navigate('#/play')
   }
   function goToSeats() {
     const node = seatConfigRef.current
