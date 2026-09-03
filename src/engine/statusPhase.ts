@@ -64,7 +64,11 @@ export function finishStatusPhase(state: GameState, seed: number): GameState {
   }
   // R3.1: the played cards come back with bonus 0, the unpicked ones keep the trade goods they collected
   const strategyPool = ALL_STRATEGY_CARDS.map(id => ({ id, bonus: next.strategyPool.find(c => c.id === id)?.bonus ?? 0 }))
-  next = { ...next, systems, players, strategyPool, tactical: null, turnDone: false, pendingSecondary: null, statusSubmitted: [] }
+  // R8: a special ability is once per round for the whole table, so the next round opens with both unused
+  next = {
+    ...next, systems, players, strategyPool, tactical: null, turnDone: false, pendingSecondary: null,
+    statusSubmitted: [], postAbilityUsed: { west: false, east: false },
+  }
   // R3.3 step 5 / R4.2: a fresh guardian fleet as long as nobody controls Mecatol Rex
   if (!controlsMecatol(next, 0) && !controlsMecatol(next, 1)) next = rollGuardianFleet(next, deriveSeed(seed, GUARDIAN_REROLL_SALT))
   const winner = victoryCheck(next)

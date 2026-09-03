@@ -1,4 +1,5 @@
 import { TRADE_POSTS } from '../data/map'
+import { POSTS } from '../data/posts'
 import { TECHS } from '../data/techs'
 import { ACTION_SPENT } from './actionPhase'
 import { cheapestPlanets, payCost } from './economy'
@@ -19,7 +20,7 @@ export const SHIPYARD_COST = 4
  * middle of a tactical action, inside a secondary window and after the seat has passed for the round.
  * The two real component actions add their own `turnDone` guard on top, because they are actions.
  */
-function turnReady(state: GameState): Result<Seat> {
+export function turnReady(state: GameState): Result<Seat> {
   if (state.phase !== 'action') return { ok: false, error: 'not in the action phase' }
   if (state.tactical) return { ok: false, error: 'finish the tactical action first' }
   if (state.pendingSecondary) return { ok: false, error: 'R3.2: a secondary window is open' }
@@ -125,13 +126,21 @@ export function tradePostOptions(state: GameState, seat: Seat): ('west' | 'east'
     && TRADE_POSTS[post].some(id => state.systems[id].planets.some(p => p.owner === seat)))
 }
 
-/** R8: at most 2 commodities for 1 trade good each, once per round per post; the turn goes on. */
+/** R8: how many commodities the post in play on that side buys in one sale; 4 at the Sarnex Wheel. */
+export function commodityLimit(state: GameState, post: 'west' | 'east'): number {
+  return POSTS[state.posts[post]].commodityLimit
+}
+
+/** R8: commodities for 1 trade good each up to the post's own limit, once per round per post; the turn goes on. */
 export function tradePost(state: GameState, post: 'west' | 'east', commodities: number): Result<GameState> {
   const ready = turnReady(state)
   if (!ready.ok) return ready
   const seat = ready.value
   const player = state.players[seat]
-  if (!Number.isInteger(commodities) || commodities < 1 || commodities > 2) return { ok: false, error: 'R8: 1 or 2 commodities' }
+  const limit = commodityLimit(state, post)
+  if (!Number.isInteger(commodities) || commodities < 1 || commodities > limit) {
+    return { ok: false, error: `R8: 1 to ${String(limit)} commodities` }
+  }
   if (commodities > player.commodities) return { ok: false, error: 'R8: not enough commodities' }
   if (player.tradedThisRound[post]) return { ok: false, error: `R8: the ${post} post is already used this round` }
   if (!TRADE_POSTS[post].some(id => state.systems[id].planets.some(p => p.owner === seat))) {

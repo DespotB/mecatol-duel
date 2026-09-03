@@ -1,3 +1,5 @@
+import type { PostId } from '../data/posts'
+
 // `internal` marks an error that came out of a thrown exception rather than a rules rejection: an engine bug,
 // never a legal-move question. Callers may treat it as fatal.
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string; internal?: boolean }
@@ -71,6 +73,10 @@ export interface GameState {
   draft: Seat[]                                          // remaining pick order in the strategy phase
   publicObjectives: string[]                             // revealed ids, in the order they were revealed
   objectiveOrder: string[]                               // R7: the shuffled pool, one revealed per round
+  /** R8: the two posts in play this round; the status phase rolls a new pair from the other four. */
+  posts: { west: PostId; east: PostId }
+  /** R8: a post's special ability is once per round for the whole table, not once per player. */
+  postAbilityUsed: { west: boolean; east: boolean }
   mecatolCombatWinner: Seat | null                       // R7 First Strike: the race is over once this is set
   players: [Player, Player]
   systems: Record<string, System>
@@ -107,6 +113,7 @@ export type Move =
   | { type: 'research'; techId: string; via: 'inheritance' }   // component action; the Technology card carries its technologies in StrategicParams
   | { type: 'shipyard'; planetId: string; planets: string[]; tradeGoods: number }
   | { type: 'tradePost'; post: 'west' | 'east'; commodities: number }
+  | { type: 'postAbility'; post: 'west' | 'east'; params: PostAbilityParams }
   | { type: 'pass' }
   | { type: 'status'; params: StatusParams }             // one move per player: token distribution, then the engine finishes the phase when both are in
 export interface StrategicParams {
@@ -120,6 +127,14 @@ export interface StrategicParams {
   shareWithOpponent?: boolean       // Trade primary: the opponent replenishes without paying
 }
 export interface StatusParams { tokens: { tactic: number; fleet: number; strategy: number } }
+
+/** R8: the parameters of a post's special ability; every ability reads only the fields it needs. */
+export interface PostAbilityParams {
+  techId?: string; takeTechId?: string              // techExchange: the technology given and the one taken
+  planets?: string[]; influencePlanets?: string[]   // clearingHouse: planets paying resources, planets paying influence
+  pool?: 'tactic' | 'fleet' | 'strategy'            // charter, layover
+  give?: number[]; take?: UnitType                  // refit: the unit ids returned and the unit type taken
+}
 
 export interface UnitStats {
   cost: number; producedPerCost: number

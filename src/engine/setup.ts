@@ -1,7 +1,9 @@
 import { FACTIONS } from '../data/factions'
 import { MECATOL_ID, SYSTEMS } from '../data/map'
 import { PUBLIC_OBJECTIVES } from '../data/objectives'
+import { POST_IDS } from '../data/posts'
 import { deriveSeed, mulberry32 } from './rng'
+import type { PostId } from '../data/posts'
 import type { GameConfig, GameState, Owner, Planet, Player, Seat, StrategyCardId, System, Unit, UnitType } from './types'
 
 export const START_TOKENS = { tactic: 3, fleet: 3, strategy: 2 }
@@ -33,6 +35,22 @@ function makePlayer(seat: Seat, cfg: GameConfig['players'][number]): Player {
     resourcesSpentThisRound: 0, spaceCombatWins: 0, trades: 0, tradedThisRound: { west: false, east: false },
     inheritanceExhausted: false, shipyardUsed: false, pendingInfantry: 0, reinforcements,
   }
+}
+
+/**
+ * R8: the pair of posts in play. Draw one of the candidates for the west, then one of the rest for the east.
+ * `exclude` holds the pair that was in play the round before, which cannot come back straight away; at setup
+ * nothing is excluded. The salt keeps the draw independent of every other roll made from the same game seed:
+ * 91 is the objective shuffle, 92 is the posts.
+ */
+export const POST_SALT = 92
+export function rollPosts(seed: number, exclude: readonly PostId[] = []): { west: PostId; east: PostId } {
+  const rng = mulberry32(seed)
+  const pool = POST_IDS.filter(id => !exclude.includes(id))
+  const west = pool[Math.floor(rng() * pool.length)]
+  const rest = pool.filter(id => id !== west)
+  const east = rest[Math.floor(rng() * rest.length)]
+  return { west, east }
 }
 
 /** R7: the pool is shuffled from the game seed, so the order of the objectives is different every game. */
@@ -77,6 +95,8 @@ export function createGame(config: GameConfig, seed: number): GameState {
     draft: [config.speaker, other, other, config.speaker],
     publicObjectives: [order[0]],
     objectiveOrder: order,
+    posts: rollPosts(deriveSeed(seed, POST_SALT)),
+    postAbilityUsed: { west: false, east: false },
     mecatolCombatWinner: null,
     players: [makePlayer(0, config.players[0]), makePlayer(1, config.players[1])],
     systems, tactical: null, turnDone: false, pendingSecondary: null, statusSubmitted: [],
