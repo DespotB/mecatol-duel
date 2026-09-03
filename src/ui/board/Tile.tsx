@@ -1,5 +1,5 @@
 import { systemDef } from '../../data/map'
-import { BADGE, MISC, ownerKey, planetArtUrl, tileUrl, tokenUrl } from '../art'
+import { BADGE, MISC, SIGIL, ownerKey, planetArtUrl, tileUrl, tokenUrl } from '../art'
 import { ANOMALY_SPOT, FLEET_ANCHOR, PLANET_SPOTS, TILE_H, TILE_POS, TILE_W, WORMHOLE_SPOTS } from '../layout'
 import { UnitStack, groupUnits } from './UnitStack'
 import type { Color, GameState, Owner, Planet, System } from '../../engine/types'
@@ -22,9 +22,12 @@ function PlanetMarkers({ state, planet }: { state: GameState; planet: Planet }) 
           style={{ left: spot.art.left, top: spot.art.top, width: spot.art.width, height: spot.art.height }} />
       ) : null}
       {spot.plate ? (
-        <span className="plate" data-testid={`plate-${planet.id}`} style={{ left: spot.plate.left, top: spot.plate.top }}>
-          <span className="badge res" style={{ backgroundImage: `url(${planet.exhausted ? BADGE.resourceExhausted : BADGE.resourceReady})` }}>{planet.resources}</span>
-          <span className="badge inf" style={{ backgroundImage: `url(${planet.exhausted ? BADGE.influenceExhausted : BADGE.influenceReady})` }}>{planet.influence}</span>
+        <span className={`plate${planet.exhausted ? ' exh' : ''}`} data-testid={`plate-${planet.id}`}
+          style={{ left: spot.plate.left, top: spot.plate.top }}>
+          <span className="vals">
+            <span className="badge res" style={{ backgroundImage: `url(${planet.exhausted ? BADGE.resourceExhausted : BADGE.resourceReady})` }}>{planet.resources}</span>
+            <span className="badge inf" style={{ backgroundImage: `url(${planet.exhausted ? BADGE.influenceExhausted : BADGE.influenceReady})` }}>{planet.influence}</span>
+          </span>
           <span className="nm">{planet.name}</span>
         </span>
       ) : null}
@@ -102,6 +105,9 @@ export function Tile({ state, system, active, selectable, outOfReach = false, on
       ) : null}
       {def.anomaly === 'asteroid' ? (
         <img className="chev" src={MISC.anomaly} alt="asteroid field" data-testid={`anomaly-${system.id}`} style={ANOMALY_SPOT} width={64} />
+      ) : null}
+      {def.home !== null ? (
+        <img className="sigil" src={SIGIL[state.players[def.home].faction]} alt="" data-testid={`sigil-${system.id}`} width={34} />
       ) : null}
       {guardians ? <span className="guard" data-testid="guardian-label">Guardian fleet, worth 8</span> : null}
       {selectable && outOfReach ? (
