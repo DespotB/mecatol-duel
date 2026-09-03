@@ -110,6 +110,11 @@ export function carriedIds(state: GameState, systemId: string, owner: Owner = 0)
   return state.systems[systemId].space.filter(u => u.owner === owner && u.type === 'infantry').map(u => u.id)
 }
 
+/** Puts a state into the status phase the way `pass` does: speaker first, nothing else running. */
+export function toStatusPhase(state: GameState): GameState {
+  return deepFreeze({ ...state, phase: 'status' as const, tactical: null, pendingSecondary: null, active: state.speaker })
+}
+
 export function hitsIn(state: GameState, context: string): number {
   return state.log.flatMap(e => e.t === 'roll' && e.context === context ? e.rolls : []).filter(r => r.hit).length
 }

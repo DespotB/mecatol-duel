@@ -145,7 +145,7 @@ export interface StatusParams { tokens: { tactic: number; fleet: number; strateg
 | `src/engine/invasion.ts` | bombardment, landing, ground combat, control change |
 | `src/engine/production.ts` | produce move |
 | `src/engine/strategicActions.ts` | six cards primary and secondary |
-| `src/engine/statusPhase.ts` | scoring, tokens, readying, guardian respawn, victory |
+| `src/engine/statusPhase.ts` | one status move per player: scoring, token distribution, readying, guardian respawn, victory and round advance |
 | `src/engine/legalMoves.ts` | enumerator and `validateMove` |
 | `src/engine/index.ts` | `applyMove` dispatcher, re-exports |
 
