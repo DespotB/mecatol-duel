@@ -5,12 +5,13 @@ import { techDef } from '../../data/techs'
 import { relativeTime } from '../format'
 import { deleteGame, listGames } from '../persist'
 import { gamePath, navigate, seedFromRoute, useHashRoute } from '../route'
+import { techIconUrl } from '../art'
 import { spriteSize } from '../sprites'
 import { useGame } from '../store'
 import { useFitScale } from '../useViewportScale'
 import '../setup.css'
 import type { CSSProperties, ReactElement } from 'react'
-import type { Color, FactionId, Seat, TechColor, UnitType } from '../../engine/types'
+import type { Color, FactionId, Seat, UnitType } from '../../engine/types'
 import { SpaceBackdrop } from '../SpaceBackdrop'
 
 const COLOURS: Color[] = ['red', 'blue', 'green', 'yellow', 'purple', 'black', 'orange', 'pink']
@@ -44,11 +45,6 @@ const UNIT_PLURAL: Record<UnitType, string> = {
 // Fighters and infantry get a count badge instead of one sprite per unit; every other type is capped at one
 // in v1's two starting fleets, so a badge would just always read "1".
 const BADGE_TYPES: readonly UnitType[] = ['fighter', 'infantry']
-/** AsyncTI4's tech icons, one per technology colour. */
-const TECH_ICON: Record<TechColor, string> = {
-  blue: 'propulsion', red: 'warfare', green: 'biotic', yellow: 'cybernetic',
-}
-
 // The row's sprites are sized proportionally to the actual ships via src/ui/sprites.ts, the shared copy of
 // public/assets/sprites/manifest.json's world scale.
 const FLEET_SPRITE_SCALE = 14
@@ -327,7 +323,7 @@ export function SetupScreen() {
                           <Fragment key={tech.id}>
                             {i > 0 ? <span className="sep">{', '}</span> : null}
                             <span className="ti">
-                              <img src={`/assets/cards/pa_tech_techicons_${TECH_ICON[tech.colour ?? 'blue']}_rdy.png`} alt="" />
+                              <img src={techIconUrl(tech.colour ?? 'blue')} alt="" />
                             </span>
                             {tech.name}
                           </Fragment>
