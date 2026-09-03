@@ -55,14 +55,19 @@ systems.
 | Orrun Port Authority | layered disc port | up to 2 | **Clearing house:** exhaust **one** ready planet you control and take one trade good per resource or influence it prints, your choice which of the two, never both. One planet per use, never several. |
 | Kesh Line Freighter | container freighter | up to 2 | **Charter:** return one command token from any pool (tactic, fleet or strategy) and take 4 trade goods. |
 | Vandel Bulk Tanker | bulk tanker | up to 2 | **Layover:** return one command token from any pool and take 3 more minutes on your chess clock. |
-| Dromm Heavy Hauler | open-deck hauler | up to 2 | **Refit:** return ships you have in a system linked to this post and take one ship from your reinforcements whose cost is not higher than the total cost you returned. The new ship is placed in the same system. Any difference in cost is lost. Fighters and infantry cannot be part of a refit. |
+| Dromm Heavy Hauler | open-deck hauler | up to 2 | **Refit:** return any ships you have in a system linked to this post and take any ships from your reinforcements whose total cost is not higher than the total cost you returned. One big ship for many small ones, many small for one big, whatever adds up. The new ships are placed in the same system and any difference in cost is lost. |
 
 Notes that follow from the rules already in the engine:
 
 - **Tier** for the technology exchange is the number of prerequisites a technology prints, that is the sum
   of its colour requirements. Same tier, different colour, both sides general technologies.
-- **Refit** may not put more non-fighter ships into the system than the fleet pool allows, and the flagship
-  and the War Sun follow their usual limits (one flagship at a time, War Sun needs no technology).
+- **Refit** counts fighters at their real value, half a cost each, because that is what they cost to produce;
+  a dreadnought is therefore worth eight of them. Infantry is not a ship and can neither be given nor taken.
+  A refit may not leave the system over its capacity or its fleet pool, and the flagship and the War Sun
+  follow their usual limits (one flagship at a time, War Sun needs no technology). The user's words:
+  "Man kann auch ein großes zurückgeben und viele kleine nehmen, man kann viele kleine geben und ein großes
+  nehmen. Fighter sind nicht excluded, aber Infantry schon, aber das ist selbsterklärend, Infantry ist kein
+  Ship." 
 - **Layover** and the **time trade** are the two abilities the engine cannot resolve on its own, because the
   engine is time-free. The move is recorded like any other; the UI adds the three minutes for a layover and
   halves the seat's remaining clock for a time trade when it applies the move. The victory point itself is
