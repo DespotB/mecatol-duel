@@ -4,6 +4,7 @@ import { navigate, useHashRoute } from './route'
 import { BoardScreen } from './screens/BoardScreen'
 import { GameOverScreen } from './screens/GameOverScreen'
 import { SetupScreen } from './screens/SetupScreen'
+import { cardsUsed, toActionPhase } from '../engine/testUtils'
 import type { GameConfig } from './store'
 import type { Move, StrategyCardId } from '../engine/types'
 
@@ -15,13 +16,23 @@ const DEMO_CONFIG: GameConfig = {
 }
 
 function useDemoBootstrap() {
-  const { session, start } = useGame()
+  const { session, start, resume } = useGame()
   useEffect(() => {
     if (session || typeof window === 'undefined') return
-    if (new URLSearchParams(window.location.search).get('demo') !== '1') return
-    start(DEMO_CONFIG, 1, 15)
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('demo') !== '1') return
+    const panel = params.get('panel')
+    // `&panel=handoff` / `&panel=log` are manual/visual QA hooks: they resume straight into a state
+    // that already shows the overlay or has log entries, so a headless screenshot needs no clicks.
+    if (panel === 'handoff') {
+      resume({ seed: 1, minutes: 15, state: cardsUsed(toActionPhase(1, 0)), history: [], clockMs: [900000, 900000], handoff: 1 })
+    } else if (panel === 'log') {
+      resume({ seed: 1, minutes: 15, state: toActionPhase(1, 0), history: [], clockMs: [900000, 900000], handoff: null })
+    } else {
+      start(DEMO_CONFIG, 1, 15)
+    }
     navigate('#/play')
-    // Runs once on mount; `start` and `session` come from a stable context store.
+    // Runs once on mount; `start`, `resume` and `session` come from a stable context store.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 }

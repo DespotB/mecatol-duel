@@ -1,4 +1,5 @@
 import { PUBLIC_OBJECTIVES } from '../../data/objectives'
+import { LogPanel } from '../LogPanel'
 import { navigate } from '../route'
 import { useGame } from '../store'
 import type { Seat } from '../../engine/types'
@@ -33,6 +34,7 @@ export function GameOverScreen() {
           </div>
         ))}
       </div>
+      <LogPanel state={state} />
       <div className="setup-foot">
         <button type="button" className="btn gold" data-testid="btn-new-game" onClick={() => { abandon(); navigate('#/') }}>
           New game

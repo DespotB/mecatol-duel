@@ -37,7 +37,7 @@ function spriteWidth(type: UnitType): number {
 }
 
 export function SetupScreen() {
-  const { start } = useGame()
+  const { start, session } = useGame()
   const route = useHashRoute()
   const [names, setNames] = useState<[string, string]>(['Player 1', 'Player 2'])
   const [factions, setFactions] = useState<[FactionId, FactionId]>(['l1z1x', 'letnev'])
@@ -73,6 +73,9 @@ export function SetupScreen() {
       <header className="hero">
         <h1 className="title goldtext">Mecatol Duel</h1>
         <p className="tagline">Twilight Imperium for two players, thirty minutes</p>
+        {session ? (
+          <button type="button" className="btn quiet" data-testid="btn-resume" onClick={() => navigate('#/play')}>Resume the saved game</button>
+        ) : null}
       </header>
 
       <section className="menu" aria-label="Game mode">
