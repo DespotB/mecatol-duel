@@ -100,6 +100,43 @@ describe('the hot-seat store', () => {
     vi.useRealTimers()
   })
 
+  it('R6: the clock runs in the strategy phase as well, so nobody can stall the draft', () => {
+    vi.useFakeTimers()
+    const { result } = renderHook(() => useGame(), { wrapper: wrapper(true) })
+    act(() => { result.current.start(CONFIG, 7, 15) })
+    expect(result.current.session?.state.phase).toBe('strategy')
+    act(() => { vi.advanceTimersByTime(1000) })
+    expect(result.current.session?.clockMs[0]).toBe(899000)
+    expect(result.current.session?.clockMs[1]).toBe(900000)
+    vi.useRealTimers()
+  })
+
+  it('R6: the clock runs in the status phase for the seat that has to submit', () => {
+    vi.useFakeTimers()
+    const { result } = renderHook(() => useGame(), { wrapper: wrapper(true) })
+    act(() => { result.current.resume(session(toStatusPhase(toActionPhase()), [60000, 60000])) })
+    expect(result.current.session?.state.phase).toBe('status')
+    const seat = result.current.session?.state.active ?? 0
+    act(() => { vi.advanceTimersByTime(1000) })
+    expect(result.current.session?.clockMs[seat]).toBe(59000)
+    expect(result.current.session?.clockMs[seat === 0 ? 1 : 0]).toBe(60000)
+    vi.useRealTimers()
+  })
+
+  it('R6: the clock stops while the handoff overlay is up and once the game is over', () => {
+    vi.useFakeTimers()
+    const { result } = renderHook(() => useGame(), { wrapper: wrapper(true) })
+    act(() => { result.current.start(CONFIG, 7, 15) })
+    act(() => { result.current.apply({ type: 'pickStrategyCard', card: 'leadership' }) })
+    expect(result.current.session?.handoff).toBe(1)
+    act(() => { vi.advanceTimersByTime(1000) })
+    expect(result.current.session?.clockMs[1]).toBe(900000)
+    act(() => { result.current.dismissHandoff() })
+    act(() => { vi.advanceTimersByTime(1000) })
+    expect(result.current.session?.clockMs[1]).toBe(899000)
+    vi.useRealTimers()
+  })
+
   it('R6: a clock at zero holds while passing is illegal', () => {
     vi.useFakeTimers()
     const { result } = renderHook(() => useGame(), { wrapper: wrapper(true) })
