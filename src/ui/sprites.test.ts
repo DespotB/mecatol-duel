@@ -33,12 +33,16 @@ describe('unit sprites', () => {
       }
     }
   })
-  it('the three styles put a unit on the board at about the same size', () => {
+  it('the three styles draw a unit at about the same size', () => {
+    // the width alone says nothing: seen from straight above a ship is narrow and long, at three quarters
+    // it is wide and short. What has to match is the longest side, which is what the eye reads as its size.
     for (const type of ['dreadnought', 'carrier', 'fighter'] as const) {
-      const widths = MODEL_STYLES.map(s => spriteSize(type, undefined, s.id).width)
-      const min = Math.min(...widths)
-      const max = Math.max(...widths)
-      expect(max - min, type).toBeLessThanOrEqual(Math.round(max * 0.55))
+      const longest = MODEL_STYLES.map(s => {
+        const size = spriteSize(type, undefined, s.id)
+        return Math.max(size.width, size.height)
+      })
+      const max = Math.max(...longest)
+      expect(max - Math.min(...longest), type).toBeLessThanOrEqual(Math.round(max * 0.55))
     }
   })
   it('the world scale reproduces the mockup sizes', () => {
