@@ -7,6 +7,7 @@ import { BADGE, MISC, spriteUrl, tokenUrl, unitCardUrl } from '../art'
 import { TechIcon } from '../TechIcon'
 import { ownedPlanets, readyInfluence, unitLabel } from '../format'
 import { PANEL_SCALE, spriteSize } from '../sprites'
+import { useModelStyle } from '../modelStyle'
 import type { GameState, Seat, UnitType } from '../../engine/types'
 
 const POOLS = ['tactic', 'fleet', 'strategy'] as const
@@ -16,6 +17,7 @@ export function SidePanel({ state, seat }: { state: GameState; seat: Seat }) {
   // hovering a force opens its reference card next to the column; the column itself does not scroll, so the
   // card is rendered here rather than inside the scrolling content, where it would be clipped away
   const [shown, setShown] = useState<UnitType | null>(null)
+  const { style } = useModelStyle()
   const player = state.players[seat]
   const planets = ownedPlanets(state, seat)
   const counts = new Map<UnitType, number>()
@@ -85,12 +87,12 @@ export function SidePanel({ state, seat }: { state: GameState; seat: Seat }) {
           <span className="lbl bul">Forces</span>
           <div className="forces">
             {FORCE_ORDER.filter(type => counts.has(type)).map(type => {
-              const size = spriteSize(type, PANEL_SCALE)
+              const size = spriteSize(type, PANEL_SCALE, style)
               return (
                 <div className={`fc${type === 'dreadnought' ? ' wide' : ''}`} key={type} data-testid={`forces-${seat}-${type}`}
                   onMouseEnter={() => setShown(type)} onMouseLeave={() => setShown(null)}
                   onFocus={() => setShown(type)} onBlur={() => setShown(null)} tabIndex={0}>
-                  <img src={spriteUrl(player.color, type)} alt="" width={size.width} height={size.height} />
+                  <img src={spriteUrl(player.color, type, style)} alt="" width={size.width} height={size.height} />
                   <b>{counts.get(type)}</b>{' '}<span className="n">{unitLabel(type, player)}</span>
                 </div>
               )

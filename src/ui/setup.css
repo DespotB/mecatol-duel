@@ -249,3 +249,12 @@
   .lobbyui .row{flex-wrap:wrap}
   .lobbyui .seat{flex-wrap:wrap}
 }
+
+/* the model picker: three sets of unit art, the choice is the viewer's own */
+.lobbyui .stylepick{display:flex;gap:6px;margin-top:4px}
+.lobbyui .styleopt{display:flex;flex-direction:column;align-items:center;gap:3px;width:62px;padding:5px 3px 4px;
+  border:1px solid rgba(201,162,77,.35);background:rgba(0,0,0,.3);color:var(--muted);cursor:pointer;
+  font:600 9px/1.1 var(--hud);letter-spacing:.04em;text-transform:uppercase}
+.lobbyui .styleopt img{height:30px;width:auto;object-fit:contain;filter:drop-shadow(0 1px 2px rgba(0,0,0,.8))}
+.lobbyui .styleopt.on{border-color:var(--gold-hi);background:rgba(201,162,77,.14);color:var(--gold-hi)}
+.lobbyui .styleopt:hover{border-color:var(--gold)}

@@ -5,8 +5,10 @@ import { techDef } from '../../data/techs'
 import { relativeTime } from '../format'
 import { deleteGame, listGames } from '../persist'
 import { gamePath, navigate, seedFromRoute, useHashRoute } from '../route'
-import { techIconUrl } from '../art'
+import { spriteUrl, techIconUrl } from '../art'
 import { spriteSize } from '../sprites'
+import { MODEL_STYLES, useModelStyle } from '../modelStyle'
+import type { ModelStyle } from '../modelStyle'
 import { useGame } from '../store'
 import { useFitScale } from '../useViewportScale'
 import '../setup.css'
@@ -90,8 +92,8 @@ function fleetCaption(factionId: FactionId): string {
   return fleetUnits(factionId).map(({ type, count }) => unitName(factionId, type, count)).join(', ')
 }
 
-function spriteWidth(type: UnitType): number {
-  return spriteSize(type, FLEET_SPRITE_SCALE).width
+function spriteWidth(type: UnitType, style: ModelStyle): number {
+  return spriteSize(type, FLEET_SPRITE_SCALE, style).width
 }
 
 /** "L1Z1X Mindnet": the digits are set in the condensed face, as in the mockup. */
@@ -101,6 +103,7 @@ function factionTitle(name: string): (string | ReactElement)[] {
 
 export function SetupScreen() {
   const { start } = useGame()
+  const { style: modelStyle, setStyle: setModelStyle } = useModelStyle()
   const route = useHashRoute()
   // the page is drawn for a 1440x900 frame; scale it until it fills the viewport (credits line at the foot)
   const fit = useFitScale()
@@ -306,7 +309,7 @@ export function SetupScreen() {
                       <div className="units" data-testid={`seat-${seat}-fleet`}>
                         {fleetUnits(factionId).map(({ type, count }) => (
                           <div className="unit" key={type} data-testid={`seat-${seat}-fleet-${type}`} title={unitName(factionId, type, count)}>
-                            <img src={`/assets/sprites/${colours[seat]}_${type}.png`} width={spriteWidth(type)} alt="" />
+                            <img src={spriteUrl(colours[seat], type, modelStyle)} width={spriteWidth(type, modelStyle)} alt="" />
                             {BADGE_TYPES.includes(type) && (
                               <span className="cnt" data-testid={`seat-${seat}-fleet-${type}-count`}>{count}</span>
                             )}
@@ -362,6 +365,25 @@ export function SetupScreen() {
                   minutes per player
                 </label>
                 <div className="sub">Chess clock, runs whenever it is your turn to decide</div>
+              </div>
+            </div>
+            <div className="cell" data-testid="setup-models">
+              <div>
+                <div className="lbl"><i className="dia" />Models</div>
+                <div className="stylepick">
+                  {MODEL_STYLES.map(option => (
+                    <button
+                      key={option.id} type="button" title={option.note}
+                      className={`styleopt${option.id === modelStyle ? ' on' : ''}`}
+                      data-testid={`style-${option.id}`} aria-pressed={option.id === modelStyle}
+                      onClick={() => { setModelStyle(option.id) }}
+                    >
+                      <img src={spriteUrl(colours[0], 'dreadnought', option.id)} alt="" height={30} />
+                      <span>{option.name}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="sub">Your own view, this browser only. Online, each player picks their own.</div>
               </div>
             </div>
             <div className="cell" data-testid="setup-target">

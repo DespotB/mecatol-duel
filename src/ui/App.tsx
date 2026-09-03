@@ -9,6 +9,7 @@ import { SetupScreen } from './screens/SetupScreen'
 import { UnknownGameScreen } from './screens/UnknownGameScreen'
 import type { GameConfig } from './store'
 import type { Move, StrategyCardId } from '../engine/types'
+import { ModelStyleProvider } from './modelStyle'
 
 // Manual/visual QA only (e.g. a headless screenshot of the board): `?demo=1` skips setup and starts
 // a fixed hot-seat game straight into the action phase draft, seeded for a reproducible board.
@@ -121,8 +122,10 @@ function Screens() {
 
 export default function App({ ticking = true }: { ticking?: boolean }) {
   return (
-    <GameProvider ticking={ticking}>
-      <Screens />
-    </GameProvider>
+    <ModelStyleProvider>
+      <GameProvider ticking={ticking}>
+        <Screens />
+      </GameProvider>
+    </ModelStyleProvider>
   )
 }
