@@ -22,7 +22,7 @@ Two-player distillation of Twilight Imperium 4th edition (base game rules, no Pr
 - Strategy cards: Leadership 1, Diplomacy 2, Trade 5, Warfare 6, Technology 7, Imperial 8. Texts from `factions.json` (`strategy_cards`), with the duel changes in section 6.
 - Command tokens: three pools (tactic, fleet, strategy). Start 3 / 3 / 2. Fleet pool limits non-fighter ships per system (Letnev Armada: +2).
 - Trade goods and commodities (commodity value 2 for both factions).
-- Objectives: one public objective revealed per round (rounds 1 to 6), worth 1 VP each, plus the Mandate (section 7).
+- Objectives: a shuffled pool of five public objectives, one revealed per round, worth 1 VP each, plus the two mandates (section 7).
 
 ## 2. Setup
 
