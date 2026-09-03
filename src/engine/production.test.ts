@@ -37,10 +37,15 @@ describe('R4.4 production', () => {
     expect(produce(s, { fighter: 2, infantry: 2 }, ['000']).ok).toBe(true)
     expect(produce(withTechs(s, 0, ['sarween_tools']), { infantry: 2 }, []).ok).toBe(true)   // cost 1 minus 1
   })
-  it('R4.4: a War Sun needs the technology and only one flagship may exist', () => {
+  it('R4.4: a War Sun needs no technology and may be produced from the first round', () => {
     const rich = withPlayer(producing(), 0, { tradeGoods: 20 })
-    expect(produce(rich, { warsun: 1 }, [], 12).ok).toBe(false)
-    expect(produce(withTechs(rich, 0, ['war_sun']), { warsun: 1 }, [], 12).ok).toBe(true)    // 3 non-fighter ships is exactly the fleet pool
+    const r = produce(rich, { warsun: 1 }, [], 12)
+    if (!r.ok) throw new Error(r.error)
+    expect(r.value.systems['home-n'].space.filter(u => u.owner === 0 && u.type === 'warsun')).toHaveLength(1)
+    expect(r.value.players[0].tradeGoods).toBe(8)
+  })
+  it('R4.4: only one flagship may exist at a time', () => {
+    const rich = withPlayer(producing(), 0, { tradeGoods: 20 })
     expect(produce(rich, { flagship: 2 }, [], 16).ok).toBe(false)
     const hasFlagship = withUnits(rich, 'home-n', 0, ['flagship'])
     // restore the reinforcement spent by the fixture so this hits the uniqueness guard, not a reinforcement shortage
@@ -51,7 +56,7 @@ describe('R4.4 production', () => {
     const s = producing()
     const empty = withPlayer(s, 0, { reinforcements: { ...s.players[0].reinforcements, cruiser: 0 }, tradeGoods: 20 })
     expect(produce(empty, { cruiser: 1 }, [], 2).ok).toBe(false)
-    const rich = withTechs(withPlayer(s, 0, { tradeGoods: 20 }), 0, ['war_sun'])
+    const rich = withPlayer(s, 0, { tradeGoods: 20 })
     expect(produce(rich, { warsun: 1, cruiser: 1 }, [], 14).ok).toBe(false)   // 2 present plus 2 produced is over the fleet pool of 3
     expect(produce(rich, { cruiser: 1 }, [], 2).ok).toBe(true)
   })

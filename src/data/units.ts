@@ -30,7 +30,7 @@ const LEVEL_II: Partial<Record<UnitType, Partial<UnitStats>>> = {
 
 export const UPGRADE_TECH: Partial<Record<UnitType, string>> = {
   infantry: 'infantry_ii', fighter: 'fighter_ii', destroyer: 'destroyer_ii', cruiser: 'cruiser_ii',
-  carrier: 'carrier_ii', dreadnought: 'dreadnought_ii', spacedock: 'space_dock_ii', warsun: 'war_sun',
+  carrier: 'carrier_ii', dreadnought: 'dreadnought_ii', spacedock: 'space_dock_ii',
 }
 
 const FLAGSHIPS: Record<FactionId, UnitStats> = {
