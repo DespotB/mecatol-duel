@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { FACTIONS } from '../../data/factions'
 import { navigate, seedFromRoute, useHashRoute } from '../route'
+import { spriteSize } from '../sprites'
 import { useGame } from '../store'
 import type { Color, FactionId, Seat, UnitType } from '../../engine/types'
 
@@ -21,22 +22,9 @@ const UNIT_LABEL: Record<UnitType, string> = {
 // in v1's two starting fleets, so a badge would just always read "1".
 const BADGE_TYPES: readonly UnitType[] = ['fighter', 'infantry']
 
-// Sprite geometry from public/assets/sprites/manifest.json: spriteW is the PNG's pixel width, pxPerModelUnit
-// converts a 3D-model unit to pixels at that render scale. width = spriteW * FLEET_SPRITE_SCALE / pxPerModelUnit
-// keeps the row's sprites sized proportionally to the actual ships, the same relationship the manifest documents.
+// The row's sprites are sized proportionally to the actual ships via src/ui/sprites.ts, the shared copy of
+// public/assets/sprites/manifest.json's world scale.
 const FLEET_SPRITE_SCALE = 14
-const SPRITE_MANIFEST: Record<UnitType, { spriteW: number; pxPerModelUnit: number }> = {
-  dreadnought: { spriteW: 548, pxPerModelUnit: 144.4 },
-  carrier: { spriteW: 593, pxPerModelUnit: 188.59 },
-  cruiser: { spriteW: 563, pxPerModelUnit: 198.59 },
-  destroyer: { spriteW: 555, pxPerModelUnit: 222.68 },
-  fighter: { spriteW: 826, pxPerModelUnit: 357.26 },
-  flagship: { spriteW: 559, pxPerModelUnit: 130.02 },
-  warsun: { spriteW: 505, pxPerModelUnit: 156.33 },
-  infantry: { spriteW: 552, pxPerModelUnit: 255.99 },
-  spacedock: { spriteW: 528, pxPerModelUnit: 238.5 },
-  pds: { spriteW: 590, pxPerModelUnit: 304.84 },
-}
 
 function fleetUnits(factionId: FactionId): { type: UnitType; count: number }[] {
   const totals = new Map<UnitType, number>()
@@ -45,8 +33,7 @@ function fleetUnits(factionId: FactionId): { type: UnitType; count: number }[] {
 }
 
 function spriteWidth(type: UnitType): number {
-  const spec = SPRITE_MANIFEST[type]
-  return Math.round((spec.spriteW * FLEET_SPRITE_SCALE) / spec.pxPerModelUnit)
+  return spriteSize(type, FLEET_SPRITE_SCALE).width
 }
 
 export function SetupScreen() {
