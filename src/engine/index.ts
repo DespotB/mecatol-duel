@@ -2,6 +2,7 @@ import { endTactical, pass, startTactical } from './actionPhase'
 import { combatRound, retreat } from './combat'
 import { bombard, endInvasion, groundCombatRound, land } from './invasion'
 import { endMovement, moveShips } from './movement'
+import { produce } from './production'
 import { pickStrategyCard } from './strategyPhase'
 import type { GameState, Move, Result } from './types'
 
@@ -22,6 +23,7 @@ export function applyMove(state: GameState, move: Move, seed: number): Result<Ga
       case 'land': result = land(state, move.planetId, move.infantryIds, seed); break
       case 'groundCombatRound': result = groundCombatRound(state, seed); break
       case 'endInvasion': result = endInvasion(state); break
+      case 'produce': result = produce(state, move.units, move.planets, move.tradeGoods); break
       default: result = { ok: false, error: `not implemented: ${move.type}` }
     }
     if (!result.ok) return result
