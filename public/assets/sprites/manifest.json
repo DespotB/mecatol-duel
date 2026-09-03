@@ -1,0 +1,107 @@
+{
+ "style": "B cinematic 3/4 (elev 35, az 30, fov 30)",
+ "colors": [
+  "red",
+  "blue",
+  "green",
+  "yellow",
+  "purple",
+  "black",
+  "orange",
+  "pink",
+  "grey"
+ ],
+ "units": {
+  "dreadnought": {
+   "modelLength": 5.505,
+   "modelWidth": 2.704,
+   "modelHeight": 1.615,
+   "boundingRadius": 3.171,
+   "pxPerModelUnit": 144.4,
+   "spriteW": 548,
+   "spriteH": 503
+  },
+  "carrier": {
+   "modelLength": 4.434,
+   "modelWidth": 1.662,
+   "modelHeight": 1.078,
+   "boundingRadius": 2.428,
+   "pxPerModelUnit": 188.59,
+   "spriteW": 593,
+   "spriteH": 587
+  },
+  "cruiser": {
+   "modelLength": 4.256,
+   "modelWidth": 1.432,
+   "modelHeight": 1.051,
+   "boundingRadius": 2.306,
+   "pxPerModelUnit": 198.59,
+   "spriteW": 563,
+   "spriteH": 566
+  },
+  "destroyer": {
+   "modelLength": 3.241,
+   "modelWidth": 2.346,
+   "modelHeight": 0.953,
+   "boundingRadius": 2.056,
+   "pxPerModelUnit": 222.68,
+   "spriteW": 555,
+   "spriteH": 451
+  },
+  "fighter": {
+   "modelLength": 1.711,
+   "modelWidth": 1.845,
+   "modelHeight": 0.491,
+   "boundingRadius": 1.282,
+   "pxPerModelUnit": 357.26,
+   "spriteW": 826,
+   "spriteH": 517
+  },
+  "flagship": {
+   "modelLength": 6.181,
+   "modelWidth": 2.989,
+   "modelHeight": 1.574,
+   "boundingRadius": 3.522,
+   "pxPerModelUnit": 130.02,
+   "spriteW": 559,
+   "spriteH": 496
+  },
+  "warsun": {
+   "modelLength": 3.197,
+   "modelWidth": 3.16,
+   "modelHeight": 3.757,
+   "boundingRadius": 2.929,
+   "pxPerModelUnit": 156.33,
+   "spriteW": 505,
+   "spriteH": 606
+  },
+  "infantry": {
+   "modelLength": 1.69,
+   "modelWidth": 2.129,
+   "modelHeight": 2.326,
+   "boundingRadius": 1.789,
+   "pxPerModelUnit": 255.99,
+   "spriteW": 552,
+   "spriteH": 660
+  },
+  "spacedock": {
+   "modelLength": 2.254,
+   "modelWidth": 2.277,
+   "modelHeight": 2.116,
+   "boundingRadius": 1.92,
+   "pxPerModelUnit": 238.5,
+   "spriteW": 528,
+   "spriteH": 651
+  },
+  "pds": {
+   "modelLength": 1.588,
+   "modelWidth": 2.06,
+   "modelHeight": 1.504,
+   "boundingRadius": 1.502,
+   "pxPerModelUnit": 304.84,
+   "spriteW": 590,
+   "spriteH": 465
+  }
+ },
+ "note": "To place a unit at a world scale k (px per model unit, e.g. k=11.6 makes the dreadnought about 64px long on the map), display the sprite at scale = k / pxPerModelUnit, i.e. width = spriteW * k / pxPerModelUnit."
+}

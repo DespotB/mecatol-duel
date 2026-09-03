@@ -1,0 +1,1012 @@
+{
+  "meta": {
+    "title": "Mecatol Duel base data: L1Z1X Mindnet vs Barony of Letnev",
+    "scope": "Twilight Imperium 4th edition BASE GAME only (no Prophecy of Kings). PoK-only content (mechs, leaders, breakthroughs, PoK Construction card) deliberately omitted. Codex I (Ordinian) omega versions of the two promissory notes and the Diplomacy card are recorded separately because they are official FFG errata/replacements for base-game components; the duel can pick either, the printed base text is always given first.",
+    "compiled": "2026-09-03",
+    "text_convention": "Fields named text / primary / secondary are verbatim card or faction-sheet text (capitalised keywords as printed). Stat lines follow the printed order Cost, Combat, Move, Capacity.",
+    "tech_colour_key": {
+      "biotic": "green",
+      "propulsion": "blue",
+      "cybernetic": "yellow",
+      "warfare": "red"
+    },
+    "async_prerequisite_letters": {
+      "G": "biotic",
+      "B": "propulsion",
+      "Y": "cybernetic",
+      "R": "warfare"
+    },
+    "cross_check": "Every faction/unit/tech/strategy-card value was compared between the AsyncTI4 bot data files and the Twilight Imperium fandom wiki; where they differ the difference is noted in a 'notes' field. Promissory-note base texts were additionally confirmed against BoardGameGeek and the tirules reference; strategy-card colours were sampled from the official card scans hosted by ti4ultimate.com; errata wording was taken from the FFG Living Rules Reference v1.3 PDF."
+  },
+  "sources": [
+    "https://github.com/AsyncTI4/TI4_map_generator_bot/tree/master/src/main/resources/data",
+    "https://raw.githubusercontent.com/AsyncTI4/TI4_map_generator_bot/master/src/main/resources/data/factions/base.json",
+    "https://raw.githubusercontent.com/AsyncTI4/TI4_map_generator_bot/master/src/main/resources/data/abilities/base.json",
+    "https://raw.githubusercontent.com/AsyncTI4/TI4_map_generator_bot/master/src/main/resources/data/promissory_notes/promissory_notes.json",
+    "https://raw.githubusercontent.com/AsyncTI4/TI4_map_generator_bot/master/src/main/resources/data/units/baseUnits.json",
+    "https://raw.githubusercontent.com/AsyncTI4/TI4_map_generator_bot/master/src/main/resources/data/units/pok.json",
+    "https://raw.githubusercontent.com/AsyncTI4/TI4_map_generator_bot/master/src/main/resources/data/technologies/pok.json",
+    "https://raw.githubusercontent.com/AsyncTI4/TI4_map_generator_bot/master/src/main/resources/data/strategy_cards/pok.json",
+    "https://raw.githubusercontent.com/AsyncTI4/TI4_map_generator_bot/master/src/main/resources/data/strategy_cards/obsolete.json",
+    "https://raw.githubusercontent.com/AsyncTI4/TI4_map_generator_bot/master/src/main/resources/planets/0.0.0.json",
+    "https://raw.githubusercontent.com/AsyncTI4/TI4_map_generator_bot/master/src/main/resources/planets/arcprime.json",
+    "https://raw.githubusercontent.com/AsyncTI4/TI4_map_generator_bot/master/src/main/resources/planets/wrenterra.json",
+    "https://raw.githubusercontent.com/AsyncTI4/TI4_map_generator_bot/master/src/main/resources/systems/06.json",
+    "https://raw.githubusercontent.com/AsyncTI4/TI4_map_generator_bot/master/src/main/resources/systems/10.json",
+    "https://twilight-imperium.fandom.com/wiki/The_L1Z1X_Mindnet",
+    "https://twilight-imperium.fandom.com/wiki/The_Barony_of_Letnev",
+    "https://twilight-imperium.fandom.com/wiki/Promissory_Notes",
+    "https://twilight-imperium.fandom.com/wiki/Errata",
+    "https://twilight-imperium.fandom.com/wiki/Technology",
+    "https://twilight-imperium.fandom.com/wiki/Units",
+    "https://twilight-imperium.fandom.com/wiki/Infantry",
+    "https://twilight-imperium.fandom.com/wiki/Fighter",
+    "https://twilight-imperium.fandom.com/wiki/Destroyer",
+    "https://twilight-imperium.fandom.com/wiki/Cruiser",
+    "https://twilight-imperium.fandom.com/wiki/Carrier",
+    "https://twilight-imperium.fandom.com/wiki/Dreadnought",
+    "https://twilight-imperium.fandom.com/wiki/War_Sun",
+    "https://twilight-imperium.fandom.com/wiki/PDS",
+    "https://twilight-imperium.fandom.com/wiki/Space_Dock",
+    "https://twilight-imperium.fandom.com/wiki/Strategy_Cards",
+    "https://twilight-imperium.fandom.com/wiki/Leadership_(Strategy_card)",
+    "https://twilight-imperium.fandom.com/wiki/Diplomacy_(Strategy_card)",
+    "https://twilight-imperium.fandom.com/wiki/Politics_(Strategy_card)",
+    "https://twilight-imperium.fandom.com/wiki/Construction_(Strategy_card)",
+    "https://twilight-imperium.fandom.com/wiki/Trade_(Strategy_card)",
+    "https://twilight-imperium.fandom.com/wiki/Warfare_(Strategy_card)",
+    "https://twilight-imperium.fandom.com/wiki/Technology_(Strategy_card)",
+    "https://twilight-imperium.fandom.com/wiki/Imperial_(Strategy_card)",
+    "https://images-cdn.fantasyflightgames.com/filer_public/da/df/dadf9f07-78f3-43ac-9cce-dd6b55b24ec2/ti4_living_rules_reference_v1_3_web.pdf",
+    "https://images-cdn.fantasyflightgames.com/filer_public/94/c5/94c59830-533e-47aa-a708-25634575161b/twilight_codex_v1-compressed.pdf",
+    "https://scottmk.github.io/ti4-reference/factions/base/l1z1x/",
+    "https://scottmk.github.io/ti4-reference/factions/base/letnev/",
+    "https://www.yjmrobert.com/tirules/factions/f_lizix/",
+    "https://www.yjmrobert.com/tirules/factions/f_letnev/",
+    "https://boardgamegeek.com/thread/1854869/l1z1x-promissory-note",
+    "https://ti4ultimate.com/resources/images/en-US/cards/strategy/Leadership.webp",
+    "https://ti4ultimate.com/resources/images/en-US/cards/strategy/Diplomacy.webp",
+    "https://ti4ultimate.com/resources/images/en-US/cards/strategy/Politics.webp",
+    "https://ti4ultimate.com/resources/images/en-US/cards/strategy/Construction.webp",
+    "https://ti4ultimate.com/resources/images/en-US/cards/strategy/Trade.webp",
+    "https://ti4ultimate.com/resources/images/en-US/cards/strategy/Warfare.webp",
+    "https://ti4ultimate.com/resources/images/en-US/cards/strategy/Technology.webp",
+    "https://ti4ultimate.com/resources/images/en-US/cards/strategy/Imperial.webp"
+  ],
+  "generic_technologies_referenced": {
+    "neural_motivator": {
+      "name": "Neural Motivator",
+      "colour": "biotic (green)",
+      "prerequisites": {},
+      "text": "During the status phase, draw 2 action cards instead of 1."
+    },
+    "plasma_scoring": {
+      "name": "Plasma Scoring",
+      "colour": "warfare (red)",
+      "prerequisites": {},
+      "text": "When 1 or more of your units use BOMBARDMENT or SPACE CANNON, 1 of those units may roll 1 additional die."
+    },
+    "antimass_deflectors": {
+      "name": "Antimass Deflectors",
+      "colour": "propulsion (blue)",
+      "prerequisites": {},
+      "text": "Your ships can move into and through asteroid fields.\nWhen other players' units use SPACE CANNON against your units, apply -1 to the result of each die roll."
+    }
+  },
+  "factions": {
+    "l1z1x": {
+      "full_name": "The L1Z1X Mindnet",
+      "short_name": "L1Z1X",
+      "async_alias": "l1z1x",
+      "complexity": "Low",
+      "home_system": {
+        "tile": 6,
+        "tile_id_async": "06",
+        "planets": [
+          {
+            "name": "[0.0.0]",
+            "resources": 5,
+            "influence": 0,
+            "trait": "none (home planet)",
+            "tech_specialty": null
+          }
+        ],
+        "total_resources": 5,
+        "total_influence": 0
+      },
+      "commodities": 2,
+      "starting_units": {
+        "dreadnought": 1,
+        "carrier": 1,
+        "fighter": 3,
+        "infantry": 5,
+        "space_dock": 1,
+        "pds": 1,
+        "as_printed": [
+          "1 Dreadnought",
+          "1 Carrier",
+          "3 Fighters",
+          "5 Infantry",
+          "1 Space Dock",
+          "1 PDS"
+        ],
+        "notes": "The starting dreadnought is the faction-specific Super-Dreadnought I. AsyncTI4 fleet string: 'dn, cv, 3 ff, 5 inf 0, sd 0, pds 0'."
+      },
+      "starting_technologies": [
+        {
+          "name": "Neural Motivator",
+          "colour": "biotic (green)",
+          "text": "During the status phase, draw 2 action cards instead of 1."
+        },
+        {
+          "name": "Plasma Scoring",
+          "colour": "warfare (red)",
+          "text": "When 1 or more of your units use BOMBARDMENT or SPACE CANNON, 1 of those units may roll 1 additional die."
+        }
+      ],
+      "abilities": [
+        {
+          "name": "ASSIMILATE",
+          "text": "When you gain control of a planet, replace each PDS and space dock that is on that planet with a matching unit from your reinforcements."
+        },
+        {
+          "name": "HARROW",
+          "text": "After each round of ground combat, your ships in the active system may use their BOMBARDMENT abilities against your opponent's ground forces on the planet.",
+          "notes": "'text' is the wording printed on the base-game faction sheet (verified against the official faction-sheet scan hosted by ti4ultimate.com): it begins 'After each round of ground combat'. The FFG Living Rules Reference errata (introduced in LRR v1.2, 06/12/19; retained in v1.3, 05/04/20) replaces it with the 'text_errata_lrr' wording: 'The text of the L1Z1X's \"Harrow\" faction ability should read as follows: \"At the end of each round of ground combat, your ships in the active system may use their bombardment abilities against your opponent's ground forces on the planet.\"' (LRR prints the keyword in lower case.) Recommend implementing the errata wording. LRR 56.2: 'The \"Planetary Shield\" ability prevents an L1Z1X player from using their \"Harrow\" faction ability.' LRR 15.1 bullet: 'The L1Z1X's \"Harrow\" ability does not affect the L1Z1X player's own ground forces.'",
+          "text_errata_lrr": "At the end of each round of ground combat, your ships in the active system may use their BOMBARDMENT abilities against your opponent's ground forces on the planet."
+        }
+      ],
+      "faction_technologies": [
+        {
+          "name": "Inheritance Systems",
+          "colour": "cybernetic (yellow)",
+          "prerequisites": {
+            "cybernetic": 2
+          },
+          "prerequisites_async": "YY",
+          "text": "You may exhaust this card and spend 2 resources when you research a technology; ignore all of that technology's prerequisites."
+        },
+        {
+          "name": "Super-Dreadnought II",
+          "type": "unit upgrade",
+          "replaces_generic_upgrade": "Dreadnought II",
+          "prerequisites": {
+            "propulsion": 2,
+            "cybernetic": 1
+          },
+          "prerequisites_async": "BBY",
+          "stats": {
+            "cost": 4,
+            "combat": {
+              "value": 4,
+              "dice": 1
+            },
+            "move": 2,
+            "capacity": 2
+          },
+          "abilities": {
+            "sustain_damage": true,
+            "bombardment": {
+              "value": 4,
+              "dice": 1
+            }
+          },
+          "text": "This unit cannot be destroyed by \"Direct Hit\" action cards.",
+          "stat_line_async": "Cost 4, Combat 4, Move 2, Capacity 2\nSUSTAIN DAMAGE, BOMBARDMENT 4\nThis unit cannot be destroyed by \"Direct Hit\" action cards.",
+          "notes": "Fandom and AsyncTI4 agree on the stat line. The scottmk reference paraphrases the text as '\"Direct Hit\" cards are no longer effective against this type of ship.'; fandom/AsyncTI4 wording used here."
+        }
+      ],
+      "faction_specific_units": [
+        {
+          "name": "Super-Dreadnought I",
+          "replaces": "Dreadnought I",
+          "stats": {
+            "cost": 4,
+            "combat": {
+              "value": 5,
+              "dice": 1
+            },
+            "move": 1,
+            "capacity": 2
+          },
+          "abilities": {
+            "sustain_damage": true,
+            "bombardment": {
+              "value": 5,
+              "dice": 1
+            }
+          },
+          "text": null,
+          "notes": "Identical to a generic Dreadnought I except capacity 2 instead of 1. Can be destroyed by the 'Direct Hit' action card (AsyncTI4 canBeDirectHit=true)."
+        }
+      ],
+      "flagship": {
+        "name": "[0.0.1]",
+        "stats": {
+          "cost": 8,
+          "combat": {
+            "value": 5,
+            "dice": 2
+          },
+          "move": 1,
+          "capacity": 5
+        },
+        "abilities": {
+          "sustain_damage": true,
+          "bombardment": null,
+          "anti_fighter_barrage": null,
+          "space_cannon": null
+        },
+        "text": "During a space combat, hits produced by this ship and by your dreadnoughts in this system must be assigned to non-fighter ships if able."
+      },
+      "promissory_note": {
+        "name": "Cybernetic Enhancements",
+        "text_base_game": "At the start of your turn:\nRemove 1 token from the L1Z1X player's strategy pool and return it to his reinforcements. Then, place 1 command token from your reinforcements in your strategy pool.\nThen, return this card to the L1Z1X player.",
+        "text_codex1_omega": "When you gain command tokens during the status phase:\nGain 1 additional command token.\nThen, return this card to the L1Z1X player.",
+        "notes": "Base text verified against the official base-game card scan (ti4ultimate.com CyberneticEnhancements.webp): the 2017 printing uses 'his reinforcements'. Also confirmed by fandom (faction page + Promissory Notes page) and BoardGameGeek thread 1854869. The omega (Ω) version was released in Codex I (Ordinian, 2020) as an official replacement (verified against the Codex I PDF, page 9); AsyncTI4 ships only the omega text. tirules ruling: if the L1Z1X player has no command tokens in their strategy pool, the base version cannot be played."
+      },
+      "unit_roster_base_game": [
+        "Infantry",
+        "Fighter",
+        "Destroyer",
+        "Cruiser",
+        "Carrier",
+        "Super-Dreadnought (faction dreadnought)",
+        "War Sun (after research)",
+        "PDS",
+        "Space Dock",
+        "Flagship [0.0.1]"
+      ]
+    },
+    "letnev": {
+      "full_name": "The Barony of Letnev",
+      "short_name": "Letnev",
+      "async_alias": "letnev",
+      "complexity": "Low",
+      "home_system": {
+        "tile": 10,
+        "tile_id_async": "10",
+        "planets": [
+          {
+            "name": "Arc Prime",
+            "resources": 4,
+            "influence": 0,
+            "trait": "none (home planet)",
+            "tech_specialty": null
+          },
+          {
+            "name": "Wren Terra",
+            "resources": 2,
+            "influence": 1,
+            "trait": "none (home planet)",
+            "tech_specialty": null
+          }
+        ],
+        "total_resources": 6,
+        "total_influence": 1,
+        "notes": "Fandom trivia: highest resource value of any base-game system (6)."
+      },
+      "commodities": 2,
+      "starting_units": {
+        "dreadnought": 1,
+        "carrier": 1,
+        "destroyer": 1,
+        "fighter": 1,
+        "infantry": 3,
+        "space_dock": 1,
+        "as_printed": [
+          "1 Dreadnought",
+          "1 Carrier",
+          "1 Destroyer",
+          "1 Fighter",
+          "3 Infantry",
+          "1 Space Dock"
+        ],
+        "notes": "No starting PDS. AsyncTI4 fleet string: 'dn, cv, dd, ff, 3 inf w, sd a'."
+      },
+      "starting_technologies": [
+        {
+          "name": "Antimass Deflectors",
+          "colour": "propulsion (blue)",
+          "text": "Your ships can move into and through asteroid fields.\nWhen other players' units use SPACE CANNON against your units, apply -1 to the result of each die roll."
+        },
+        {
+          "name": "Plasma Scoring",
+          "colour": "warfare (red)",
+          "text": "When 1 or more of your units use BOMBARDMENT or SPACE CANNON, 1 of those units may roll 1 additional die."
+        }
+      ],
+      "abilities": [
+        {
+          "name": "MUNITIONS RESERVES",
+          "text": "At the start of each round of space combat, you may spend 2 trade goods; you may reroll any number of your dice during that combat round.",
+          "notes": "Verbatim from the official faction-sheet scan (ti4ultimate.com): the sheet prints 'reroll' (unhyphenated); fandom writes 're-roll'. AsyncTI4 paraphrases: 'You may spend 2 trade goods to re-roll any number of your dice during that combat round.' Ruling (tirules): may only be triggered once per combat round; cannot spend 4 TG for two rerolls."
+        },
+        {
+          "name": "ARMADA",
+          "text": "The maximum number of non-fighter ships you can have in each system is equal to 2 more than the number of tokens in your fleet pool."
+        }
+      ],
+      "faction_technologies": [
+        {
+          "name": "L4 Disruptors",
+          "colour": "cybernetic (yellow)",
+          "prerequisites": {
+            "cybernetic": 1
+          },
+          "prerequisites_async": "Y",
+          "text": "During an invasion, units cannot use SPACE CANNON against your units."
+        },
+        {
+          "name": "Non-Euclidean Shielding",
+          "colour": "warfare (red)",
+          "prerequisites": {
+            "warfare": 2
+          },
+          "prerequisites_async": "RR",
+          "text": "When 1 of your units uses SUSTAIN DAMAGE, cancel 2 hits instead of 1."
+        }
+      ],
+      "faction_specific_units": [],
+      "flagship": {
+        "name": "Arc Secundus",
+        "stats": {
+          "cost": 8,
+          "combat": {
+            "value": 5,
+            "dice": 2
+          },
+          "move": 1,
+          "capacity": 3
+        },
+        "abilities": {
+          "sustain_damage": true,
+          "bombardment": {
+            "value": 5,
+            "dice": 3
+          },
+          "anti_fighter_barrage": null,
+          "space_cannon": null
+        },
+        "text": "Other players' units in this system lose PLANETARY SHIELD.\nAt the start of each space combat round, repair this ship."
+      },
+      "promissory_note": {
+        "name": "War Funding",
+        "text_base_game": "At the start of a round of space combat:\nThe Letnev player loses 2 trade goods.\nDuring this combat round, reroll any number of your dice.\nThen, return this card to the Letnev player.",
+        "text_codex1_omega": "After you and your opponent roll dice during space combat:\nYou may reroll all of your opponent's dice.\nYou may reroll any number of your dice.\nThen, return this card to the Letnev player.",
+        "notes": "Base text verified against the official base-game card scan (ti4ultimate.com War Funding.webp): three separate paragraphs, 'reroll' unhyphenated. Fandom writes 're-roll'. The omega (Ω) version was released in Codex I (Ordinian, 2020) as an official replacement (verified against the Codex I PDF, page 9); AsyncTI4 ships only the omega text. Ruling (tirules): base War Funding may be played even if the Letnev player has 0 or 1 trade goods; the omega version only rerolls combat rolls, not anti-fighter barrage."
+      },
+      "unit_roster_base_game": [
+        "Infantry",
+        "Fighter",
+        "Destroyer",
+        "Cruiser",
+        "Carrier",
+        "Dreadnought",
+        "War Sun (after research)",
+        "PDS",
+        "Space Dock",
+        "Flagship Arc Secundus"
+      ]
+    }
+  },
+  "units": {
+    "notes": "Shared base-game unit table. 'produced_per_cost' = number of units you get for paying the cost once (fighters and infantry come in pairs: 'Cost 1 (x2)'). Combat value = hit on that number or higher on a d10. Structures (PDS, Space Dock) have no cost, combat, move or capacity; they are placed via the Construction strategy card. Unit-upgrade technologies are of the type 'unit upgrade' (no colour); their prerequisites are given as colour counts.",
+    "infantry": {
+      "levels": {
+        "I": {
+          "name": "Infantry I",
+          "cost": 1,
+          "produced_per_cost": 2,
+          "cost_per_unit": 0.5,
+          "combat": {
+            "value": 8,
+            "dice": 1
+          },
+          "move": null,
+          "capacity": null,
+          "abilities": {},
+          "text": null,
+          "unit_type": "ground force"
+        },
+        "II": {
+          "name": "Infantry II",
+          "cost": 1,
+          "produced_per_cost": 2,
+          "cost_per_unit": 0.5,
+          "combat": {
+            "value": 7,
+            "dice": 1
+          },
+          "move": null,
+          "capacity": null,
+          "abilities": {},
+          "unit_type": "ground force",
+          "text": "After this unit is destroyed, roll 1 die. If the result is 6 or greater, place the unit on this card. At the start of your next turn, place each unit that is on this card on a planet you control in your home system.",
+          "notes": "Wording 'At the start of your next turn' confirmed by the official Learn to Play booklet text (2017 and 2020 printings, page 16 text layer), fandom and AsyncTI4 technology data. The AsyncTI4 hover image for Infantry II (a fan-rendered card) reads 'At the start of your turn' and is treated as the outlier."
+        }
+      },
+      "upgrade_technology": {
+        "name": "Infantry II",
+        "type": "unit upgrade",
+        "prerequisites": {
+          "biotic": 2
+        },
+        "prerequisites_async": "GG",
+        "card_text": "Cost 1(x2), Combat 7\nAfter this unit is destroyed, roll 1 die. If the result is 6 or greater, place the unit on this card. At the start of your next turn, place each unit that is on this card on a planet you control in your home system."
+      },
+      "reinforcements_plastic": 12
+    },
+    "fighter": {
+      "levels": {
+        "I": {
+          "name": "Fighter I",
+          "cost": 1,
+          "produced_per_cost": 2,
+          "cost_per_unit": 0.5,
+          "combat": {
+            "value": 9,
+            "dice": 1
+          },
+          "move": null,
+          "capacity": null,
+          "abilities": {},
+          "text": null,
+          "unit_type": "ship",
+          "notes": "No move value: must be transported by a ship with capacity. Up to 3 fighters in a system with a space dock do not count against capacity."
+        },
+        "II": {
+          "name": "Fighter II",
+          "cost": 1,
+          "produced_per_cost": 2,
+          "cost_per_unit": 0.5,
+          "combat": {
+            "value": 8,
+            "dice": 1
+          },
+          "move": 2,
+          "capacity": null,
+          "abilities": {},
+          "unit_type": "ship",
+          "text": "This unit may move without being transported.\nFighters in excess of your ships' capacity count against your fleet pool."
+        }
+      },
+      "upgrade_technology": {
+        "name": "Fighter II",
+        "type": "unit upgrade",
+        "prerequisites": {
+          "biotic": 1,
+          "propulsion": 1
+        },
+        "prerequisites_async": "GB",
+        "card_text": "Cost 1(x2), Combat 8, Move 2\nThis unit may move without being transported.\nFighters in excess of your ships' capacity count against your fleet pool."
+      },
+      "reinforcements_plastic": 10
+    },
+    "destroyer": {
+      "levels": {
+        "I": {
+          "name": "Destroyer I",
+          "cost": 1,
+          "produced_per_cost": 1,
+          "cost_per_unit": 1,
+          "combat": {
+            "value": 9,
+            "dice": 1
+          },
+          "move": 2,
+          "capacity": null,
+          "abilities": {
+            "anti_fighter_barrage": {
+              "value": 9,
+              "dice": 2
+            }
+          },
+          "text": null,
+          "unit_type": "ship"
+        },
+        "II": {
+          "name": "Destroyer II",
+          "cost": 1,
+          "produced_per_cost": 1,
+          "cost_per_unit": 1,
+          "combat": {
+            "value": 8,
+            "dice": 1
+          },
+          "move": 2,
+          "capacity": null,
+          "abilities": {
+            "anti_fighter_barrage": {
+              "value": 6,
+              "dice": 3
+            }
+          },
+          "text": null,
+          "unit_type": "ship"
+        }
+      },
+      "upgrade_technology": {
+        "name": "Destroyer II",
+        "type": "unit upgrade",
+        "prerequisites": {
+          "warfare": 2
+        },
+        "prerequisites_async": "RR",
+        "card_text": "Cost 1, Combat 8, Move 2\nANTI-FIGHTER BARRAGE 6(x3)"
+      },
+      "reinforcements_plastic": 8
+    },
+    "cruiser": {
+      "levels": {
+        "I": {
+          "name": "Cruiser I",
+          "cost": 2,
+          "produced_per_cost": 1,
+          "cost_per_unit": 2,
+          "combat": {
+            "value": 7,
+            "dice": 1
+          },
+          "move": 2,
+          "capacity": null,
+          "abilities": {},
+          "text": null,
+          "unit_type": "ship"
+        },
+        "II": {
+          "name": "Cruiser II",
+          "cost": 2,
+          "produced_per_cost": 1,
+          "cost_per_unit": 2,
+          "combat": {
+            "value": 6,
+            "dice": 1
+          },
+          "move": 3,
+          "capacity": 1,
+          "abilities": {},
+          "text": null,
+          "unit_type": "ship"
+        }
+      },
+      "upgrade_technology": {
+        "name": "Cruiser II",
+        "type": "unit upgrade",
+        "prerequisites": {
+          "biotic": 1,
+          "cybernetic": 1,
+          "warfare": 1
+        },
+        "prerequisites_async": "GYR",
+        "card_text": "Cost 2, Combat 6, Move 3, Capacity 1"
+      },
+      "reinforcements_plastic": 8
+    },
+    "carrier": {
+      "levels": {
+        "I": {
+          "name": "Carrier I",
+          "cost": 3,
+          "produced_per_cost": 1,
+          "cost_per_unit": 3,
+          "combat": {
+            "value": 9,
+            "dice": 1
+          },
+          "move": 1,
+          "capacity": 4,
+          "abilities": {},
+          "text": null,
+          "unit_type": "ship"
+        },
+        "II": {
+          "name": "Carrier II",
+          "cost": 3,
+          "produced_per_cost": 1,
+          "cost_per_unit": 3,
+          "combat": {
+            "value": 9,
+            "dice": 1
+          },
+          "move": 2,
+          "capacity": 6,
+          "abilities": {},
+          "text": null,
+          "unit_type": "ship"
+        }
+      },
+      "upgrade_technology": {
+        "name": "Carrier II",
+        "type": "unit upgrade",
+        "prerequisites": {
+          "propulsion": 2
+        },
+        "prerequisites_async": "BB",
+        "card_text": "Cost 3, Combat 9, Move 2, Capacity 6"
+      },
+      "reinforcements_plastic": 4
+    },
+    "dreadnought": {
+      "levels": {
+        "I": {
+          "name": "Dreadnought I",
+          "cost": 4,
+          "produced_per_cost": 1,
+          "cost_per_unit": 4,
+          "combat": {
+            "value": 5,
+            "dice": 1
+          },
+          "move": 1,
+          "capacity": 1,
+          "abilities": {
+            "sustain_damage": true,
+            "bombardment": {
+              "value": 5,
+              "dice": 1
+            }
+          },
+          "text": null,
+          "unit_type": "ship"
+        },
+        "II": {
+          "name": "Dreadnought II",
+          "cost": 4,
+          "produced_per_cost": 1,
+          "cost_per_unit": 4,
+          "combat": {
+            "value": 5,
+            "dice": 1
+          },
+          "move": 2,
+          "capacity": 1,
+          "abilities": {
+            "sustain_damage": true,
+            "bombardment": {
+              "value": 5,
+              "dice": 1
+            }
+          },
+          "unit_type": "ship",
+          "text": "This unit cannot be destroyed by \"Direct Hit\" action cards."
+        }
+      },
+      "upgrade_technology": {
+        "name": "Dreadnought II",
+        "type": "unit upgrade",
+        "prerequisites": {
+          "propulsion": 2,
+          "cybernetic": 1
+        },
+        "prerequisites_async": "BBY",
+        "card_text": "Cost 4, Combat 5, Move 2, Capacity 1\nSUSTAIN DAMAGE, BOMBARDMENT 5\nThis unit cannot be destroyed by \"Direct Hit\" action cards."
+      },
+      "reinforcements_plastic": 5,
+      "notes": "L1Z1X uses Super-Dreadnought I/II instead (see factions.l1z1x)."
+    },
+    "war_sun": {
+      "levels": {
+        "I": {
+          "name": "War Sun",
+          "cost": 12,
+          "produced_per_cost": 1,
+          "cost_per_unit": 12,
+          "combat": {
+            "value": 3,
+            "dice": 3
+          },
+          "move": 2,
+          "capacity": 6,
+          "abilities": {
+            "sustain_damage": true,
+            "bombardment": {
+              "value": 3,
+              "dice": 3
+            },
+            "disables_planetary_shield": true
+          },
+          "unit_type": "ship",
+          "text": "Other players' units in this system lose PLANETARY SHIELD."
+        }
+      },
+      "upgrade_technology": {
+        "name": "War Sun",
+        "type": "unit upgrade",
+        "prerequisites": {
+          "warfare": 3,
+          "cybernetic": 1
+        },
+        "prerequisites_async": "RRRY",
+        "card_text": "Cost 12, Combat 3(x3), Move 2, Capacity 6\nSUSTAIN DAMAGE, BOMBARDMENT 3(x3)\nOther players' units in this system lose PLANETARY SHIELD."
+      },
+      "reinforcements_plastic": 2,
+      "notes": "No level I: cannot be produced until the War Sun technology is researched. LRR 56.3: a war sun negates other players' Planetary Shield in its system."
+    },
+    "pds": {
+      "levels": {
+        "I": {
+          "name": "PDS I",
+          "cost": null,
+          "produced_per_cost": null,
+          "combat": null,
+          "move": null,
+          "capacity": null,
+          "abilities": {
+            "planetary_shield": true,
+            "space_cannon": {
+              "value": 6,
+              "dice": 1
+            }
+          },
+          "text": null,
+          "unit_type": "structure"
+        },
+        "II": {
+          "name": "PDS II",
+          "cost": null,
+          "produced_per_cost": null,
+          "combat": null,
+          "move": null,
+          "capacity": null,
+          "abilities": {
+            "planetary_shield": true,
+            "space_cannon": {
+              "value": 5,
+              "dice": 1
+            },
+            "deep_space_cannon": true
+          },
+          "unit_type": "structure",
+          "text": "You may use this unit's SPACE CANNON against ships that are adjacent to this unit's system."
+        }
+      },
+      "upgrade_technology": {
+        "name": "PDS II",
+        "type": "unit upgrade",
+        "prerequisites": {
+          "warfare": 1,
+          "cybernetic": 1
+        },
+        "prerequisites_async": "RY",
+        "card_text": "PLANETARY SHIELD, SPACE CANNON 5\nYou may use this unit's SPACE CANNON against ships that are adjacent to this unit's system."
+      },
+      "reinforcements_plastic": 6,
+      "notes": "Max 2 PDS per planet. Placed via Construction strategy card (primary or secondary). Fandom notes adjacent-system fire only applies during Space Cannon Offense, not Space Cannon Defense."
+    },
+    "space_dock": {
+      "levels": {
+        "I": {
+          "name": "Space Dock I",
+          "cost": null,
+          "produced_per_cost": null,
+          "combat": null,
+          "move": null,
+          "capacity": null,
+          "abilities": {
+            "production": "planet resources + 2",
+            "fighter_capacity_bonus": 3
+          },
+          "unit_type": "structure",
+          "text": "This unit's PRODUCTION value is equal to 2 more than the resource value of this planet.\nUp to 3 fighters in this system do not count against your ships' capacity."
+        },
+        "II": {
+          "name": "Space Dock II",
+          "cost": null,
+          "produced_per_cost": null,
+          "combat": null,
+          "move": null,
+          "capacity": null,
+          "abilities": {
+            "production": "planet resources + 4",
+            "fighter_capacity_bonus": 3
+          },
+          "unit_type": "structure",
+          "text": "This unit's PRODUCTION value is equal to 4 more than the resource value of this planet.\nUp to 3 fighters in this system do not count against your ships' capacity."
+        }
+      },
+      "upgrade_technology": {
+        "name": "Space Dock II",
+        "type": "unit upgrade",
+        "prerequisites": {
+          "cybernetic": 2
+        },
+        "prerequisites_async": "YY",
+        "card_text": "PRODUCTION X\nThis unit's PRODUCTION value is equal to 4 more than the resource value of this planet.\nUp to 3 fighters in this system do not count against your ships' capacity."
+      },
+      "reinforcements_plastic": 3,
+      "notes": "Max 1 space dock per planet. Placed via Construction strategy card. Unit ability keyword printed as 'PRODUCTION X'."
+    },
+    "flagship_generic": {
+      "cost": 8,
+      "reinforcements_plastic": 1,
+      "notes": "Each faction has exactly one flagship with its own stats; see factions.*.flagship."
+    }
+  },
+  "strategy_cards": {
+    "notes": "All eight base-game cards listed; the six used in the duel are flagged with used_in_duel=true (Politics and Construction are dropped). 'primary'/'secondary' are the printed base-game (2017) texts. 'errata' gives the FFG Living Rules Reference / Codex I replacement text where one exists. Colours: 'colour_name' is the conventional name, 'colour_hex_async' is the AsyncTI4 colourHexCode, 'colour_hex_sampled' is the dominant saturated colour sampled from the official card scan on ti4ultimate.com (both agree).",
+    "cards": [
+      {
+        "initiative": 1,
+        "name": "Leadership",
+        "used_in_duel": true,
+        "colour_name": "red",
+        "colour_hex_async": "#ec1c24",
+        "colour_hex_sampled": "#dd1b23",
+        "primary": [
+          "Gain 3 command tokens.",
+          "Spend any amount of influence to gain 1 command token for every 3 influence spent."
+        ],
+        "secondary": [
+          "Spend any amount of influence to gain 1 command token for every 3 influence spent."
+        ],
+        "notes": "Secondary does not cost a strategy token."
+      },
+      {
+        "initiative": 2,
+        "name": "Diplomacy",
+        "used_in_duel": true,
+        "colour_name": "orange",
+        "colour_hex_async": "#f69421",
+        "colour_hex_sampled": "#e78c1e",
+        "primary": [
+          "Choose 1 system other than the Mecatol Rex system that contains a planet you control; each other player places a command token from his reinforcements in the chosen system. Then, ready each exhausted planet you control in that system."
+        ],
+        "secondary": [
+          "Spend 1 token from your strategy pool to ready up to 2 exhausted planets."
+        ],
+        "errata": {
+          "source": "FFG Living Rules Reference v1.3 (errata section); reprinted as Diplomacy Ω card in Codex I and in Prophecy of Kings",
+          "primary": [
+            "Choose 1 system other than the Mecatol Rex system that contains a planet you control; each other player places a command token from their reinforcements in that system. Then, ready up to 2 exhausted planets you control."
+          ],
+          "secondary": [
+            "Spend 1 token from your strategy pool to ready up to 2 exhausted planets you control."
+          ]
+        },
+        "notes": "Printed base text verified against the official card scan (ti4ultimate.com Diplomacy.webp) and the Learn to Play booklet's strategy-card overview (2017 and 2020 printings): the 2017 card reads 'from his reinforcements' (fandom and AsyncTI4 obsolete.json base2 modernise this to 'their'). The Diplomacy errata first appears in LRR v1.1 (02/03/18) and is listed again in LRR v1.3 (05/04/20); the errata text quoted here is from v1.3 and matches the Codex I Diplomacy Ω card scan (ti4ultimate.com DiplomacyCodexOrdinian.webp). Recommend implementing the errata text. LRR 30.2: if a player has no command tokens in reinforcements they place one of their choice from their command sheet; a player who already has a token in the chosen system does not place another."
+      },
+      {
+        "initiative": 3,
+        "name": "Politics",
+        "used_in_duel": false,
+        "colour_name": "yellow",
+        "colour_hex_async": "#fff200",
+        "colour_hex_sampled": "#eadf08",
+        "primary": [
+          "Choose a player other than the speaker. That player gains the speaker token.",
+          "Draw 2 action cards.",
+          "Look at the top 2 cards of the agenda deck. Place each card on the top or bottom of the deck in any order."
+        ],
+        "secondary": [
+          "Spend 1 token from your strategy pool to draw 2 action cards."
+        ]
+      },
+      {
+        "initiative": 4,
+        "name": "Construction",
+        "used_in_duel": false,
+        "colour_name": "green",
+        "colour_hex_async": "#39b54a",
+        "colour_hex_sampled": "#3ab449",
+        "primary": [
+          "Place 1 PDS or 1 space dock on a planet you control.",
+          "Place 1 PDS on a planet you control."
+        ],
+        "secondary": [
+          "Place 1 token from your strategy pool in any system; you may place either 1 space dock or 1 PDS on a planet you control in that system."
+        ],
+        "notes": "Base-game printed text verified against the official card scan (ti4ultimate.com Construction.webp): 'space dock' is lower case on the card (AsyncTI4 capitalises it). PoK reworded the secondary to 'Spend 1 token from your strategy pool and place it in any system; you may place either 1 space dock or 1 PDS on a planet you control in that system' with identical effect. Not used in the duel."
+      },
+      {
+        "initiative": 5,
+        "name": "Trade",
+        "used_in_duel": true,
+        "colour_name": "teal / turquoise",
+        "colour_hex_async": "#00a99d",
+        "colour_hex_sampled": "#04a498",
+        "primary": [
+          "Gain 3 trade goods.",
+          "Replenish commodities.",
+          "Choose any number of other players. Those players use the secondary ability of this strategy card without spending a command token."
+        ],
+        "secondary": [
+          "Spend 1 token from your strategy pool to replenish commodities."
+        ],
+        "notes": "Printed card (ti4ultimate.com Trade.webp scan, and the Learn to Play strategy-card overview) reads 'replenish commodities.' with no 'your'; AsyncTI4's 'replenish your commodities' is a paraphrase. Fandom wording matches the card."
+      },
+      {
+        "initiative": 6,
+        "name": "Warfare",
+        "used_in_duel": true,
+        "colour_name": "light blue / cyan-blue",
+        "colour_hex_async": "#008ed4",
+        "colour_hex_sampled": "#038acb",
+        "primary": [
+          "Remove 1 of your command tokens from the game board; then, gain 1 command token.",
+          "Redistribute any number of the command tokens on your command sheet."
+        ],
+        "secondary": [
+          "Spend 1 token from your strategy pool to use the PRODUCTION ability of 1 of your space docks in your home system."
+        ],
+        "notes": "Printed card verified against the official scan (ti4ultimate.com Warfare.webp): the secondary ends at 'in your home system.' with no parenthetical. AsyncTI4 appends '(this token is not placed in your home system)' as a reminder; fandom lists it as a rules note. Rule: the spent token goes to reinforcements, not the home system."
+      },
+      {
+        "initiative": 7,
+        "name": "Technology",
+        "used_in_duel": true,
+        "colour_name": "dark blue",
+        "colour_hex_async": "#15489f",
+        "colour_hex_sampled": "#15489b",
+        "primary": [
+          "Research 1 technology.",
+          "Spend 6 resources to research 1 technology."
+        ],
+        "secondary": [
+          "Spend 1 token from your strategy pool and 4 resources to research 1 technology."
+        ]
+      },
+      {
+        "initiative": 8,
+        "name": "Imperial",
+        "used_in_duel": true,
+        "colour_name": "purple",
+        "colour_hex_async": "#752b90",
+        "colour_hex_sampled": "#732c8c",
+        "primary": [
+          "Immediately score 1 public objective if you fulfill its requirements.",
+          "Gain 1 victory point if you control Mecatol Rex; otherwise, draw 1 secret objective."
+        ],
+        "secondary": [
+          "Spend 1 token from your strategy pool to draw 1 secret objective."
+        ]
+      }
+    ]
+  },
+  "verification": {
+    "verified": "2026-09-03",
+    "method": "Adversarial re-check of every numeric field and every ability/card text against sources not used by the compiler wherever possible, with priority on primary-source scans (official faction sheets, strategy cards, promissory notes, unit-upgrade and technology cards) and official FFG PDFs.",
+    "extra_sources": [
+      "https://ti4ultimate.com/resources/images/shared/factionimages/TheL1z1xMindnet_FactionSheet.webp (official base-game faction sheet, unit side)",
+      "https://ti4ultimate.com/resources/images/shared/factionimages/TheL1z1xMindnet_FactionSheetBack.webp (official faction sheet, lore side with starting units/technology)",
+      "https://ti4ultimate.com/resources/images/shared/factionimages/TheBaronyOfLetnev_FactionSheet.webp",
+      "https://ti4ultimate.com/resources/images/shared/factionimages/TheBaronyOfLetnev_FactionSheetBack.webp",
+      "https://ti4ultimate.com/resources/images/en-US/cards/promissory/CyberneticEnhancements.webp (base-game card scan)",
+      "https://ti4ultimate.com/resources/images/en-US/cards/promissory/WarFunding.webp (base-game card scan)",
+      "https://ti4ultimate.com/resources/images/en-US/cards/strategy/DiplomacyCodexOrdinian.webp (Diplomacy Ω scan)",
+      "https://raw.githubusercontent.com/AsyncTI4/TI4_map_generator_bot/master/src/main/resources/hover_images/techs/generic/{infantry_2,fighter_2,destroyer_2,cruiser_2,carrier_2,dreadnought_2,warsun,pds_2,spacedock_2}.jpg and neural_motivator/plasma_scoring/antimass_deflectors.png (card images, read visually)",
+      "https://raw.githubusercontent.com/AsyncTI4/TI4_map_generator_bot/master/src/main/resources/hover_images/techs/faction/{superdreadnought_2,inheritance_systems,l4_disruptors,noneuclidean_shielding}.jpg (card scans, read visually)",
+      "https://images-cdn.fantasyflightgames.com/filer_public/f3/c6/f3c66512-8e19-4f30-a0d4-d7d75701fd37/ti-k0289_learn_to_playcompressed.pdf (FFG Learn to Play, 2017: component list, strategy-card overview)",
+      "https://images-cdn.fantasyflightgames.com/filer_public/c4/f0/c4f03c19-f9da-422f-b162-73f393e64a28/ti-k0289_learn_to_play_2020_web.pdf (FFG Learn to Play, 2020 printing)",
+      "FFG Living Rules Reference v1.3 PDF (re-read: errata section with version headers, sections 15.1, 30.2, 54.x, 56.1-56.3, 63, 68.3, 74.4)",
+      "FFG Twilight Codex Volume I PDF, pages 8-9 (Omega Initiative card images) and page 14 (Diplomacy errata rationale)",
+      "https://raw.githubusercontent.com/KeeganW/ti4/master/src/data/raceData.json and tileData.js (independent dataset: home-system tile numbers, planet resource/influence values)",
+      "https://axiomvortix.com/factions/l1z1x and https://ti4.dronz.co/factions/lzx-mindnet (independent faction references)",
+      "https://tirules2.com/F_lizix and https://tirules2.com/F_letnev (rulings for Harrow, Cybernetic Enhancements, Munitions Reserves, War Funding)"
+    ],
+    "confirmed_correct": [
+      "L1Z1X: home tile 6, planet [0.0.0] 5/0; commodities 2; starting units 1 dreadnought, 1 carrier, 3 fighters, 5 infantry, 1 space dock, 1 PDS; starting techs Neural Motivator + Plasma Scoring (faction sheet scan, KeeganW tileData, axiomvortix, dronz)",
+      "L1Z1X: ASSIMILATE text verbatim; Inheritance Systems (YY) text verbatim; Super-Dreadnought I 4/5/1/2 Sustain, Bombardment 5; Super-Dreadnought II BBY, 4/4/2/2, Sustain, Bombardment 4, Direct Hit text; [0.0.1] 8/5(x2)/1/5 Sustain, hit-assignment text verbatim (sheet + card scans)",
+      "L1Z1X: Cybernetic Enhancements base text verbatim incl. 'his reinforcements' (card scan); omega text verbatim (Codex I p.9)",
+      "Letnev: home tile 10, Arc Prime 4/0, Wren Terra 2/1 (KeeganW tileData); highest total resources of any base-game system (6) confirmed by computing all tiles; commodities 2; starting units 1 dreadnought, 1 carrier, 1 destroyer, 1 fighter, 3 infantry, 1 space dock; starting techs Antimass Deflectors + Plasma Scoring (faction sheet scan)",
+      "Letnev: ARMADA text verbatim; L4 Disruptors (Y) and Non-Euclidean Shielding (RR) texts verbatim (card scans); Arc Secundus 8/5(x2)/1/3 Sustain, Bombardment 5(x3), Planetary-Shield removal and start-of-round repair text verbatim (sheet scan); War Funding omega text verbatim (Codex I p.9)",
+      "Generic techs Neural Motivator, Plasma Scoring, Antimass Deflectors texts verbatim (card images)",
+      "Unit table: all cost/combat/dice/move/capacity/ability values and upgrade prerequisites (GG, GB, RR, GYR, BB, BBY, RRRY, RY, YY) match the card scans and both faction sheets; Fighter II, Dreadnought II, War Sun, PDS II, Space Dock I/II texts verbatim; per-player plastic counts sum to 59, matching the Learn to Play component list (354 plastic units = 59 in 6 colours)",
+      "Strategy cards: initiatives 1-8 (Trade 5, Warfare 6, Technology 7, Imperial 8) and Leadership, Politics, Warfare, Technology, Imperial texts verbatim (card scans); Diplomacy Ω / LRR errata text verbatim; AsyncTI4 colour hex codes transcribed correctly; independent PIL re-sample of the card scans gives the same hues within ~10 RGB units",
+      "No Prophecy of Kings content present (no mechs, leaders, PoK Construction wording, PoK flagship changes)",
+      "LRR notes: 30.2 both bullets, 56.2, 56.3, 54.x max 2 PDS per planet, 68.3/74.4 max 1 space dock per planet all confirmed"
+    ],
+    "corrections_applied": [
+      "factions.l1z1x.abilities[HARROW].text: 'At the end of each round of ground combat, your ships in the active system may use their BOMBARDMENT abilities against your opponent's ground forces on the planet.' -> printed sheet wording 'After each round of ground combat, ...'; errata wording moved to new field text_errata_lrr; notes: errata version corrected from LRR v1.1 (02/03/18) to LRR v1.2 (06/12/19)",
+      "factions.letnev.abilities[MUNITIONS RESERVES].text: 're-roll' -> 'reroll' (as printed on the faction sheet)",
+      "factions.letnev.promissory_note.text_base_game: 're-roll' -> 'reroll' and paragraph breaks aligned with the printed card ('...loses 2 trade goods.' / 'During this combat round, reroll any number of your dice.')",
+      "strategy_cards[Diplomacy].primary: 'from their reinforcements' -> 'from his reinforcements' (2017 printed card)",
+      "strategy_cards[Construction].primary[0]: 'Place 1 PDS or 1 Space Dock on a planet you control.' -> 'Place 1 PDS or 1 space dock on a planet you control.'",
+      "strategy_cards[Trade].secondary: 'Spend 1 token from your strategy pool to replenish your commodities.' -> 'Spend 1 token from your strategy pool to replenish commodities.'"
+    ],
+    "residual_notes": [
+      "Infantry II: kept 'At the start of your next turn' (official Learn to Play text, fandom, AsyncTI4 tech data); the AsyncTI4 fan-rendered card image omits 'next'.",
+      "colour_hex_sampled values were not regenerated; an independent re-sample with a coarser bucket gave Leadership #e81820, Diplomacy #f09018, Politics #f8f000, Construction #38b048, Trade #00a898, Warfare #0088d0, Technology #104898, Imperial #702888, i.e. the same hues."
+    ]
+  }
+}

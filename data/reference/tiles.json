@@ -1,0 +1,1600 @@
+{
+  "meta": {
+    "game": "Twilight Imperium Fourth Edition, base game only (no Prophecy of Kings)",
+    "compiled": "2026-09-03",
+    "purpose": "Mecatol Duel data: base-game system tile catalogue",
+    "tile_ranges": {
+      "home": "1-16 (green back; 17 = Creuss Gate, also green back)",
+      "mecatol_rex": "18",
+      "blue_planet": "19-38",
+      "red_anomaly_or_empty": "39-50",
+      "offboard_home": "51 Creuss (green back)"
+    },
+    "counts": {
+      "home_green_back": 18,
+      "home_green_back_note": "tiles 1-17 (16 home systems + Creuss Gate) plus tile 51 (Creuss, off-board)",
+      "mecatol": 1,
+      "blue": 20,
+      "red": 12,
+      "total_in_box": 51
+    },
+    "tech_skip_colours": {
+      "blue": "propulsion",
+      "green": "biotic",
+      "red": "warfare",
+      "yellow": "cybernetic"
+    },
+    "notes": [
+      "Planet traits (cultural/hazardous/industrial) have no inherent effect in the base game; only card effects refer to them (LRR 55.3).",
+      "Home-system planets and Mecatol Rex have no trait.",
+      "Wormholes: systems with matching wormholes are adjacent (LRR 6.1, 89). Base game has alpha (tiles 26, 39) and beta (25, 40); delta only on 17 and 51.",
+      "Anomaly rules per LRR v1.1: asteroid field 11, gravity rift 37, nebula 50, supernova 75.",
+      "Spelling: TTPG prints Tar'Mann, AsyncTI4 Tar'mann; the tile itself is set in capitals, so both are defensible."
+    ]
+  },
+  "sources": [
+    "AsyncTI4 TI4_map_generator_bot, src/main/resources/systems/01.json..51.json and src/main/resources/planets/*.json (master, fetched 2026-09-03 via raw.githubusercontent.com)",
+    "Fantasy Flight Games, Twilight Imperium Fourth Edition Living Rules Reference v1.1 (02/03/18), sections 6, 9, 11, 37, 46, 50, 55, 75, 77, 89 (https://images-cdn.fantasyflightgames.com/filer_public/3a/fc/3afce41b-b757-4dc8-b005-3a5efffd0fad/ti4_living_rules_reference_v1_1.pdf)",
+    "Cross-checked against the physical base-game tiles from memory of the component list; fandom wiki (twilight-imperium.fandom.com) was Cloudflare-blocked at fetch time and could not be used."
+  ],
+  "home_systems": [
+    {
+      "tile": 1,
+      "faction": "sol",
+      "faction_name": "Federation of Sol",
+      "planets": [
+        {
+          "name": "Jord",
+          "resources": 4,
+          "influence": 2
+        }
+      ],
+      "total_resources": 4,
+      "total_influence": 2,
+      "wormholes": []
+    },
+    {
+      "tile": 2,
+      "faction": "mentak",
+      "faction_name": "Mentak Coalition",
+      "planets": [
+        {
+          "name": "Moll Primus",
+          "resources": 4,
+          "influence": 1
+        }
+      ],
+      "total_resources": 4,
+      "total_influence": 1,
+      "wormholes": []
+    },
+    {
+      "tile": 3,
+      "faction": "yin",
+      "faction_name": "Yin Brotherhood",
+      "planets": [
+        {
+          "name": "Darien",
+          "resources": 4,
+          "influence": 4
+        }
+      ],
+      "total_resources": 4,
+      "total_influence": 4,
+      "wormholes": []
+    },
+    {
+      "tile": 4,
+      "faction": "muaat",
+      "faction_name": "Embers of Muaat",
+      "planets": [
+        {
+          "name": "Muaat",
+          "resources": 4,
+          "influence": 1
+        }
+      ],
+      "total_resources": 4,
+      "total_influence": 1,
+      "wormholes": []
+    },
+    {
+      "tile": 5,
+      "faction": "arborec",
+      "faction_name": "The Arborec",
+      "planets": [
+        {
+          "name": "Nestphar",
+          "resources": 3,
+          "influence": 2
+        }
+      ],
+      "total_resources": 3,
+      "total_influence": 2,
+      "wormholes": []
+    },
+    {
+      "tile": 6,
+      "faction": "l1z1x",
+      "faction_name": "L1Z1X Mindnet",
+      "planets": [
+        {
+          "name": "[0.0.0]",
+          "resources": 5,
+          "influence": 0
+        }
+      ],
+      "total_resources": 5,
+      "total_influence": 0,
+      "wormholes": []
+    },
+    {
+      "tile": 7,
+      "faction": "winnu",
+      "faction_name": "The Winnu",
+      "planets": [
+        {
+          "name": "Winnu",
+          "resources": 3,
+          "influence": 4
+        }
+      ],
+      "total_resources": 3,
+      "total_influence": 4,
+      "wormholes": []
+    },
+    {
+      "tile": 8,
+      "faction": "nekro",
+      "faction_name": "Nekro Virus",
+      "planets": [
+        {
+          "name": "Mordai II",
+          "resources": 4,
+          "influence": 0
+        }
+      ],
+      "total_resources": 4,
+      "total_influence": 0,
+      "wormholes": []
+    },
+    {
+      "tile": 9,
+      "faction": "naalu",
+      "faction_name": "Naalu Collective",
+      "planets": [
+        {
+          "name": "Maaluuk",
+          "resources": 0,
+          "influence": 2
+        },
+        {
+          "name": "Druaa",
+          "resources": 3,
+          "influence": 1
+        }
+      ],
+      "total_resources": 3,
+      "total_influence": 3,
+      "wormholes": []
+    },
+    {
+      "tile": 10,
+      "faction": "letnev",
+      "faction_name": "Barony of Letnev",
+      "planets": [
+        {
+          "name": "Arc Prime",
+          "resources": 4,
+          "influence": 0
+        },
+        {
+          "name": "Wren Terra",
+          "resources": 2,
+          "influence": 1
+        }
+      ],
+      "total_resources": 6,
+      "total_influence": 1,
+      "wormholes": []
+    },
+    {
+      "tile": 11,
+      "faction": "saar",
+      "faction_name": "Clan of Saar",
+      "planets": [
+        {
+          "name": "Lisis II",
+          "resources": 1,
+          "influence": 0
+        },
+        {
+          "name": "Ragh",
+          "resources": 2,
+          "influence": 1
+        }
+      ],
+      "total_resources": 3,
+      "total_influence": 1,
+      "wormholes": []
+    },
+    {
+      "tile": 12,
+      "faction": "jolnar",
+      "faction_name": "Universities of Jol-Nar",
+      "planets": [
+        {
+          "name": "Nar",
+          "resources": 2,
+          "influence": 3
+        },
+        {
+          "name": "Jol",
+          "resources": 1,
+          "influence": 2
+        }
+      ],
+      "total_resources": 3,
+      "total_influence": 5,
+      "wormholes": []
+    },
+    {
+      "tile": 13,
+      "faction": "sardakk",
+      "faction_name": "Sardakk N'orr",
+      "planets": [
+        {
+          "name": "Tren'lak",
+          "resources": 1,
+          "influence": 0
+        },
+        {
+          "name": "Quinarra",
+          "resources": 3,
+          "influence": 1
+        }
+      ],
+      "total_resources": 4,
+      "total_influence": 1,
+      "wormholes": []
+    },
+    {
+      "tile": 14,
+      "faction": "xxcha",
+      "faction_name": "Xxcha Kingdom",
+      "planets": [
+        {
+          "name": "Archon Ren",
+          "resources": 2,
+          "influence": 3
+        },
+        {
+          "name": "Archon Tau",
+          "resources": 1,
+          "influence": 1
+        }
+      ],
+      "total_resources": 3,
+      "total_influence": 4,
+      "wormholes": []
+    },
+    {
+      "tile": 15,
+      "faction": "yssaril",
+      "faction_name": "Yssaril Tribes",
+      "planets": [
+        {
+          "name": "Retillion",
+          "resources": 2,
+          "influence": 3
+        },
+        {
+          "name": "Shalloq",
+          "resources": 1,
+          "influence": 2
+        }
+      ],
+      "total_resources": 3,
+      "total_influence": 5,
+      "wormholes": []
+    },
+    {
+      "tile": 16,
+      "faction": "hacan",
+      "faction_name": "Emirates of Hacan",
+      "planets": [
+        {
+          "name": "Hercant",
+          "resources": 1,
+          "influence": 1
+        },
+        {
+          "name": "Arretze",
+          "resources": 2,
+          "influence": 0
+        },
+        {
+          "name": "Kamdorn",
+          "resources": 0,
+          "influence": 1
+        }
+      ],
+      "total_resources": 3,
+      "total_influence": 2,
+      "wormholes": []
+    },
+    {
+      "tile": 51,
+      "faction": "ghost",
+      "faction_name": "Ghosts of Creuss",
+      "planets": [
+        {
+          "name": "Creuss",
+          "resources": 4,
+          "influence": 2
+        }
+      ],
+      "total_resources": 4,
+      "total_influence": 2,
+      "wormholes": [
+        "delta"
+      ]
+    }
+  ],
+  "tiles": [
+    {
+      "tile": 1,
+      "category": "home",
+      "back": "green",
+      "name": "Jord",
+      "faction": "sol",
+      "faction_name": "Federation of Sol",
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "jord",
+          "name": "Jord",
+          "resources": 4,
+          "influence": 2,
+          "trait": null,
+          "tech_skip": null,
+          "home_of": "sol"
+        }
+      ],
+      "total_resources": 4,
+      "total_influence": 2
+    },
+    {
+      "tile": 2,
+      "category": "home",
+      "back": "green",
+      "name": "Moll Primus",
+      "faction": "mentak",
+      "faction_name": "Mentak Coalition",
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "mollprimus",
+          "name": "Moll Primus",
+          "resources": 4,
+          "influence": 1,
+          "trait": null,
+          "tech_skip": null,
+          "home_of": "mentak"
+        }
+      ],
+      "total_resources": 4,
+      "total_influence": 1
+    },
+    {
+      "tile": 3,
+      "category": "home",
+      "back": "green",
+      "name": "Darien",
+      "faction": "yin",
+      "faction_name": "Yin Brotherhood",
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "darien",
+          "name": "Darien",
+          "resources": 4,
+          "influence": 4,
+          "trait": null,
+          "tech_skip": null,
+          "home_of": "yin"
+        }
+      ],
+      "total_resources": 4,
+      "total_influence": 4
+    },
+    {
+      "tile": 4,
+      "category": "home",
+      "back": "green",
+      "name": "Muaat",
+      "faction": "muaat",
+      "faction_name": "Embers of Muaat",
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "muaat",
+          "name": "Muaat",
+          "resources": 4,
+          "influence": 1,
+          "trait": null,
+          "tech_skip": null,
+          "home_of": "muaat"
+        }
+      ],
+      "total_resources": 4,
+      "total_influence": 1
+    },
+    {
+      "tile": 5,
+      "category": "home",
+      "back": "green",
+      "name": "Nestphar",
+      "faction": "arborec",
+      "faction_name": "The Arborec",
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "nestphar",
+          "name": "Nestphar",
+          "resources": 3,
+          "influence": 2,
+          "trait": null,
+          "tech_skip": null,
+          "home_of": "arborec"
+        }
+      ],
+      "total_resources": 3,
+      "total_influence": 2
+    },
+    {
+      "tile": 6,
+      "category": "home",
+      "back": "green",
+      "name": "[0.0.0]",
+      "faction": "l1z1x",
+      "faction_name": "L1Z1X Mindnet",
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "0.0.0",
+          "name": "[0.0.0]",
+          "resources": 5,
+          "influence": 0,
+          "trait": null,
+          "tech_skip": null,
+          "home_of": "l1z1x"
+        }
+      ],
+      "total_resources": 5,
+      "total_influence": 0
+    },
+    {
+      "tile": 7,
+      "category": "home",
+      "back": "green",
+      "name": "Winnu",
+      "faction": "winnu",
+      "faction_name": "The Winnu",
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "winnu",
+          "name": "Winnu",
+          "resources": 3,
+          "influence": 4,
+          "trait": null,
+          "tech_skip": null,
+          "home_of": "winnu"
+        }
+      ],
+      "total_resources": 3,
+      "total_influence": 4
+    },
+    {
+      "tile": 8,
+      "category": "home",
+      "back": "green",
+      "name": "Mordai II",
+      "faction": "nekro",
+      "faction_name": "Nekro Virus",
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "mordaiii",
+          "name": "Mordai II",
+          "resources": 4,
+          "influence": 0,
+          "trait": null,
+          "tech_skip": null,
+          "home_of": "nekro"
+        }
+      ],
+      "total_resources": 4,
+      "total_influence": 0
+    },
+    {
+      "tile": 9,
+      "category": "home",
+      "back": "green",
+      "name": "Maaluuk / Druaa",
+      "faction": "naalu",
+      "faction_name": "Naalu Collective",
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "maaluuk",
+          "name": "Maaluuk",
+          "resources": 0,
+          "influence": 2,
+          "trait": null,
+          "tech_skip": null,
+          "home_of": "naalu"
+        },
+        {
+          "id": "druaa",
+          "name": "Druaa",
+          "resources": 3,
+          "influence": 1,
+          "trait": null,
+          "tech_skip": null,
+          "home_of": "naalu"
+        }
+      ],
+      "total_resources": 3,
+      "total_influence": 3
+    },
+    {
+      "tile": 10,
+      "category": "home",
+      "back": "green",
+      "name": "Arc Prime / Wren Terra",
+      "faction": "letnev",
+      "faction_name": "Barony of Letnev",
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "arcprime",
+          "name": "Arc Prime",
+          "resources": 4,
+          "influence": 0,
+          "trait": null,
+          "tech_skip": null,
+          "home_of": "letnev"
+        },
+        {
+          "id": "wrenterra",
+          "name": "Wren Terra",
+          "resources": 2,
+          "influence": 1,
+          "trait": null,
+          "tech_skip": null,
+          "home_of": "letnev"
+        }
+      ],
+      "total_resources": 6,
+      "total_influence": 1
+    },
+    {
+      "tile": 11,
+      "category": "home",
+      "back": "green",
+      "name": "Lisis II / Ragh",
+      "faction": "saar",
+      "faction_name": "Clan of Saar",
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "lisisii",
+          "name": "Lisis II",
+          "resources": 1,
+          "influence": 0,
+          "trait": null,
+          "tech_skip": null,
+          "home_of": "saar"
+        },
+        {
+          "id": "ragh",
+          "name": "Ragh",
+          "resources": 2,
+          "influence": 1,
+          "trait": null,
+          "tech_skip": null,
+          "home_of": "saar"
+        }
+      ],
+      "total_resources": 3,
+      "total_influence": 1
+    },
+    {
+      "tile": 12,
+      "category": "home",
+      "back": "green",
+      "name": "Nar / Jol",
+      "faction": "jolnar",
+      "faction_name": "Universities of Jol-Nar",
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "nar",
+          "name": "Nar",
+          "resources": 2,
+          "influence": 3,
+          "trait": null,
+          "tech_skip": null,
+          "home_of": "jolnar"
+        },
+        {
+          "id": "jol",
+          "name": "Jol",
+          "resources": 1,
+          "influence": 2,
+          "trait": null,
+          "tech_skip": null,
+          "home_of": "jolnar"
+        }
+      ],
+      "total_resources": 3,
+      "total_influence": 5
+    },
+    {
+      "tile": 13,
+      "category": "home",
+      "back": "green",
+      "name": "Tren'lak / Quinarra",
+      "faction": "sardakk",
+      "faction_name": "Sardakk N'orr",
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "trenlak",
+          "name": "Tren'lak",
+          "resources": 1,
+          "influence": 0,
+          "trait": null,
+          "tech_skip": null,
+          "home_of": "sardakk"
+        },
+        {
+          "id": "quinarra",
+          "name": "Quinarra",
+          "resources": 3,
+          "influence": 1,
+          "trait": null,
+          "tech_skip": null,
+          "home_of": "sardakk"
+        }
+      ],
+      "total_resources": 4,
+      "total_influence": 1
+    },
+    {
+      "tile": 14,
+      "category": "home",
+      "back": "green",
+      "name": "Archon Ren / Archon Tau",
+      "faction": "xxcha",
+      "faction_name": "Xxcha Kingdom",
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "archonren",
+          "name": "Archon Ren",
+          "resources": 2,
+          "influence": 3,
+          "trait": null,
+          "tech_skip": null,
+          "home_of": "xxcha"
+        },
+        {
+          "id": "archontau",
+          "name": "Archon Tau",
+          "resources": 1,
+          "influence": 1,
+          "trait": null,
+          "tech_skip": null,
+          "home_of": "xxcha"
+        }
+      ],
+      "total_resources": 3,
+      "total_influence": 4
+    },
+    {
+      "tile": 15,
+      "category": "home",
+      "back": "green",
+      "name": "Retillion / Shalloq",
+      "faction": "yssaril",
+      "faction_name": "Yssaril Tribes",
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "retillion",
+          "name": "Retillion",
+          "resources": 2,
+          "influence": 3,
+          "trait": null,
+          "tech_skip": null,
+          "home_of": "yssaril"
+        },
+        {
+          "id": "shalloq",
+          "name": "Shalloq",
+          "resources": 1,
+          "influence": 2,
+          "trait": null,
+          "tech_skip": null,
+          "home_of": "yssaril"
+        }
+      ],
+      "total_resources": 3,
+      "total_influence": 5
+    },
+    {
+      "tile": 16,
+      "category": "home",
+      "back": "green",
+      "name": "Hercant / Arretze / Kamdorn",
+      "faction": "hacan",
+      "faction_name": "Emirates of Hacan",
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "hercant",
+          "name": "Hercant",
+          "resources": 1,
+          "influence": 1,
+          "trait": null,
+          "tech_skip": null,
+          "home_of": "hacan"
+        },
+        {
+          "id": "arretze",
+          "name": "Arretze",
+          "resources": 2,
+          "influence": 0,
+          "trait": null,
+          "tech_skip": null,
+          "home_of": "hacan"
+        },
+        {
+          "id": "kamdorn",
+          "name": "Kamdorn",
+          "resources": 0,
+          "influence": 1,
+          "trait": null,
+          "tech_skip": null,
+          "home_of": "hacan"
+        }
+      ],
+      "total_resources": 3,
+      "total_influence": 2
+    },
+    {
+      "tile": 17,
+      "category": "home_gate",
+      "back": "green",
+      "name": "Creuss Gate",
+      "faction": "ghost",
+      "faction_name": "Ghosts of Creuss",
+      "wormholes": [
+        "delta"
+      ],
+      "anomalies": [],
+      "planets": [],
+      "total_resources": 0,
+      "total_influence": 0,
+      "note": "Creuss Gate: placed in the galaxy ring as the Ghosts of Creuss home position; no planets; delta wormhole links it to tile 51 (Creuss home system, kept off-board)."
+    },
+    {
+      "tile": 18,
+      "category": "mecatol_rex",
+      "back": "blue",
+      "name": "Mecatol Rex",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "mr",
+          "name": "Mecatol Rex",
+          "resources": 1,
+          "influence": 6,
+          "trait": null,
+          "tech_skip": null
+        }
+      ],
+      "total_resources": 1,
+      "total_influence": 6,
+      "note": "Custodians token starts here. Removing it costs 6 influence before Commit Ground Forces, grants 1 VP and turns on the agenda phase (LRR 26).",
+      "back_note": "Corrected from 'black'. LRR v1.1 77.1 knows only green, blue and red tile backs; the KeeganW ti4 map generator lists tile 18 as type blue / special. The tile is placed face up in the centre before the blue and red piles are shuffled (LRR setup step 6), so its back never matters in play."
+    },
+    {
+      "tile": 19,
+      "category": "blue_planet",
+      "back": "blue",
+      "name": "Wellon",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "wellon",
+          "name": "Wellon",
+          "resources": 1,
+          "influence": 2,
+          "trait": "industrial",
+          "tech_skip": "yellow"
+        }
+      ],
+      "total_resources": 1,
+      "total_influence": 2
+    },
+    {
+      "tile": 20,
+      "category": "blue_planet",
+      "back": "blue",
+      "name": "Vefut II",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "vefutii",
+          "name": "Vefut II",
+          "resources": 2,
+          "influence": 2,
+          "trait": "hazardous",
+          "tech_skip": null
+        }
+      ],
+      "total_resources": 2,
+      "total_influence": 2
+    },
+    {
+      "tile": 21,
+      "category": "blue_planet",
+      "back": "blue",
+      "name": "Thibah",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "thibah",
+          "name": "Thibah",
+          "resources": 1,
+          "influence": 1,
+          "trait": "industrial",
+          "tech_skip": "blue"
+        }
+      ],
+      "total_resources": 1,
+      "total_influence": 1
+    },
+    {
+      "tile": 22,
+      "category": "blue_planet",
+      "back": "blue",
+      "name": "Tar'mann",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "tarmann",
+          "name": "Tar'mann",
+          "resources": 1,
+          "influence": 1,
+          "trait": "industrial",
+          "tech_skip": "green"
+        }
+      ],
+      "total_resources": 1,
+      "total_influence": 1
+    },
+    {
+      "tile": 23,
+      "category": "blue_planet",
+      "back": "blue",
+      "name": "Saudor",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "saudor",
+          "name": "Saudor",
+          "resources": 2,
+          "influence": 2,
+          "trait": "industrial",
+          "tech_skip": null
+        }
+      ],
+      "total_resources": 2,
+      "total_influence": 2
+    },
+    {
+      "tile": 24,
+      "category": "blue_planet",
+      "back": "blue",
+      "name": "Mehar Xull",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "meharxull",
+          "name": "Mehar Xull",
+          "resources": 1,
+          "influence": 3,
+          "trait": "hazardous",
+          "tech_skip": "red"
+        }
+      ],
+      "total_resources": 1,
+      "total_influence": 3
+    },
+    {
+      "tile": 25,
+      "category": "blue_planet",
+      "back": "blue",
+      "name": "Quann",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [
+        "beta"
+      ],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "quann",
+          "name": "Quann",
+          "resources": 2,
+          "influence": 1,
+          "trait": "cultural",
+          "tech_skip": null
+        }
+      ],
+      "total_resources": 2,
+      "total_influence": 1
+    },
+    {
+      "tile": 26,
+      "category": "blue_planet",
+      "back": "blue",
+      "name": "Lodor",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [
+        "alpha"
+      ],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "lodor",
+          "name": "Lodor",
+          "resources": 3,
+          "influence": 1,
+          "trait": "cultural",
+          "tech_skip": null
+        }
+      ],
+      "total_resources": 3,
+      "total_influence": 1
+    },
+    {
+      "tile": 27,
+      "category": "blue_planet",
+      "back": "blue",
+      "name": "New Albion / Starpoint",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "newalbion",
+          "name": "New Albion",
+          "resources": 1,
+          "influence": 1,
+          "trait": "industrial",
+          "tech_skip": "green"
+        },
+        {
+          "id": "starpoint",
+          "name": "Starpoint",
+          "resources": 3,
+          "influence": 1,
+          "trait": "hazardous",
+          "tech_skip": null
+        }
+      ],
+      "total_resources": 4,
+      "total_influence": 2
+    },
+    {
+      "tile": 28,
+      "category": "blue_planet",
+      "back": "blue",
+      "name": "Tequ'ran / Torkan",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "tequran",
+          "name": "Tequ'ran",
+          "resources": 2,
+          "influence": 0,
+          "trait": "hazardous",
+          "tech_skip": null
+        },
+        {
+          "id": "torkan",
+          "name": "Torkan",
+          "resources": 0,
+          "influence": 3,
+          "trait": "cultural",
+          "tech_skip": null
+        }
+      ],
+      "total_resources": 2,
+      "total_influence": 3
+    },
+    {
+      "tile": 29,
+      "category": "blue_planet",
+      "back": "blue",
+      "name": "Qucen'n / Rarron",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "qucenn",
+          "name": "Qucen'n",
+          "resources": 1,
+          "influence": 2,
+          "trait": "industrial",
+          "tech_skip": null
+        },
+        {
+          "id": "rarron",
+          "name": "Rarron",
+          "resources": 0,
+          "influence": 3,
+          "trait": "cultural",
+          "tech_skip": null
+        }
+      ],
+      "total_resources": 1,
+      "total_influence": 5
+    },
+    {
+      "tile": 30,
+      "category": "blue_planet",
+      "back": "blue",
+      "name": "Mellon / Zohbat",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "mellon",
+          "name": "Mellon",
+          "resources": 0,
+          "influence": 2,
+          "trait": "cultural",
+          "tech_skip": null
+        },
+        {
+          "id": "zohbat",
+          "name": "Zohbat",
+          "resources": 3,
+          "influence": 1,
+          "trait": "hazardous",
+          "tech_skip": null
+        }
+      ],
+      "total_resources": 3,
+      "total_influence": 3
+    },
+    {
+      "tile": 31,
+      "category": "blue_planet",
+      "back": "blue",
+      "name": "Lazar / Sakulag",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "lazar",
+          "name": "Lazar",
+          "resources": 1,
+          "influence": 0,
+          "trait": "industrial",
+          "tech_skip": "yellow"
+        },
+        {
+          "id": "sakulag",
+          "name": "Sakulag",
+          "resources": 2,
+          "influence": 1,
+          "trait": "hazardous",
+          "tech_skip": null
+        }
+      ],
+      "total_resources": 3,
+      "total_influence": 1
+    },
+    {
+      "tile": 32,
+      "category": "blue_planet",
+      "back": "blue",
+      "name": "Dal Bootha / Xxehan",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "dalbootha",
+          "name": "Dal Bootha",
+          "resources": 0,
+          "influence": 2,
+          "trait": "cultural",
+          "tech_skip": null
+        },
+        {
+          "id": "xxehan",
+          "name": "Xxehan",
+          "resources": 1,
+          "influence": 1,
+          "trait": "cultural",
+          "tech_skip": null
+        }
+      ],
+      "total_resources": 1,
+      "total_influence": 3
+    },
+    {
+      "tile": 33,
+      "category": "blue_planet",
+      "back": "blue",
+      "name": "Corneeq / Resculon",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "corneeq",
+          "name": "Corneeq",
+          "resources": 1,
+          "influence": 2,
+          "trait": "cultural",
+          "tech_skip": null
+        },
+        {
+          "id": "resculon",
+          "name": "Resculon",
+          "resources": 2,
+          "influence": 0,
+          "trait": "cultural",
+          "tech_skip": null
+        }
+      ],
+      "total_resources": 3,
+      "total_influence": 2
+    },
+    {
+      "tile": 34,
+      "category": "blue_planet",
+      "back": "blue",
+      "name": "Centauri / Gral",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "centauri",
+          "name": "Centauri",
+          "resources": 1,
+          "influence": 3,
+          "trait": "cultural",
+          "tech_skip": null
+        },
+        {
+          "id": "gral",
+          "name": "Gral",
+          "resources": 1,
+          "influence": 1,
+          "trait": "industrial",
+          "tech_skip": "blue"
+        }
+      ],
+      "total_resources": 2,
+      "total_influence": 4
+    },
+    {
+      "tile": 35,
+      "category": "blue_planet",
+      "back": "blue",
+      "name": "Bereg / Lirta IV",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "bereg",
+          "name": "Bereg",
+          "resources": 3,
+          "influence": 1,
+          "trait": "hazardous",
+          "tech_skip": null
+        },
+        {
+          "id": "lirtaiv",
+          "name": "Lirta IV",
+          "resources": 2,
+          "influence": 3,
+          "trait": "hazardous",
+          "tech_skip": null
+        }
+      ],
+      "total_resources": 5,
+      "total_influence": 4
+    },
+    {
+      "tile": 36,
+      "category": "blue_planet",
+      "back": "blue",
+      "name": "Arnor / Lor",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "arnor",
+          "name": "Arnor",
+          "resources": 2,
+          "influence": 1,
+          "trait": "industrial",
+          "tech_skip": null
+        },
+        {
+          "id": "lor",
+          "name": "Lor",
+          "resources": 1,
+          "influence": 2,
+          "trait": "industrial",
+          "tech_skip": null
+        }
+      ],
+      "total_resources": 3,
+      "total_influence": 3
+    },
+    {
+      "tile": 37,
+      "category": "blue_planet",
+      "back": "blue",
+      "name": "Arinam / Meer",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "arinam",
+          "name": "Arinam",
+          "resources": 1,
+          "influence": 2,
+          "trait": "industrial",
+          "tech_skip": null
+        },
+        {
+          "id": "meer",
+          "name": "Meer",
+          "resources": 0,
+          "influence": 4,
+          "trait": "hazardous",
+          "tech_skip": "red"
+        }
+      ],
+      "total_resources": 1,
+      "total_influence": 6
+    },
+    {
+      "tile": 38,
+      "category": "blue_planet",
+      "back": "blue",
+      "name": "Abyz / Fria",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "abyz",
+          "name": "Abyz",
+          "resources": 3,
+          "influence": 0,
+          "trait": "hazardous",
+          "tech_skip": null
+        },
+        {
+          "id": "fria",
+          "name": "Fria",
+          "resources": 2,
+          "influence": 0,
+          "trait": "hazardous",
+          "tech_skip": null
+        }
+      ],
+      "total_resources": 5,
+      "total_influence": 0
+    },
+    {
+      "tile": 39,
+      "category": "red_anomaly_or_empty",
+      "back": "red",
+      "name": "Alpha Wormhole",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [
+        "alpha"
+      ],
+      "anomalies": [],
+      "planets": [],
+      "total_resources": 0,
+      "total_influence": 0
+    },
+    {
+      "tile": 40,
+      "category": "red_anomaly_or_empty",
+      "back": "red",
+      "name": "Beta Wormhole",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [
+        "beta"
+      ],
+      "anomalies": [],
+      "planets": [],
+      "total_resources": 0,
+      "total_influence": 0
+    },
+    {
+      "tile": 41,
+      "category": "red_anomaly_or_empty",
+      "back": "red",
+      "name": "Gravity Rift",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [
+        "gravity_rift"
+      ],
+      "planets": [],
+      "total_resources": 0,
+      "total_influence": 0,
+      "rule": "Ships moving out of or through this system get +1 move; roll 1 die per such ship after Move Ships: 1-3 destroys it (LRR 37)."
+    },
+    {
+      "tile": 42,
+      "category": "red_anomaly_or_empty",
+      "back": "red",
+      "name": "Nebula",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [
+        "nebula"
+      ],
+      "planets": [],
+      "total_resources": 0,
+      "total_influence": 0,
+      "rule": "Ships cannot move through; can only move in if it is the active system; ships starting here treat move as 1; defender +1 to combat rolls in space combat here (LRR 50)."
+    },
+    {
+      "tile": 43,
+      "category": "red_anomaly_or_empty",
+      "back": "red",
+      "name": "Supernova",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [
+        "supernova"
+      ],
+      "planets": [],
+      "total_resources": 0,
+      "total_influence": 0,
+      "rule": "Ships cannot move through or into (LRR 75)."
+    },
+    {
+      "tile": 44,
+      "category": "red_anomaly_or_empty",
+      "back": "red",
+      "name": "Asteroids",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [
+        "asteroid_field"
+      ],
+      "planets": [],
+      "total_resources": 0,
+      "total_influence": 0,
+      "rule": "Ships cannot move through or into; Antimass Deflectors lifts this (LRR 11)."
+    },
+    {
+      "tile": 45,
+      "category": "red_anomaly_or_empty",
+      "back": "red",
+      "name": "Asteroids",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [
+        "asteroid_field"
+      ],
+      "planets": [],
+      "total_resources": 0,
+      "total_influence": 0,
+      "rule": "Ships cannot move through or into; Antimass Deflectors lifts this (LRR 11)."
+    },
+    {
+      "tile": 46,
+      "category": "red_anomaly_or_empty",
+      "back": "red",
+      "name": "Empty System",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [],
+      "total_resources": 0,
+      "total_influence": 0
+    },
+    {
+      "tile": 47,
+      "category": "red_anomaly_or_empty",
+      "back": "red",
+      "name": "Empty System",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [],
+      "total_resources": 0,
+      "total_influence": 0
+    },
+    {
+      "tile": 48,
+      "category": "red_anomaly_or_empty",
+      "back": "red",
+      "name": "Empty System",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [],
+      "total_resources": 0,
+      "total_influence": 0
+    },
+    {
+      "tile": 49,
+      "category": "red_anomaly_or_empty",
+      "back": "red",
+      "name": "Empty System",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [],
+      "total_resources": 0,
+      "total_influence": 0
+    },
+    {
+      "tile": 50,
+      "category": "red_anomaly_or_empty",
+      "back": "red",
+      "name": "Empty System",
+      "faction": null,
+      "faction_name": null,
+      "wormholes": [],
+      "anomalies": [],
+      "planets": [],
+      "total_resources": 0,
+      "total_influence": 0
+    },
+    {
+      "tile": 51,
+      "category": "home_offboard",
+      "back": "green",
+      "name": "Creuss",
+      "faction": "ghost",
+      "faction_name": "Ghosts of Creuss",
+      "wormholes": [
+        "delta"
+      ],
+      "anomalies": [],
+      "planets": [
+        {
+          "id": "creuss",
+          "name": "Creuss",
+          "resources": 4,
+          "influence": 2,
+          "trait": null,
+          "tech_skip": null,
+          "home_of": "ghost"
+        }
+      ],
+      "total_resources": 4,
+      "total_influence": 2,
+      "note": "Off-board Ghosts of Creuss home system (delta wormhole). Not part of the 1..50 numbering the task asked for; included for completeness."
+    }
+  ],
+  "verification": {
+    "verified_on": "2026-09-03",
+    "method": "Adversarial fact-check against sources not used by the compilation pass; all 51 tiles were compared programmatically (planet names, resources, influence, traits, technology specialties, wormholes, anomalies, home flag), not just spot-checked.",
+    "independent_sources": [
+      "KeeganW/ti4 (ti4-map-generator web app), src/data/tileData.js, master, fetched 2026-09-03",
+      "TI4-Online/TI4-TTPG (Tabletop Playground mod), src/lib/system/system.data.js + lang/en.json, main, fetched 2026-09-03",
+      "ti-assistant/ti-assistant, server/data/base/systems.ts, main, fetched 2026-09-03 (tile types: HOME / MECATOL / BLUE / RED)",
+      "FFG Living Rules Reference v1.1 PDF, re-downloaded and re-extracted with pdftotext: 6.1, 11.1, 26.1-26.4, 37.1-37.2, 46.1, 50.1-50.3, 55.3, 75.1, 77.1-77.4, 89.1-89.4, setup step 6"
+    ],
+    "results": {
+      "ttpg_diff": "0 differences over 51 tiles.",
+      "keegan_diff": "0 real differences over 51 tiles. The three deviations found are errors on Keegan's side, not in this file: tile 9 Maaluuk listed as 2/0 (TTPG and the physical tile: 0/2), tile 33 'Resulon' typo (TTPG: Resculon), and planet order on tile 16. Keegan also spells the delta wormhole on tile 51 as a string instead of a list.",
+      "explicitly_checked": "18 Mecatol Rex 1/6; 35 Bereg 3/1 + Lirta IV 2/3; 26 Lodor 3/1 alpha; 25 Quann 2/1 beta; 31 Lazar 1/0 yellow skip + Sakulag 2/1; 24 Mehar Xull 1/3 red skip; 44 and 45 asteroid fields; 42 nebula; 41 gravity rift; 43 supernova; 6 [0.0.0] 5/0; 10 Arc Prime 4/0 + Wren Terra 2/1; 19 Wellon yellow skip; 21 Thibah blue skip; 22 Tar'mann green skip; 27 New Albion green skip + Starpoint 3/1; 34 Gral blue skip; 37 Meer red skip; 39/40 empty alpha/beta; 17/51 delta; 46-50 empty.",
+      "pok_leakage": "None. Tiles 52-82 and hyperlanes present in both Keegan and TTPG data are absent here; only 1-51 are listed.",
+      "anomaly_rules": "Tile rule summaries match LRR v1.1 11.1, 37.1-37.2 (base wording: die rolled before the Move Ships step ends, 1-3 destroys the ship), 50.1-50.3, 75.1."
+    },
+    "corrections_applied": [
+      "Tile 18 back: 'black' -> 'blue' (see back_note).",
+      "meta.counts: green-backed tiles counted as 18 (1-17 plus 51) instead of 17, with the categories now summing to the 51 tiles in the box."
+    ],
+    "unresolved": [
+      "The physical back of the Mecatol Rex tile could not be checked against a photo (fandom wiki and BoardGameGeek Cloudflare-blocked); 'blue' rests on LRR 77.1 and the KeeganW data."
+    ]
+  }
+}
