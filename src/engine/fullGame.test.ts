@@ -6,7 +6,7 @@ import { checkFleet } from './board'
 import { applyMove, legalMoves, validateMove } from './index'
 import { createGame, unitsOf } from './setup'
 import { DUEL_CONFIG, fillTemplate, shuffle, toActionPhase, toStatusPhase, withCards, withPlanetOwner, withPlayer, withTechs } from './testUtils'
-import type { GameState, Move, Seat } from './types'
+import type { GameState, Move, Seat, StrategyCardId } from './types'
 
 const MAX_MOVES = 3000
 const CLOSERS: readonly Move['type'][] = ['pass', 'status', 'endTactical', 'endMovement', 'endInvasion', 'secondary']
@@ -47,8 +47,30 @@ function invariants(state: GameState, landed: Map<string, Set<Seat>>): void {
   }
 }
 
+/**
+ * What an applied move proves about coverage: the kind, plus the card for a strategic action or a secondary
+ * answer (an accepted secondary is a different code path from a declined one) and the post for a trade.
+ */
+function signature(move: Move): string {
+  if (move.type === 'strategic') return `strategic:${move.card}`
+  if (move.type === 'secondary') return `secondary:${move.card}:${move.accept ? 'accept' : 'decline'}`
+  if (move.type === 'tradePost') return `tradePost:${move.post}`
+  return move.type
+}
+
+interface GameRun {
+  state: GameState
+  moves: number
+  attempts: number
+  rejectedTemplate: number
+  rejectedConcrete: number
+  signatures: Set<string>
+  templateAttempts: number
+  degradations: number
+}
+
 /** Plays one complete game with seeded random legal moves and checks the invariants after every move. */
-function playGame(seed: number): { state: GameState; moves: number; attempts: number; rejectedTemplate: number; rejectedConcrete: number } {
+function playGame(seed: number): GameRun {
   let bits = (seed * 2654435761) >>> 0
   const rng = () => { bits = (Math.imul(bits, 1664525) + 1013904223) >>> 0; return bits / 4294967296 }
   let state = createGame(DUEL_CONFIG, seed)
@@ -57,6 +79,9 @@ function playGame(seed: number): { state: GameState; moves: number; attempts: nu
   let attempts = 0
   let rejectedTemplate = 0
   let rejectedConcrete = 0
+  let templateAttempts = 0
+  let degradations = 0
+  const signatures = new Set<string>()
   while (state.phase !== 'ended' && moves < MAX_MOVES) {
     const options = legalMoves(state)
     expect(options.length).toBeGreaterThan(0)
@@ -66,6 +91,12 @@ function playGame(seed: number): { state: GameState; moves: number; attempts: nu
     let next: GameState | null = null
     for (const option of order) {
       const move = fillTemplate(state, option, rng)
+      // a template that cannot be filled in degrades to the closing move of its step; too many of those and the
+      // smoke run would only look like it exercises movement and production
+      if (TEMPLATE_TYPES.includes(option.type)) {
+        templateAttempts++
+        if (move.type !== option.type) degradations++
+      }
       attempts++
       const r = applyMove(state, move, 1000 + moves)
       if (!r.ok) {
@@ -87,6 +118,7 @@ function playGame(seed: number): { state: GameState; moves: number; attempts: nu
         set.add(seat)
         landed.set(move.planetId, set)
       }
+      signatures.add(signature(move))
       next = r.value
       break
     }
@@ -96,7 +128,7 @@ function playGame(seed: number): { state: GameState; moves: number; attempts: nu
     moves++
     invariants(state, landed)
   }
-  return { state, moves, attempts, rejectedTemplate, rejectedConcrete }
+  return { state, moves, attempts, rejectedTemplate, rejectedConcrete, signatures, templateAttempts, degradations }
 }
 
 describe('legal moves in every phase', () => {
@@ -152,12 +184,46 @@ describe('legal moves in every phase', () => {
   })
 })
 
+const SEEDS: readonly number[] = [1, 2, 3, 5, 8, 13, 21, 34, 55, 89]
+const RUNS = new Map<number, GameRun>()
+
+/** The ten smoke games are shared by the tests below, so each seed is actually played only once. */
+function runGame(seed: number): GameRun {
+  const cached = RUNS.get(seed)
+  if (cached) return cached
+  const run = playGame(seed)
+  RUNS.set(seed, run)
+  return run
+}
+
+const ALL_MOVE_TYPES: readonly Move['type'][] = [
+  'pickStrategyCard', 'startTactical', 'moveShips', 'endMovement', 'combatRound', 'retreat', 'bombard', 'land',
+  'groundCombatRound', 'endInvasion', 'produce', 'endTactical', 'strategic', 'secondary', 'research', 'shipyard',
+  'tradePost', 'pass', 'status',
+]
+const ALL_CARDS: readonly StrategyCardId[] = ['leadership', 'diplomacy', 'trade', 'warfare', 'technology', 'imperial']
+
+/**
+ * Two move kinds random legal play never reaches in these seeds, left out rather than faked:
+ * `research` needs Inheritance Systems, itself two yellow technologies deep, which no seeded game buys inside
+ * six rounds; `shipyard` is legal only while the seat controls no space dock, and the printed home dock is only
+ * lost when the home planet is invaded, which never happens either. Both have their own unit tests.
+ */
+const UNREACHABLE: readonly Move['type'][] = ['research', 'shipyard']
+
+/** Log events whose code paths the smoke run must have taken at least once across the seeds. */
+const COUNTERS: readonly [string, RegExp][] = [
+  ['commodities sold at a post', /sells \d+ commodities at the (west|east) post/],
+  ['guardian fleet rolled', /^Guardian fleet:/],
+  ['technology researched', /^seat \d researches /],
+]
+
 describe('R3.1 to R3.3 full game', () => {
   it('plays ten seeded games to the end and keeps every invariant', () => {
     let byPoints = 0
     let byRound6 = 0
-    for (const seed of [1, 2, 3, 5, 8, 13, 21, 34, 55, 89]) {
-      const { state, moves, attempts, rejectedTemplate, rejectedConcrete } = playGame(seed)
+    for (const seed of SEEDS) {
+      const { state, moves, attempts, rejectedTemplate, rejectedConcrete } = runGame(seed)
       expect(state.phase).toBe('ended')
       // proves the turn-closing bias past MAX_MOVES / 2 never actually has to engage
       expect(moves).toBeLessThan(MAX_MOVES / 2)
@@ -179,9 +245,37 @@ describe('R3.1 to R3.3 full game', () => {
     }
     expect(byPoints + byRound6).toBe(10)
   })
+  it('the ten seeds exercise every reachable move kind, every card and the log events behind them', () => {
+    const union = new Set<string>()
+    const counters = new Map<string, number>()
+    let templateAttempts = 0
+    let degradations = 0
+    for (const seed of SEEDS) {
+      const run = runGame(seed)
+      for (const s of run.signatures) union.add(s)
+      templateAttempts += run.templateAttempts
+      degradations += run.degradations
+      for (const [name, re] of COUNTERS) {
+        counters.set(name, (counters.get(name) ?? 0) + run.state.log.filter(e => e.t === 'info' && re.test(e.text)).length)
+      }
+    }
+    const kinds = [...union].map(s => s.split(':')[0])
+    for (const type of ALL_MOVE_TYPES) {
+      if (UNREACHABLE.includes(type)) continue
+      expect(kinds, `move kind ${type} was never applied`).toContain(type)
+    }
+    for (const card of ALL_CARDS) {
+      expect([...union], `${card} was never played as a primary`).toContain(`strategic:${card}`)
+      expect([...union], `${card} was never accepted as a secondary`).toContain(`secondary:${card}:accept`)
+    }
+    for (const [name] of COUNTERS) expect(counters.get(name) ?? 0, `${name} never happened`).toBeGreaterThanOrEqual(1)
+    // the two template kinds must mostly fill in, otherwise the run only looks like it moves ships and produces
+    expect(templateAttempts).toBeGreaterThan(0)
+    expect(degradations * 2).toBeLessThan(templateAttempts)
+  })
   it('the log replays: the logged moves and their logged seeds rebuild the final state', () => {
     for (const seed of [1, 13, 89]) {
-      const { state } = playGame(seed)
+      const { state } = runGame(seed)
       let replayed = createGame(DUEL_CONFIG, seed)
       // the log carries the seed of every move, so a replay needs nothing the engine did not record
       for (const entry of state.log) {
