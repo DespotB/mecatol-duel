@@ -10,7 +10,7 @@ export interface ActionBarProps {
 }
 
 export function ActionBar({ mode, onMode, hint, onLog }: ActionBarProps) {
-  const { session, legal, apply, canUndo, undo } = useGame()
+  const { session, legal, apply, canUndo, undo, error } = useGame()
   if (!session) return null
   const state = session.state
   const can = {
@@ -36,7 +36,10 @@ export function ActionBar({ mode, onMode, hint, onLog }: ActionBarProps) {
           disabled={!can.pass} onClick={() => apply({ type: 'pass' })}>Pass</button>
       </div>
       <div className="hintbox">
-        <div className="h" data-testid="hint">{hint}</div>
+        {/* the engine's own rejection text; `apply` clears it again on the next move it accepts */}
+        {error === null
+          ? <div className="h" data-testid="hint">{hint}</div>
+          : <div className="h err" role="alert" data-testid="engine-error">{error}</div>}
         <div className="r" data-testid="round">Round {state.round} of 6, {state.phase} phase</div>
       </div>
     </div>

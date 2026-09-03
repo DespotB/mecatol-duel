@@ -48,13 +48,22 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
     }
   }
 
+  // A parameter is required exactly when the enumerator offers values for it: Technology needs a
+  // technology, Imperial a fulfilled objective, Diplomacy and Warfare a system. Confirming without one
+  // is a move the engine rejects, so the button stays dead until the choice is made.
+  const missing =
+    card === 'technology' ? techOptions.length > 0 && techId === null
+      : card === 'imperial' ? objectives.length > 0 && objectiveId === null
+        : (card === 'diplomacy' || card === 'warfare') ? systems.length > 0 && systemId === null
+          : false
+
   return (
     <div className={card === 'technology' ? 'drawer full cut' : 'dialog cut'} data-testid="strategic-dialog">
       <div className="in">
         <div className="dhead">
           <span className="tab">{CARD_NAME[card]}, primary</span>
           <div className="right">
-            <button type="button" className="btn gold" data-testid="btn-strategic-confirm"
+            <button type="button" className="btn gold" data-testid="btn-strategic-confirm" disabled={missing}
               onClick={() => { if (apply({ type: 'strategic', card, params: params() })) onClose() }}>Play the card</button>
             <button type="button" className="btn quiet" data-testid="btn-strategic-cancel" onClick={onClose}>Cancel</button>
           </div>

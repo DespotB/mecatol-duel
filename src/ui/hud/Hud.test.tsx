@@ -1,8 +1,8 @@
 // src/ui/hud/Hud.test.tsx
 // @vitest-environment jsdom
-import { fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { toActionPhase, withPlayer } from '../../engine/testUtils'
+import { cardsUsed, toActionPhase, withPlayer } from '../../engine/testUtils'
 import { renderWithSession } from '../test/harness'
 import { BoardScreen } from '../screens/BoardScreen'
 
@@ -64,5 +64,16 @@ describe('the HUD', () => {
     const broke = withPlayer(toActionPhase(), 0, { tokens: { tactic: 0, fleet: 3, strategy: 2 } })
     renderWithSession(broke, <BoardScreen />)
     expect(screen.getByTestId('btn-tactical').hasAttribute('disabled')).toBe(true)
+  })
+
+  it('shows an engine rejection in the hint area and clears it on the next accepted move', () => {
+    const { store } = renderWithSession(cardsUsed(toActionPhase()), <BoardScreen />)
+    expect(screen.queryByTestId('engine-error')).toBeNull()
+    act(() => { store().apply({ type: 'endTactical' }) })
+    expect(screen.getByTestId('engine-error').textContent).toBe('no tactical action is running')
+    expect(screen.queryByTestId('hint')).toBeNull()
+    fireEvent.click(screen.getByTestId('btn-pass'))
+    expect(screen.queryByTestId('engine-error')).toBeNull()
+    expect(screen.getByTestId('hint')).toBeTruthy()
   })
 })

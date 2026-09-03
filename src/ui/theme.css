@@ -74,6 +74,7 @@ button{font-family:inherit}
 .actions{display:flex;gap:10px;margin:0 auto}
 .hintbox{width:390px;text-align:right}
 .hintbox .h{font:500 13px/1.25 var(--body);color:#d8d2c2}
+.hintbox .h.err{color:#f1a3a3}
 .hintbox .r{margin-top:4px;font:600 11px/1 var(--hud);letter-spacing:.1em;text-transform:uppercase;color:var(--gold)}
 
 /* player blocks */

@@ -44,6 +44,34 @@ describe('strategic actions', () => {
     expect(screen.getByTestId('tech-0-sarween_tools').textContent).toBe('Sarween Tools')
   })
 
+  it('keeps the confirm button dead until the card has the parameter it needs', () => {
+    const tech = withCards(withCards(toActionPhase(), 0, ['technology']), 1, [])
+    const view = renderWithSession(tech, <BoardScreen />)
+    playCard('technology')
+    expect(screen.getByTestId('btn-strategic-confirm').hasAttribute('disabled')).toBe(true)
+    fireEvent.click(screen.getByTestId('tech-card-sarween_tools'))
+    expect(screen.getByTestId('btn-strategic-confirm').hasAttribute('disabled')).toBe(false)
+    view.unmount()
+
+    let imperial = withCards(withCards(toActionPhase(), 0, ['imperial']), 1, [])
+    imperial = withTechs(imperial, 0, ['sarween_tools'])
+    const view2 = renderWithSession(imperial, <BoardScreen />)
+    playCard('imperial')
+    expect(screen.getByTestId('btn-strategic-confirm').hasAttribute('disabled')).toBe(true)
+    fireEvent.click(screen.getByTestId('objective-pick-own_3_techs'))
+    expect(screen.getByTestId('btn-strategic-confirm').hasAttribute('disabled')).toBe(false)
+    view2.unmount()
+
+    const diplomacy = withCards(withCards(toActionPhase(), 0, ['diplomacy']), 1, [])
+    renderWithSession(diplomacy, <BoardScreen />)
+    playCard('diplomacy')
+    const systems = screen.getAllByTestId(/^system-pick-/)
+    expect(systems.length).toBeGreaterThan(0)
+    expect(screen.getByTestId('btn-strategic-confirm').hasAttribute('disabled')).toBe(true)
+    fireEvent.click(systems[0])
+    expect(screen.getByTestId('btn-strategic-confirm').hasAttribute('disabled')).toBe(false)
+  })
+
   it('R7: the Imperial primary scores a fulfilled public objective', () => {
     let s = withCards(withCards(toActionPhase(), 0, ['imperial']), 1, [])
     s = withTechs(s, 0, ['sarween_tools'])
