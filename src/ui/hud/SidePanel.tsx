@@ -1,0 +1,95 @@
+import { FACTIONS } from '../../data/factions'
+import { techDef } from '../../data/techs'
+import { fleetPoolLimit, readyResources, unitsOf } from '../../engine'
+import { BADGE, MISC, spriteUrl, tokenUrl } from '../art'
+import { ownedPlanets, readyInfluence, unitLabel } from '../format'
+import { PANEL_SCALE, spriteSize } from '../sprites'
+import type { GameState, Seat, UnitType } from '../../engine/types'
+
+const POOLS = ['tactic', 'fleet', 'strategy'] as const
+const FORCE_ORDER: UnitType[] = ['flagship', 'warsun', 'dreadnought', 'carrier', 'cruiser', 'destroyer', 'fighter', 'infantry', 'pds', 'spacedock']
+
+export function SidePanel({ state, seat }: { state: GameState; seat: Seat }) {
+  const player = state.players[seat]
+  const planets = ownedPlanets(state, seat)
+  const counts = new Map<UnitType, number>()
+  for (const unit of unitsOf(state, seat)) counts.set(unit.type, (counts.get(unit.type) ?? 0) + 1)
+  return (
+    <div className={`${seat === 0 ? 'colL' : 'colR'} cut`} data-testid={`panel-${seat}`}>
+      <div className="in pcontent">
+        <div className="sec">
+          <span className="lbl bul">Victory points <span data-testid={`vp-${seat}`}>{player.vp} of 7</span></span>
+          <div className="vp">
+            {[1, 2, 3, 4, 5, 6, 7].map(n => <i key={n} className={n <= player.vp ? 'on' : ''} data-n={n} />)}
+          </div>
+        </div>
+        <div className="sec">
+          <span className="lbl bul">Command tokens</span>
+          <div className="slots">
+            {POOLS.map(pool => (
+              <div className="slot" key={pool}>
+                <div className="stack">
+                  {Array.from({ length: Math.min(3, player.tokens[pool]) }, (_, i) => (
+                    <img key={i} src={tokenUrl(player.faction, pool === 'fleet' ? 'command-fleet' : 'command')} alt="" style={{ top: i * 5 }} />
+                  ))}
+                </div>
+                <div className="cap">{pool}<b data-testid={`tokens-${seat}-${pool}`}>{player.tokens[pool]}</b></div>
+              </div>
+            ))}
+          </div>
+          <div className="tot"><span className="k">Fleet pool</span>{fleetPoolLimit(player)} ships per system</div>
+        </div>
+        <div className="sec">
+          <span className="lbl bul">Planets</span>
+          <div className="planets">
+            {planets.map(planet => (
+              <div className={`pl${planet.exhausted ? ' exh' : ''}`} key={planet.id} data-testid={`planet-${seat}-${planet.id}`}>
+                <div className="n">{planet.name}</div>
+                <div className="v">
+                  <span className="badge res" style={{ backgroundImage: `url(${planet.exhausted ? BADGE.resourceExhausted : BADGE.resourceReady})` }}>{planet.resources}</span>
+                  <span className="badge inf" style={{ backgroundImage: `url(${planet.exhausted ? BADGE.influenceExhausted : BADGE.influenceReady})` }}>{planet.influence}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="tot">
+            <span className="k">Ready</span>
+            <span data-testid={`economy-${seat}-resources`}>{readyResources(state, seat)}</span> resources
+            <span data-testid={`economy-${seat}-influence`}>{readyInfluence(state, seat)}</span> influence
+          </div>
+          <div className="tot">
+            <span className="k">Trade goods</span><img src={MISC.tradeGood} alt="" />
+            <b data-testid={`economy-${seat}-tradegoods`}>{player.tradeGoods}</b>
+          </div>
+          <div className="tot">
+            <span className="k">Commodities</span><img src={MISC.commodity} alt="" />
+            <b data-testid={`economy-${seat}-commodities`}>{player.commodities} of {FACTIONS[player.faction].commodityValue}</b>
+          </div>
+        </div>
+        <div className="sec">
+          <span className="lbl bul">Technologies</span>
+          {player.techs.map(id => (
+            <div className="techrow" key={id}>
+              <span className={`tdot ${techDef(id).colour ?? 'none'}`} />
+              <span data-testid={`tech-${seat}-${id}`}>{techDef(id).name}</span>
+            </div>
+          ))}
+        </div>
+        <div className="sec">
+          <span className="lbl bul">Forces</span>
+          <div className="forces">
+            {FORCE_ORDER.filter(type => counts.has(type)).map(type => {
+              const size = spriteSize(type, PANEL_SCALE)
+              return (
+                <div className={`fc${type === 'dreadnought' ? ' wide' : ''}`} key={type} data-testid={`forces-${seat}-${type}`}>
+                  <img src={spriteUrl(player.color, type)} alt="" width={size.width} height={size.height} />
+                  <b>{counts.get(type)}</b>{' '}<span className="n">{unitLabel(type, player)}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

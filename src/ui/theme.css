@@ -141,8 +141,10 @@ button{font-family:inherit}
 .tdot.blue{background:#4f8ae8}.tdot.red{background:#d64a4a}.tdot.green{background:#49b06a}.tdot.yellow{background:#e0c04a}.tdot.none{background:#8d8877}
 .forces{display:grid;grid-template-columns:repeat(2,1fr);gap:4px 5px}
 .fc{display:flex;align-items:center;gap:6px;min-height:38px;border:1px solid rgba(201,162,77,.25);background:rgba(0,0,0,.28);padding:2px 4px}
-.fc b{font:600 13px/1 var(--hud);color:#f1ead8}
-.fc span.n{font:500 11px/1.05 var(--hud);color:var(--muted);text-transform:uppercase}
+.fc.wide{grid-column:1/-1}
+.fc img{flex:none}
+.fc b{font:600 13px/1 var(--hud);color:#f1ead8;flex:none}
+.fc span.n{font:500 11px/1.05 var(--hud);color:var(--muted);text-transform:uppercase;min-width:0}
 
 /* map pieces */
 .tile{position:absolute}
