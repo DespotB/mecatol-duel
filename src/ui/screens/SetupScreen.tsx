@@ -11,7 +11,7 @@ import { useGame } from '../store'
 import { useFitScale } from '../useViewportScale'
 import '../setup.css'
 import type { CSSProperties, ReactElement } from 'react'
-import type { Color, FactionId, Seat, TechColor, UnitType } from '../../engine/types'
+import type { Color, FactionId, Seat, UnitType } from '../../engine/types'
 import { SpaceBackdrop } from '../SpaceBackdrop'
 
 const COLOURS: Color[] = ['red', 'blue', 'green', 'yellow', 'purple', 'black', 'orange', 'pink']
