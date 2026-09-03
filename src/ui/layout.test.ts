@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { SYSTEMS, TRADE_POSTS } from '../data/map'
 import {
   ACTIVATION_OVERLAP, ACTIVATION_SIZE, ACTIVATION_SPOT, GROUND_ROW, MAP_H, MAP_W, PLANET_CENTRE, PLANET_SPOTS,
-  PLATE_SIZE, POST_H, POST_POS, POST_W, SIGIL_SIZE, SIGIL_SPOT, SPACE_BOX, TILE_H, TILE_POS, TILE_W,
+  PLATE_SIZE, POST_ART_H, POST_H, POST_POS, POST_W, SIGIL_SIZE, SIGIL_SPOT, SPACE_BOX, TILE_H, TILE_POS, TILE_W,
   WORMHOLE_SIZE, WORMHOLE_SPOTS, boxInsideHex, discInsideHex, fleetCapacity, fleetScale, lanePath, plateBox,
   pointInsideHex, postAnchor, tileCentre,
 } from './layout'
@@ -188,8 +188,8 @@ describe('R8: the trade posts and their hyperlanes', () => {
 
   it('anchors a lane on the post it leaves and the centre of the tile it plugs into', () => {
     // computed from the constants, never measured: the map is scaled with a CSS zoom at runtime
-    expect(postAnchor('west')).toEqual({ left: POST_POS.west.left + POST_W, top: POST_POS.west.top + POST_H / 2 })
-    expect(postAnchor('east')).toEqual({ left: POST_POS.east.left, top: POST_POS.east.top + POST_H / 2 })
+    expect(postAnchor('west')).toEqual({ left: POST_POS.west.left + POST_W, top: POST_POS.west.top + POST_ART_H })
+    expect(postAnchor('east')).toEqual({ left: POST_POS.east.left, top: POST_POS.east.top + POST_ART_H })
     expect(tileCentre('sakulag')).toEqual({ left: TILE_POS.sakulag.left + TILE_W / 2, top: TILE_POS.sakulag.top + TILE_H / 2 })
   })
 

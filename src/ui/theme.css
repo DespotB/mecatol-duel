@@ -329,15 +329,16 @@ button{font-family:inherit}
 .post{position:absolute;display:flex;flex-direction:column;align-items:center;gap:4px;animation:postin .45s ease-out both}
 .post .model{position:relative;display:flex;align-items:center;justify-content:center;width:100%;height:146px}
 .post .model img{object-fit:contain;filter:drop-shadow(0 8px 14px rgba(0,0,0,.8))}
-.post .stamp{position:absolute;right:0;top:0;font:600 9px/14px var(--hud);letter-spacing:.08em;text-transform:uppercase;
-  color:var(--gold-hi);padding:0 5px;background:rgba(6,9,20,.82);border:1px solid var(--hair)}
 .postcard{--c:8px;width:100%}
-.postcard>.in{display:flex;flex-direction:column;align-items:center;gap:4px;padding:7px 8px 8px;text-align:center}
+.postcard>.in{display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 7px 7px;text-align:center}
+.postcard .stamp{font:600 9px/13px var(--hud);letter-spacing:.1em;text-transform:uppercase;color:var(--gold);
+  padding:0 6px;border:1px solid rgba(201,162,77,.4)}
 .postcard .nm{font:600 12px/1.1 var(--hud);letter-spacing:.08em;text-transform:uppercase;color:#f1ead8}
 .postcard .trade{font:500 11px/1.2 var(--body);color:#cfc9b8}
 .postcard .ability{font:500 10px/1.25 var(--body);color:#b7b1a1}
 .postcard .ability b{display:block;font:600 11px/1.3 var(--hud);letter-spacing:.06em;text-transform:uppercase;color:var(--gold-hi)}
-.postcard .ability .txt{display:block;margin-top:1px}
+/* the sentence is the rules page's, so it can outrun the card: four lines of it, the rest is in the panel */
+.postcard .ability .txt{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden;margin-top:1px}
 .postcard.spent .ability,.postcard.spent .ability b{color:var(--muted)}
 .postcard .usedline{font:500 10px/1.2 var(--body);color:#b9b3a2}
 @keyframes postin{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}
@@ -349,12 +350,12 @@ button{font-family:inherit}
  */
 .lanes{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
 .lanes path{fill:none;stroke-linecap:round}
-.lanes path.glow{stroke:rgba(108,168,244,.14);stroke-width:7}
-.lanes path.line{stroke:rgba(120,164,214,.40);stroke-width:1.4;stroke-dasharray:9 7}
-.lanes circle{fill:rgba(120,164,214,.5)}
-.lanes .lit path.glow{stroke:rgba(108,168,244,.34);stroke-width:10}
-.lanes .lit path.line{stroke:rgba(160,206,255,.95);stroke-width:1.8;stroke-dasharray:12 6}
-.lanes .lit circle{fill:rgba(160,206,255,.95)}
+.lanes path.glow{stroke:rgba(108,168,244,.16);stroke-width:8}
+.lanes path.line{stroke:rgba(138,178,224,.55);stroke-width:1.6;stroke-dasharray:8 6}
+.lanes circle{fill:rgba(138,178,224,.6)}
+.lanes .lit path.glow{stroke:rgba(96,178,255,.26);stroke-width:9}
+.lanes .lit path.line{stroke:rgba(132,196,255,.95);stroke-width:1.9;stroke-dasharray:11 7}
+.lanes .lit circle{fill:rgba(160,212,255,1)}
 
 /* drawers and dialogs — children of `.stage`, so every offset below is stage-relative, never page-relative */
 .scrim{position:absolute;inset:0;background:rgba(3,5,12,.52);z-index:15}

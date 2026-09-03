@@ -57,11 +57,11 @@ export function TradePosts({ state, seat }: { state: GameState; seat: Seat }) {
           >
             <div className="model">
               <img src={def.art} alt={def.name} data-testid={`post-art-${post}`} width={POST_ART_W} height={POST_ART_H} />
-              {/* the pair is redrawn every round, so the stamp is the board saying that out loud */}
-              <span className="stamp" data-testid={`post-new-${post}`}>New this round</span>
             </div>
             <div className={`postcard cut${used ? ' spent' : ''}`}>
               <div className="in">
+                {/* the pair is redrawn every round, so the card is the board saying that out loud */}
+                <span className="stamp" data-testid={`post-new-${post}`}>New this round</span>
                 <span className="nm">{def.name}</span>
                 <div className="trade">{def.commodityLimit} commodities for {def.commodityLimit} trade goods</div>
                 <div className="ability">

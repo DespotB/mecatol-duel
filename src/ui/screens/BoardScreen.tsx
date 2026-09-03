@@ -40,7 +40,11 @@ export function BoardScreen() {
   const { session, legal, apply, clockRunning } = useGame()
   // the docked regions scale their contents with --k, the board inside the stage with --s (see theme.css)
   const { k, s } = useViewportScale()
-  const [mode, setMode] = useState<ActionMode>(null)
+  // `?panel=component` is the same dev-only QA hook as `?panel=log` below: it opens the component panel
+  // on the first paint, so a headless screenshot of R8's trade offers needs nobody at the keyboard.
+  const [mode, setMode] = useState<ActionMode>(() => import.meta.env.DEV
+    && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('panel') === 'component'
+    ? 'component' : null)
   // `?panel=log` is a dev-only manual/visual QA hook (see App.tsx's demo bootstrap) so a headless
   // screenshot can land on the open log panel without a click.
   const [showLog, setShowLog] = useState(() => import.meta.env.DEV
