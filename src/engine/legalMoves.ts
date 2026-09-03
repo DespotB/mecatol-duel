@@ -6,6 +6,7 @@ import { bombardablePlanets, groundCombatPending, landablePlanets } from './inva
 import { movableShips } from './movement'
 import { fulfils } from './objectives'
 import { researchable } from './research'
+import { FACTIONS } from '../data/factions'
 import { homeSystemId } from '../data/map'
 import { cardOwner, diplomacySystems, secondaryTokenCost, unusedCards, warfareTokenSystems } from './strategicActions'
 import { tokensGained } from './statusPhase'
@@ -82,6 +83,9 @@ function primaryMoves(state: GameState, seat: Seat, card: StrategyCardId): Move[
       const open = state.publicObjectives.filter(id => !state.players[seat].scoredObjectives.includes(id) && fulfils(state, seat, id))
       return [{ type: 'strategic', card, params: {} }, ...open.map((objectiveId): Move => ({ type: 'strategic', card, params: { objectiveId } }))]
     }
+    case 'trade':
+      // R6: shareWithOpponent is optional, so both variants must be reachable, not just the bare primary
+      return [{ type: 'strategic', card, params: {} }, { type: 'strategic', card, params: { shareWithOpponent: true } }]
     default:
       return [{ type: 'strategic', card, params: {} }]
   }
@@ -103,7 +107,8 @@ function secondaryMoves(state: GameState, seat: Seat, card: StrategyCardId): Mov
       return exhausted.length ? [{ type: 'secondary', card, accept: true, params: { planets: exhausted } }] : []
     }
     case 'trade':
-      return [{ type: 'secondary', card, accept: true, params }]
+      // R6, consistent with the Diplomacy filter above: already replenished is a no-op token burn, not useful
+      return player.commodities < FACTIONS[player.faction].commodityValue ? [{ type: 'secondary', card, accept: true, params }] : []
     case 'warfare': {
       const home = state.systems[homeSystemId(seat)]
       const dock = home.planets.some(p => p.structures.some(u => u.type === 'spacedock' && u.owner === seat))

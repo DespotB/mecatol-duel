@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { FACTIONS } from '../data/factions'
 import { homeSystemId } from '../data/map'
 import { otherSeat } from './actionPhase'
 import { checkFleet } from './board'
@@ -113,7 +114,9 @@ describe('legal moves in every phase', () => {
     for (const move of moves) expect(applyMove(s, move, 5).ok).toBe(true)
   })
   it('R3.2: the secondary window offers exactly the two answers, even after passing', () => {
-    const base = withCards(withCards(toActionPhase(), 0, ['trade']), 1, [])
+    // spent down first: a responder already at full commodities would only see accept: false (see the
+    // Trade-specific test below), so this generic test needs accept: true to actually do something
+    const base = withPlayer(withCards(withCards(toActionPhase(), 0, ['trade']), 1, []), 1, { commodities: 0 })
     const played = applyMove(base, { type: 'strategic', card: 'trade' }, 0)
     if (!played.ok) throw new Error(played.error)
     const moves = legalMoves(played.value)
@@ -129,6 +132,14 @@ describe('legal moves in every phase', () => {
     expect(moves).toEqual([{ type: 'status', params: { tokens: { tactic: 5, fleet: 3, strategy: 2 } } }])
     expect(applyMove(s, moves[0], 5).ok).toBe(true)
     expect(validateMove(s, { type: 'status', params: { tokens: { tactic: 3, fleet: 4, strategy: 3 } } }).ok).toBe(true)
+  })
+  it('R3.2: the responder to Trade is not offered accept when shareWithOpponent already replenished them', () => {
+    const base = withCards(withCards(toActionPhase(), 0, ['trade']), 1, [])
+    const played = applyMove(base, { type: 'strategic', card: 'trade', params: { shareWithOpponent: true } }, 0)
+    if (!played.ok) throw new Error(played.error)
+    expect(played.value.players[1].commodities).toBe(FACTIONS[played.value.players[1].faction].commodityValue)
+    const moves = legalMoves(played.value)
+    expect(moves).toEqual([{ type: 'secondary', card: 'trade', accept: false }])
   })
   it('engine-design contract: validateMove matches structurally, not by JSON', () => {
     const s = withCards(toActionPhase(), 0, ['technology'])
