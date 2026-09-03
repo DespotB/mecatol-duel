@@ -123,7 +123,8 @@ export interface StatusParams { tokens: { tactic: number; fleet: number; strateg
 | `src/data/techs.ts` | technology ids, colours, prerequisites, effects flags |
 | `src/data/factions.ts` | starting units, techs, abilities flags |
 | `src/data/map.ts` | Bereg Standoff systems, planets, adjacency, wormholes, trade post links |
-| `src/data/objectives.ts` | public objective ids, order, predicates |
+| `src/data/objectives.ts` | public objective ids, order and texts, the Mandate |
+| `src/engine/objectives.ts` | objective predicates, scoring and victory point bookkeeping |
 | `src/engine/setup.ts` | `createGame`, guardian fleet table |
 | `src/engine/economy.ts` | cost, payment, production value, fleet pool and capacity checks |
 | `src/engine/strategyPhase.ts` | draft and initiative |
