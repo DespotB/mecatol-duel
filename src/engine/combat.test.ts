@@ -290,7 +290,7 @@ describe('R4.1 space combat', () => {
 })
 
 describe('trimCargo (cargo above capacity at combat end)', () => {
-  it('Space Dock II adds up to 3 free fighter slots on top of ship capacity', () => {
+  it('R4.4: a space dock (I or II) adds up to 3 free fighter slots on top of ship capacity', () => {
     const base = withUnits(toActionPhase(), 'bereg', 0, ['fighter', 'fighter', 'fighter', 'fighter', 'fighter'])
     const s = withTechs(withUnits(base, 'bereg', 0, ['spacedock'], 'bereg'), 0, ['space_dock_ii'])
     const trimmed = trimCargo(s, 'bereg', 0)
@@ -305,7 +305,7 @@ describe('trimCargo (cargo above capacity at combat end)', () => {
     expect(trimmed.systems.bereg.space.filter(u => u.owner === 0 && u.type === 'fighter')).toHaveLength(2)
     expect(trimmed.players[0].reinforcements.fighter).toBe(s.players[0].reinforcements.fighter + 3)
   })
-  it('R4.4: Space Dock II free slots are fighter-only, so the infantry is trimmed and the fighters stay', () => {
+  it('R4.4: a space dock\'s free slots are fighter-only, so the infantry is trimmed and the fighters stay', () => {
     // a destroyer carries nothing, so the only room is the dock's 3 fighter-only slots
     const base = withUnits(toActionPhase(), 'bereg', 0, ['destroyer', 'fighter', 'fighter', 'infantry', 'infantry'])
     const s = withTechs(withUnits(base, 'bereg', 0, ['spacedock'], 'bereg'), 0, ['space_dock_ii'])

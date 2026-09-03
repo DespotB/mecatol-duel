@@ -1,6 +1,6 @@
 import { systemDef } from '../../data/map'
 import { BADGE, MISC, SIGIL, ownerKey, planetArtUrl, tileUrl, tokenUrl } from '../art'
-import { ANOMALY_SPOT, FLEET_ANCHOR, PLANET_SPOTS, TILE_H, TILE_POS, TILE_W, WORMHOLE_SPOTS } from '../layout'
+import { ACTIVATION_SPOT, ANOMALY_SPOT, FLEET_ANCHOR, PLANET_SPOTS, TILE_H, TILE_POS, TILE_W, WORMHOLE_SPOTS } from '../layout'
 import { UnitStack, groupUnits } from './UnitStack'
 import type { Color, GameState, Owner, Planet, System } from '../../engine/types'
 
@@ -99,6 +99,14 @@ export function Tile({ state, system, active, selectable, outOfReach = false, on
             testId={`${system.id}-${ownerKey(group.owner)}-${group.type}`} />
         ))}
       </span>
+      {system.activatedBy.length > 0 ? (
+        <span className="acts" style={ACTIVATION_SPOT}>
+          {system.activatedBy.map(seat => (
+            <img key={seat} className="act" src={tokenUrl(state.players[seat].faction, 'command')}
+              alt={`${state.players[seat].name} command token`} data-testid={`activation-${system.id}-${seat}`} />
+          ))}
+        </span>
+      ) : null}
       {def.wormhole ? (
         <img className="wh" src={def.wormhole === 'alpha' ? MISC.alpha : MISC.beta} alt={`${def.wormhole} wormhole`}
           data-testid={`wormhole-${system.id}`} style={WORMHOLE_SPOTS[system.id]} width={26} height={26} />
