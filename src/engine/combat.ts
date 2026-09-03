@@ -1,14 +1,10 @@
 import { MECATOL_ID } from '../data/map'
-import { NON_FIGHTER_SHIPS, isShip, unitStats, type StatsOwner } from '../data/units'
+import { DESTROY_ORDER, NON_FIGHTER_ORDER, NON_FIGHTER_SHIPS, isShip, unitStats, type StatsOwner } from '../data/units'
 import { neighbours } from './adjacency'
-import { destroyUnits, dieRolls, hasTech, rollHits, shipsOf, statsOwner, trimCargo } from './board'
-import { fleetPoolLimit, nonFighterShips } from './economy'
+import { destroyUnits, dieRolls, enforceFleetPoolIn, hasTech, rollHits, shipsOf, statsOwner, trimCargo } from './board'
 import { afterSpaceStep } from './invasion'
 import { deriveSeed, mulberry32 } from './rng'
 import type { CombatState, DieRoll, GameState, HitGroup, HitMode, Owner, PendingHits, Result, Seat, Unit, UnitType } from './types'
-
-const DESTROY_ORDER: readonly UnitType[] = ['fighter', 'destroyer', 'cruiser', 'carrier', 'dreadnought', 'flagship', 'warsun']
-const NON_FIGHTER_ORDER: readonly UnitType[] = DESTROY_ORDER.filter(t => t !== 'fighter')
 
 export type { HitGroup, HitMode }
 const MODE_RANK: Record<HitMode, number> = { noFighters: 0, preferNonFighters: 1, any: 2 }
@@ -528,21 +524,6 @@ function endCombat(state: GameState, ctx: Ctx): GameState {
   return trimCargo(trimCargo(state, ctx.systemId, ctx.attacker), ctx.systemId, ctx.defender)
 }
 
-/**
- * R3.2/R4.4: the retreating ships join whatever the seat already had at the destination, which can push it
- * over its fleet pool. The cheapest excess non-fighter ships (NON_FIGHTER_ORDER is cost order) are destroyed
- * and returned to the reinforcements before the cargo is trimmed against the capacity that is left.
- */
-function trimFleetPool(state: GameState, systemId: string, seat: Seat): GameState {
-  const sys = state.systems[systemId]
-  const over = nonFighterShips(sys.space, seat) - fleetPoolLimit(state.players[seat])
-  if (over <= 0) return state
-  const victims = NON_FIGHTER_ORDER.flatMap(t => shipsOf(sys, seat).filter(u => u.type === t)).slice(0, over)
-  if (!victims.length) return state
-  const next = destroyUnits(state, systemId, victims)
-  return { ...next, log: [...next.log, { t: 'info', text: `${victims.length} ships beyond the fleet pool are destroyed in ${systemId}` }] }
-}
-
 /** R4.1 step 5: the announced retreat happens after the round has been fought. */
 function withdraw(state: GameState, ctx: Ctx, to: string): GameState {
   const tac = state.tactical
@@ -560,7 +541,9 @@ function withdraw(state: GameState, ctx: Ctx, to: string): GameState {
     tactical: { ...tac, step: 'done' },
     log: [...state.log, { t: 'info', text: `seat ${ctx.attacker} retreats from ${ctx.systemId} to ${to}` }],
   }
-  return trimCargo(trimCargo(trimFleetPool(next, to, ctx.attacker), to, ctx.attacker), ctx.systemId, ctx.defender)
+  // R3.2/R4.4: the retreating ships join whatever the seat already had at the destination, which can push it
+  // over its fleet pool; the shared helper prices that the way every other shrinking fleet is priced
+  return trimCargo(enforceFleetPoolIn(next, to, ctx.attacker), ctx.systemId, ctx.defender)
 }
 
 /** Closes a round (or the round 0 pre-combat steps); `lastRolls` was stored when the dice were thrown. */

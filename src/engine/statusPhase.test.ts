@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { POST_IDS } from '../data/posts'
 import { applyMove, legalMoves } from './index'
 import { decideWinner, tokensGained } from './statusPhase'
-import { deepFreeze, toActionPhase, toStatusPhase, withExhausted, withPlanetOwner, withPlayer, withTechs } from './testUtils'
+import { deepFreeze, toActionPhase, toStatusPhase, withExhausted, withPlanetOwner, withPlayer, withTechs, withUnits } from './testUtils'
 import type { GameState, Result, StatusParams } from './types'
 
 const value = (r: Result<GameState>): GameState => {
@@ -34,6 +34,16 @@ describe('R3.3 status phase', () => {
     const hyper = toStatusPhase(withTechs(toActionPhase(), 0, ['hyper_metabolism']))
     expect(submit(hyper, plain(6)).ok).toBe(true)                    // 11, three tokens
     expect(submit(hyper, plain(5)).ok).toBe(false)
+  })
+  it('R3.3 step 3 / R4.4: the status sheet never takes a token out of the fleet pool, so no fleet pays for it', () => {
+    // three cruisers in Bereg sit exactly on the pool of 3. The distribution runs through enforceFleetPool
+    // like Warfare and the two trade post abilities do, but step 3 only hands out new tokens: it never moves
+    // one that is already on the sheet, so the helper has nothing to collect here.
+    const s = withUnits(toStatusPhase(toActionPhase()), 'bereg', 0, ['cruiser', 'cruiser', 'cruiser'])
+    expect(submit(s, plain(5, 2, 3)).ok).toBe(false)                 // 10, but the fleet pool would shrink
+    const done = value(submit(s, plain(3, 4, 3)))
+    expect(done.systems.bereg.space.filter(u => u.owner === 0)).toHaveLength(3)
+    expect(done.log.some(e => e.t === 'info' && e.text.includes('beyond the fleet pool'))).toBe(false)
   })
   it('R3.3 step 1: fulfilled objectives, the mandates and Mecatol Rex score, each only once', () => {
     // a pool of one keeps the second status phase from revealing something that is already fulfilled

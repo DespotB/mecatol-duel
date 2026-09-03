@@ -88,7 +88,7 @@ export function StatusDialog() {
             ))}
           </div>
         ) : null}
-        <TokenSheet current={player.tokens} gained={gained} value={sheet} onChange={setTokens} />
+        <TokenSheet state={state} seat={seat} current={player.tokens} gained={gained} value={sheet} onChange={setTokens} />
       </div>
     </div>
   )

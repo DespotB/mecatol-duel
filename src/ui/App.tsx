@@ -89,6 +89,17 @@ function useDemoBootstrap() {
       })
       return
     }
+    // `&panel=fleetpool` is the fleet pool warning: seat 0 holds Warfare and three cruisers sit in Bereg
+    // exactly on its pool of three, so a sheet that takes a token out of the fleet pool costs a ship.
+    if (panel === 'fleetpool') {
+      void import('../engine/testUtils').then(({ toActionPhase, withCards, withUnits }) => {
+        let state = withCards(withCards(toActionPhase(1, 0), 1, []), 0, ['warfare'])
+        state = withUnits(state, 'bereg', 0, ['cruiser', 'cruiser', 'cruiser'])
+        resume({ code: DEMO_CODE, seed: 1, minutes: 15, state, history: [], clockMs: [900000, 900000], handoff: null })
+        navigate(gamePath(DEMO_CODE))
+      })
+      return
+    }
     // `start` puts the new game's code in the URL itself
     start(DEMO_CONFIG, 1, 15)
     // Runs once on mount; `start`, `resume` and `session` come from a stable context store.
