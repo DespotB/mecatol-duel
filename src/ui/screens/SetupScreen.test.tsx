@@ -174,9 +174,12 @@ describe('the setup screen', () => {
     expect(listGames().map(game => game.code)).toEqual(['BBB333'])
   })
 
-  it('credits Fantasy Flight Games and AsyncTI4', () => {
+  it('credits Fantasy Flight Games, AsyncTI4 and the music the licence asks it to name', () => {
     renderApp()
-    expect(screen.getByTestId('setup-legal').textContent)
-      .toBe('Fan project. Twilight Imperium and its artwork belong to Fantasy Flight Games. Unit, tile and card images via AsyncTI4.')
+    const legal = screen.getByTestId('setup-legal').textContent ?? ''
+    expect(legal).toContain('Twilight Imperium and its artwork belong to Fantasy Flight Games')
+    expect(legal).toContain('Unit, tile and card images via AsyncTI4')
+    expect(legal).toContain('Kevin MacLeod')
+    expect(legal).toContain('Creative Commons By Attribution 4.0')
   })
 })

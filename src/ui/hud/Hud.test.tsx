@@ -101,4 +101,11 @@ describe('the HUD', () => {
     fireEvent.click(screen.getByTestId('btn-menu-close'))
     expect(screen.queryByTestId('game-menu')).toBeNull()
   })
+
+  it('R3.1: the strip asks for a strategy card while the draft is open, and stops once it is over', () => {
+    renderWithSession(toActionPhase(), <BoardScreen />)
+    // toActionPhase has every card drafted already
+    expect(screen.queryByTestId('pick-prompt')).toBeNull()
+    expect(document.querySelectorAll('.sc.pick')).toHaveLength(0)
+  })
 })

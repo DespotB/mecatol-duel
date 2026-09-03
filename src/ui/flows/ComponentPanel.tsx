@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { TRADE_POSTS } from '../../data/map'
-import { POSTS } from '../../data/posts'
-import { REFIT_TYPES, commodityLimit, postAbilityOptions, refitValue } from '../../engine'
+import { SHIP_TYPES } from '../../data/units'
+import { postAbilityOptions, postDef, postLinked, refitValue } from '../../engine'
 import { formatClock, planetLabel, systemLabel, techLabel, timeTradeCost, unitLabel } from '../format'
-import { inheritanceTechIds, postInReach, shipyardOffers } from '../moveOptions'
+import { inheritanceTechIds, shipyardOffers } from '../moveOptions'
 import { ProductionPicker } from './ProductionPicker'
 import { Stepper } from './Stepper'
 import { TechDrawer } from './TechDrawer'
@@ -28,13 +28,13 @@ function linkedNames(post: Post): string {
 /** Why the ability cannot be taken, in the player's terms; `null` means it can. */
 function abilityReason(state: GameState, seat: Seat, post: Post, options: PostAbilityParams[]): string | null {
   if (state.postAbilityUsed[post]) return 'Used this round'
-  if (!postInReach(state, seat, post)) return `Hold a planet in ${linkedNames(post)}`
+  if (!postLinked(state, seat, post)) return `Hold a planet in ${linkedNames(post)}`
   if (options.length === 0) return 'Nothing to trade for right now'
   return null
 }
 
 function saleReason(state: GameState, seat: Seat, post: Post): string | null {
-  if (!postInReach(state, seat, post)) return `Hold a planet in ${linkedNames(post)}`
+  if (!postLinked(state, seat, post)) return `Hold a planet in ${linkedNames(post)}`
   if (state.players[seat].tradedThisRound[post]) return 'Sold here this round'
   if (state.players[seat].commodities < 1) return 'No commodities left'
   return null
@@ -44,23 +44,25 @@ interface Draft {
   techId: string | null
   takeTechId: string | null
   planet: string | null
-  pay: 'resources' | 'influence'
+  pays: 'resources' | 'influence'
   pool: 'tactic' | 'fleet' | 'strategy' | null
   give: number[]
   take: Partial<Record<UnitType, number>>
 }
 
-const EMPTY: Draft = { techId: null, takeTechId: null, planet: null, pay: 'resources', pool: null, give: [], take: {} }
+const EMPTY: Draft = { techId: null, takeTechId: null, planet: null, pays: 'resources', pool: null, give: [], take: {} }
 
 /** The parameters the open controls add up to, in the shape the engine's move takes. */
 function paramsOf(def: PostDef, draft: Draft): PostAbilityParams {
   switch (def.ability) {
     case 'timeTrade': return {}
     case 'techExchange': return { techId: draft.techId ?? undefined, takeTechId: draft.takeTechId ?? undefined }
-    case 'clearingHouse': return { planet: draft.planet ?? undefined, pay: draft.pay }
+    case 'clearingHouse': return { planet: draft.planet ?? undefined, pays: draft.pays }
     case 'charter':
     case 'layover': return { pool: draft.pool ?? undefined }
     case 'refit': return { give: draft.give, take: draft.take }
+    // 'none' is a legal shape in the data even though all six posts in the table have an ability
+    case 'none': return {}
   }
 }
 
@@ -127,8 +129,8 @@ export function ComponentPanel({ onClose }: { onClose: () => void }) {
               <span className="lbl">Take</span>
               {(['resources', 'influence'] as const).map(unit => (
                 <button key={unit} type="button" data-testid={`ch-pay-${unit}`} disabled={chosen === null}
-                  className={`pay${draft.pay === unit ? ' on' : ''}`}
-                  onClick={() => { patch({ pay: unit }) }}>
+                  className={`pay${draft.pays === unit ? ' on' : ''}`}
+                  onClick={() => { patch({ pays: unit }) }}>
                   {chosen === null ? unit : `${values(chosen)[unit]} for its ${unit}`}
                 </button>
               ))}
@@ -162,7 +164,7 @@ export function ComponentPanel({ onClose }: { onClose: () => void }) {
         return (
           <>
             {TRADE_POSTS[post].map(systemId => {
-              const ships = state.systems[systemId].space.filter(u => u.owner === seat && REFIT_TYPES.includes(u.type))
+              const ships = state.systems[systemId].space.filter(u => u.owner === seat && SHIP_TYPES.includes(u.type))
               if (ships.length === 0) return null
               return (
                 <div className="payrow" key={systemId}>
@@ -180,7 +182,7 @@ export function ComponentPanel({ onClose }: { onClose: () => void }) {
                 </div>
               )
             })}
-            <ProductionPicker state={state} seat={seat} types={REFIT_TYPES} limit={Math.floor(returned * 2)}
+            <ProductionPicker state={state} seat={seat} types={SHIP_TYPES} limit={Math.floor(returned * 2)}
               units={draft.take} onUnits={take => { patch({ take }) }} />
             <div className="rowline">
               <span className="sub" data-testid="refit-total">Returned {money(returned)}, taking {money(taking)}</span>
@@ -215,6 +217,8 @@ export function ComponentPanel({ onClose }: { onClose: () => void }) {
         }, 0)
         return take.reduce((sum, [type, n]) => sum + refitValue(type, stats) * n, 0) <= returned
       }
+      // 'none' is a legal shape in the data even though all six posts in the table have an ability
+      case 'none': return false
     }
   }
 
@@ -228,8 +232,8 @@ export function ComponentPanel({ onClose }: { onClose: () => void }) {
           </div>
         </div>
         {SIDES.map(post => {
-          const def = POSTS[state.posts[post]]
-          const limit = commodityLimit(state, post)
+          const def = postDef(state, post)
+          const limit = def.commodityLimit
           const most = Math.min(limit, player.commodities)
           const commodities = Math.min(amount[post] ?? most, most)
           const sale = saleReason(state, seat, post)

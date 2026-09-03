@@ -1,5 +1,4 @@
-import { TRADE_POSTS } from '../data/map'
-import type { GameState, Move, Seat, StatusParams, StrategicParams, StrategyCardId } from '../engine/types'
+import type { Move, StatusParams, StrategicParams, StrategyCardId } from '../engine/types'
 
 export function hasMove(legal: Move[], type: Move['type']): boolean {
   return legal.some(m => m.type === type)
@@ -68,9 +67,4 @@ export function tradePostOffers(legal: Move[]): { post: 'west' | 'east'; commodi
 export function statusTemplate(legal: Move[]): StatusParams | null {
   for (const move of legal) if (move.type === 'status') return move.params
   return null
-}
-
-/** R8: a post's sale and its special ability both need a planet of yours in one of the two systems it serves. */
-export function postInReach(state: GameState, seat: Seat, post: 'west' | 'east'): boolean {
-  return TRADE_POSTS[post].some(id => state.systems[id].planets.some(p => p.owner === seat))
 }

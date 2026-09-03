@@ -1,3 +1,5 @@
+import { SPRITE_FOLDER } from './sprites'
+import type { ModelStyle } from './modelStyle'
 import type { Color, FactionId, Owner, StrategyCardId, TechColor, UnitType } from '../engine/types'
 
 export const CARD_NUMBER: Record<StrategyCardId, number> = {
@@ -99,8 +101,8 @@ export function planetArtUrl(planetId: string): string | null {
   const file = PLANET_FILE[planetId]
   return file ? `/assets/tiles/${file}` : null
 }
-export function spriteUrl(colour: Color | 'grey', type: UnitType): string {
-  return `/assets/sprites/${colour}_${type}.png`
+export function spriteUrl(colour: Color | 'grey', type: UnitType, style: ModelStyle = 'models'): string {
+  return `/assets/sprites/${SPRITE_FOLDER[style]}${colour}_${type}.png`
 }
 export function tokenUrl(faction: FactionId, kind: 'command' | 'command-fleet' | 'control'): string {
   return `/assets/tokens/${faction}_${kind}.png`

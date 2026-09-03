@@ -1,21 +1,26 @@
 /**
- * The six trade posts of `docs/spec/trade-posts.md`. Two of them are in play at a time, one west and one
- * east, and the pair turns over every round: the status phase rolls a new pair from the four that were not
- * in play. Everything the board, the component panel and the rules page print about a post comes from here,
- * so the three cannot drift apart.
+ * R8 / docs/spec/trade-posts.md: the six named trade posts. Every game rolls two of them from the game
+ * seed, one for the west side and one for the east, and the pair lives in `state.posts`.
+ *
+ * Every post sells commodities for 1 trade good each, once per round per post per player. Five take up to
+ * 2, the Sarnex Wheel takes up to 4. On top of that every post but the Sarnex Wheel has one special
+ * ability, which is once per round for the whole table: the first player to use it takes it.
  */
 export type PostId = 'sarnex' | 'tessik' | 'orrun' | 'kesh' | 'vandel' | 'dromm'
-export type PostAbility = 'timeTrade' | 'techExchange' | 'clearingHouse' | 'charter' | 'layover' | 'refit'
+// 'none' is kept as a legal shape for a post without an ability; all six in the table have one
+export type PostAbility = 'none' | 'timeTrade' | 'techExchange' | 'clearingHouse' | 'charter' | 'layover' | 'refit'
 
 export interface PostDef {
   id: PostId
   name: string
+  /** What the render shows: a fixed installation or a hull under way. */
   kind: 'station' | 'ship'
-  /** How many commodities the post buys in one sale; 4 at the Sarnex Wheel, 2 everywhere else. */
+  /** R8: the most commodities one sale may turn into trade goods. */
   commodityLimit: number
   ability: PostAbility
+  /** Empty for a post without a special ability. */
   abilityName: string
-  /** One sentence, short enough for the card under the model and the same wording the rules page uses. */
+  /** One sentence, the same wording the rules page prints. */
   abilityText: string
   art: string
 }
@@ -30,19 +35,19 @@ export const POSTS: Record<PostId, PostDef> = {
   tessik: {
     id: 'tessik', name: 'Tessik Refinery', kind: 'station', commodityLimit: 2,
     ability: 'techExchange', abilityName: 'Technology exchange',
-    abilityText: 'Return one general technology and take another of the same tier in a different colour, prerequisites ignored.',
+    abilityText: 'Return one general technology you own and take another general technology of the same tier in a different colour; prerequisites are ignored, unit upgrades and faction technologies are excluded on both sides.',
     art: '/assets/posts/tessik.png',
   },
   orrun: {
     id: 'orrun', name: 'Orrun Port Authority', kind: 'station', commodityLimit: 2,
     ability: 'clearingHouse', abilityName: 'Clearing house',
-    abilityText: 'Exhaust one ready planet and take one trade good per resource or per influence it prints, your choice.',
+    abilityText: 'Exhaust one ready planet you control and take one trade good per resource or influence it prints, your choice which of the two, never both.',
     art: '/assets/posts/orrun.png',
   },
   kesh: {
     id: 'kesh', name: 'Kesh Line Freighter', kind: 'ship', commodityLimit: 2,
     ability: 'charter', abilityName: 'Charter',
-    abilityText: 'Return one command token from any pool (tactic, fleet or strategy) and take 4 trade goods.',
+    abilityText: 'Return one command token from any pool and take 4 trade goods.',
     art: '/assets/posts/kesh.png',
   },
   vandel: {
@@ -54,13 +59,14 @@ export const POSTS: Record<PostId, PostDef> = {
   dromm: {
     id: 'dromm', name: 'Dromm Heavy Hauler', kind: 'ship', commodityLimit: 2,
     ability: 'refit', abilityName: 'Refit',
-    abilityText: 'Return ships in a linked system and take ships from your reinforcements of no greater total cost.',
+    abilityText: 'Return any ships you have in a system linked to this post and take any ships from your reinforcements whose total cost is not higher, placed in the same system; fighters count at half a cost each, infantry is not a ship, and any difference in cost is lost.',
     art: '/assets/posts/dromm.png',
   },
 }
 
+/** The draw order of the roll in `createGame`, so the same seed always spawns the same pair. */
 export const POST_IDS: readonly PostId[] = ['sarnex', 'tessik', 'orrun', 'kesh', 'vandel', 'dromm']
 
-export function postDefById(id: PostId): PostDef {
+export function postById(id: PostId): PostDef {
   return POSTS[id]
 }

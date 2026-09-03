@@ -37,6 +37,8 @@ describe('a scripted hot-seat game', () => {
     expect(text('clock-0')).toBe('15:00')
 
     // R3.1 snake draft: speaker, other, other, speaker
+    // R3.1: the draft says what to do and the pickable cards pulse until the last one is taken
+    expect(screen.getByTestId('pick-prompt').textContent).toBe('Pick a strategy card')
     click('strategy-card-leadership')
     handoff()
     click('strategy-card-trade')

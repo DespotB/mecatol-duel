@@ -1,9 +1,8 @@
 import { FACTIONS } from '../data/factions'
 import { MECATOL_ID, SYSTEMS } from '../data/map'
 import { PUBLIC_OBJECTIVES } from '../data/objectives'
-import { POST_IDS } from '../data/posts'
+import { POSTS, POST_IDS, type PostId } from '../data/posts'
 import { deriveSeed, mulberry32 } from './rng'
-import type { PostId } from '../data/posts'
 import type { GameConfig, GameState, Owner, Planet, Player, Seat, StrategyCardId, System, Unit, UnitType } from './types'
 
 export const START_TOKENS = { tactic: 3, fleet: 3, strategy: 2 }
@@ -38,12 +37,18 @@ function makePlayer(seat: Seat, cfg: GameConfig['players'][number]): Player {
 }
 
 /**
- * R8: the pair of posts in play. Draw one of the candidates for the west, then one of the rest for the east.
- * `exclude` holds the pair that was in play the round before, which cannot come back straight away; at setup
- * nothing is excluded. The salt keeps the draw independent of every other roll made from the same game seed:
- * 91 is the objective shuffle, 92 is the posts.
+ * R8: seed salt for the trade post pair rolled at setup. `deriveSeed` is injective in its salt (every step
+ * of it is a bijection on uint32), so this stream can never coincide with the objective shuffle's 91 on the
+ * same game seed. The rounds after the first roll in the status phase, on that move's seed, with their own
+ * salt base (see `statusPhase.ts`).
  */
-export const POST_SALT = 92
+const POSTS_SALT = 92
+
+/**
+ * R8: draws the west post, then the east one from what is left, skipping `exclude` entirely — the two posts
+ * of the round before, which may not come straight back. Takes an already derived seed, like
+ * `rollGuardianFleet`, so every caller documents its own salt.
+ */
 export function rollPosts(seed: number, exclude: readonly PostId[] = []): { west: PostId; east: PostId } {
   const rng = mulberry32(seed)
   const pool = POST_IDS.filter(id => !exclude.includes(id))
@@ -51,6 +56,11 @@ export function rollPosts(seed: number, exclude: readonly PostId[] = []): { west
   const rest = pool.filter(id => id !== west)
   const east = rest[Math.floor(rng() * rest.length)]
   return { west, east }
+}
+
+/** R8: the log line both rolls share, so a replay reads the same whichever round the pair arrived in. */
+export function postRollEntry(posts: { west: PostId; east: PostId }): string {
+  return `Trade posts: ${POSTS[posts.west].name} to the west, ${POSTS[posts.east].name} to the east`
 }
 
 /** R7: the pool is shuffled from the game seed, so the order of the objectives is different every game. */
@@ -89,18 +99,19 @@ export function createGame(config: GameConfig, seed: number): GameState {
     }
   }
   const other: Seat = config.speaker === 0 ? 1 : 0
+  const posts = rollPosts(deriveSeed(seed, POSTS_SALT))
   const state: GameState = {
-    version: 2, round: 1, phase: 'strategy', speaker: config.speaker, active: config.speaker,
+    version: 3, round: 1, phase: 'strategy', speaker: config.speaker, active: config.speaker,
     strategyPool: ALL_STRATEGY_CARDS.map(id => ({ id, bonus: 0 })),
     draft: [config.speaker, other, other, config.speaker],
     publicObjectives: [order[0]],
     objectiveOrder: order,
-    posts: rollPosts(deriveSeed(seed, POST_SALT)),
-    postAbilityUsed: { west: false, east: false },
     mecatolCombatWinner: null,
     players: [makePlayer(0, config.players[0]), makePlayer(1, config.players[1])],
     systems, tactical: null, turnDone: false, pendingSecondary: null, statusSubmitted: [],
-    nextUnitId: counter.nextUnitId, guardianRolls: 0, winner: null, log: [],
+    posts, postAbilityUsed: { west: false, east: false },
+    nextUnitId: counter.nextUnitId, guardianRolls: 0, winner: null,
+    log: [{ t: 'info', text: postRollEntry(posts) }],
   }
   return rollGuardianFleet(state, seed)
 }

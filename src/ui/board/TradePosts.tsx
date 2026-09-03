@@ -1,7 +1,7 @@
 import { TRADE_POSTS } from '../../data/map'
 import { POSTS } from '../../data/posts'
+import { postLinked } from '../../engine'
 import { systemLabel } from '../format'
-import { postInReach } from '../moveOptions'
 import { MAP_H, MAP_W, POST_ART_H, POST_ART_W, POST_H, POST_POS, POST_W, lanePath, postAnchor } from '../layout'
 import type { GameState, Seat } from '../../engine/types'
 
@@ -32,7 +32,7 @@ export function TradeLanes({ state, seat }: { state: GameState; seat: Seat }) {
 }
 
 function stateLine(state: GameState, seat: Seat, post: 'west' | 'east'): string {
-  if (!postInReach(state, seat, post)) return `Hold a planet in ${TRADE_POSTS[post].map(systemLabel).join(' or ')}`
+  if (!postLinked(state, seat, post)) return `Hold a planet in ${TRADE_POSTS[post].map(systemLabel).join(' or ')}`
   return state.players[seat].tradedThisRound[post] ? 'Sale used this round' : 'Sale open'
 }
 
@@ -49,7 +49,7 @@ export function TradePosts({ state, seat }: { state: GameState; seat: Seat }) {
       {(['west', 'east'] as const).map(post => {
         const def = POSTS[state.posts[post]]
         const used = state.postAbilityUsed[post]
-        const reachable = postInReach(state, seat, post)
+        const reachable = postLinked(state, seat, post)
         return (
           <div
             key={`${post}-${def.id}`} className={`post ${post}`} style={{ ...POST_POS[post], width: POST_W, height: POST_H }}

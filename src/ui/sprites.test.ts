@@ -1,17 +1,44 @@
 /// <reference types="node" />
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { SPRITES, spriteSize } from './sprites'
+import { SPRITE_FOLDER, SPRITE_SETS, spriteSize } from './sprites'
+import { MODEL_STYLES } from './modelStyle'
+import type { ModelStyle } from './modelStyle'
+
+interface Manifest { units: Record<string, { pxPerModelUnit: number; spriteW: number; spriteH: number }> }
 
 describe('unit sprites', () => {
-  it('the sprite table is a faithful copy of the shipped manifest', () => {
-    const raw = readFileSync(new URL('../../public/assets/sprites/manifest.json', import.meta.url), 'utf8')
-    const manifest = JSON.parse(raw) as { units: Record<string, { pxPerModelUnit: number; spriteW: number; spriteH: number }> }
-    for (const [type, def] of Object.entries(SPRITES)) {
-      expect(manifest.units[type]).toBeDefined()
-      expect(manifest.units[type].pxPerModelUnit).toBe(def.pxPerModelUnit)
-      expect(manifest.units[type].spriteW).toBe(def.spriteW)
-      expect(manifest.units[type].spriteH).toBe(def.spriteH)
+  it('every style table is a faithful copy of its shipped manifest', () => {
+    for (const { id } of MODEL_STYLES) {
+      const style = id as ModelStyle
+      const raw = readFileSync(new URL(`../../public/assets/sprites/${SPRITE_FOLDER[style]}manifest.json`, import.meta.url), 'utf8')
+      const manifest = JSON.parse(raw) as Manifest
+      for (const [type, def] of Object.entries(SPRITE_SETS[style])) {
+        expect(manifest.units[type], `${style} ${type}`).toBeDefined()
+        expect(manifest.units[type].pxPerModelUnit).toBe(def.pxPerModelUnit)
+        expect(manifest.units[type].spriteW).toBe(def.spriteW)
+        expect(manifest.units[type].spriteH).toBe(def.spriteH)
+      }
+    }
+  })
+  it('every style ships a file for every colour and every unit', () => {
+    const colours = ['red', 'blue', 'green', 'yellow', 'purple', 'black', 'orange', 'pink', 'grey']
+    for (const { id } of MODEL_STYLES) {
+      const style = id as ModelStyle
+      for (const type of Object.keys(SPRITE_SETS[style])) {
+        for (const colour of colours) {
+          const url = new URL(`../../public/assets/sprites/${SPRITE_FOLDER[style]}${colour}_${type}.png`, import.meta.url)
+          expect(existsSync(url), `${style} ${colour} ${type}`).toBe(true)
+        }
+      }
+    }
+  })
+  it('the three styles put a unit on the board at about the same size', () => {
+    for (const type of ['dreadnought', 'carrier', 'fighter'] as const) {
+      const widths = MODEL_STYLES.map(s => spriteSize(type, undefined, s.id).width)
+      const min = Math.min(...widths)
+      const max = Math.max(...widths)
+      expect(max - min, type).toBeLessThanOrEqual(Math.round(max * 0.55))
     }
   })
   it('the world scale reproduces the mockup sizes', () => {

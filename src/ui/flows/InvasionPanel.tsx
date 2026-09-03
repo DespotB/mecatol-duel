@@ -1,8 +1,25 @@
 import { useState } from 'react'
+import { deriveSeed } from '../../engine'
 import { bombardTargets, landTargets } from '../moveOptions'
 import { planetLabel } from '../format'
+import { moveCount } from '../history'
 import { Stepper } from './Stepper'
 import { useGame } from '../store'
+
+/**
+ * R4.3: landing everything on the first planet is almost never what the player wants when the system has
+ * two of them, so the panel proposes an even split: four infantry become 2 and 2, two become 1 and 1, and
+ * an odd one goes to one of the planets. Which one is drawn from the game's own seed rather than
+ * `Math.random`, so a replay proposes the same split. It is a suggestion: the steppers still go from 0 to
+ * everything the player has.
+ */
+export function suggestedSplit(total: number, planets: number, seed: number): number[] {
+  if (planets <= 0) return []
+  const base = Math.floor(total / planets)
+  const extra = total - base * planets
+  const offset = planets > 0 ? Math.abs(seed) % planets : 0
+  return Array.from({ length: planets }, (_, i) => base + ((i - offset + planets) % planets < extra ? 1 : 0))
+}
 
 export function InvasionPanel() {
   const { session, legal, apply } = useGame()
@@ -11,7 +28,10 @@ export function InvasionPanel() {
   const state = session.state
   const landings = landTargets(legal)
   const bombards = bombardTargets(legal)
-  const countOf = (planetId: string, max: number) => counts[planetId] ?? max
+  // every landing offers the same carried infantry, so the pool is what the first one lists
+  const pool = landings.length > 0 ? landings[0].infantryIds.length : 0
+  const split = suggestedSplit(pool, landings.length, deriveSeed(session.seed, moveCount(state)))
+  const countOf = (planetId: string, index: number) => counts[planetId] ?? split[index] ?? 0
   return (
     <div className="drawer bottom cut" data-testid="invasion-panel">
       <div className="in">
@@ -35,16 +55,16 @@ export function InvasionPanel() {
             </button>
           ))}
         </div>
-        {landings.map(({ planetId, infantryIds }) => {
-          const count = countOf(planetId, infantryIds.length)
+        {landings.map(({ planetId, infantryIds }, index) => {
+          const count = countOf(planetId, index)
           return (
             <div className="rowline" key={planetId}>
               <span className="lbl">{planetLabel(state, planetId)}</span>
-              <Stepper id={`land-count-${planetId}`} value={count} min={1} max={infantryIds.length}
+              <Stepper id={`land-count-${planetId}`} value={count} min={0} max={infantryIds.length}
                 onChange={n => setCounts({ ...counts, [planetId]: n })} />
-              <button type="button" className="btn gold" data-testid={`btn-land-${planetId}`}
-                onClick={() => apply({ type: 'land', planetId, infantryIds: infantryIds.slice(0, count) })}>
-                Land {count} infantry
+              <button type="button" className="btn gold" data-testid={`btn-land-${planetId}`} disabled={count === 0}
+                onClick={() => { if (apply({ type: 'land', planetId, infantryIds: infantryIds.slice(0, count) })) setCounts({}) }}>
+                {count === 0 ? 'Land none' : `Land ${String(count)} infantry`}
               </button>
             </div>
           )

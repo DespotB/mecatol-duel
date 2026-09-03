@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { canShipyard, tradePostOptions } from './componentActions'
 import { applyMove, legalMoves } from './index'
-import { deepFreeze, toActionPhase, withCards, withExhausted, withPlanetOwner, withPlayer, withTechs } from './testUtils'
+import { deepFreeze, toActionPhase, withCards, withExhausted, withPlanetOwner, withPlayer, withPosts, withTechs } from './testUtils'
 import type { GameState, Result } from './types'
 
 const value = (r: Result<GameState>): GameState => {
@@ -61,7 +61,21 @@ describe('R6/R8 component actions', () => {
     expect(build(s, 'arc-prime', ['000']).ok).toBe(false)           // not controlled
     expect(build(s, '000', []).ok).toBe(false)                      // 0 of 4 resources
   })
-  it('R8: a trade post sells up to 2 commodities 1:1 and does not end the turn', () => {
+  it('R8: the commodity limit is the post\'s own, 4 at the Sarnex Wheel and 2 everywhere else', () => {
+    const rich = withPlayer(withPlanetOwner(toActionPhase(), 'bereg', 'bereg', 0), 0, { commodities: 5 })
+    const wheel = withPosts(rich, 'tessik', 'sarnex')
+    const sold = value(sell(wheel, 'east', 4))
+    expect(sold.players[0]).toMatchObject({ commodities: 1, tradeGoods: 4 })
+    expect(sell(wheel, 'east', 5).ok).toBe(false)                   // the wheel stops at 4
+    expect(sell(sold, 'east', 1).ok).toBe(false)                    // still once per round per player
+    const small = withPosts(rich, 'sarnex', 'kesh')
+    expect(value(sell(small, 'east', 2)).players[0].tradeGoods).toBe(2)
+    expect(sell(small, 'east', 3).ok).toBe(false)                   // every other post stops at 2
+    // the limit belongs to the post in play now, so a wheel arriving later brings its four with it
+    const later = withPosts({ ...rich, round: 3 }, 'tessik', 'sarnex')
+    expect(value(sell(later, 'east', 4)).players[0].tradeGoods).toBe(4)
+  })
+  it('R8: a trade post sells its commodities 1:1 and does not end the turn', () => {
     const base = toActionPhase()
     expect(tradePostOptions(base, 0)).toEqual([])                   // no planet next to a post
     const s = withPlanetOwner(base, 'bereg', 'bereg', 0)
@@ -87,8 +101,10 @@ describe('R6/R8 component actions', () => {
     expect(sell(withPlayer(s, 0, { passed: true }), 'east', 1).ok).toBe(false)
   })
   it('R8: the trade post is still open after the action is spent, but never during one', () => {
-    // seat 0 takes Sakulag, so the west post is linked; the tactical action then ends without passing the turn
-    const s = withPlanetOwner(toActionPhase(), 'sakulag', 'sakulag', 0)
+    // seat 0 takes Sakulag, so the west post is linked; the tactical action then ends without passing the turn.
+    // The Dromm refit needs ships in Sakulag or Starpoint and seat 0 has none, so the sale is the only free
+    // move the west post offers here.
+    const s = withPosts(withPlanetOwner(toActionPhase(), 'sakulag', 'sakulag', 0), 'dromm', 'kesh')
     const running: GameState = deepFreeze({ ...s, tactical: { systemId: 'bereg', step: 'done' } })
     expect(sell(running, 'west', 2).ok).toBe(false)                 // R8: not while a tactical action runs
     const spent = value(applyMove(running, { type: 'endTactical' }, 0))

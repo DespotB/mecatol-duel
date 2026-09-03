@@ -1,3 +1,4 @@
+import type { PostId } from '../data/posts'
 import { unitStats } from '../data/units'
 import { assignmentComplete, assignmentTargets } from './combat'
 import { capacity, cheapestPlanets, fleetPoolLimit, nonFighterShips, productionCost } from './economy'
@@ -51,6 +52,11 @@ export function withUnits(state: GameState, systemId: string, owner: Owner, type
     ...state, players, nextUnitId: nextId,
     systems: { ...state.systems, [systemId]: { ...sys, space: planetId ? sys.space : [...sys.space, ...made], planets } },
   })
+}
+
+/** R8: forces the pair of trade posts in play, so a test does not depend on what the seed happened to roll. */
+export function withPosts(state: GameState, west: PostId, east: PostId): GameState {
+  return deepFreeze({ ...state, posts: { west, east }, postAbilityUsed: { west: false, east: false } })
 }
 
 export function withTechs(state: GameState, seat: Seat, techs: string[]): GameState {
