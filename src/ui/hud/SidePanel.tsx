@@ -1,7 +1,8 @@
 import { FACTIONS } from '../../data/factions'
 import { techDef } from '../../data/techs'
 import { fleetPoolLimit, readyResources, unitsOf } from '../../engine'
-import { BADGE, MISC, spriteUrl, tokenUrl } from '../art'
+import { useState } from 'react'
+import { BADGE, MISC, spriteUrl, tokenUrl, unitCardUrl } from '../art'
 import { TechIcon } from '../TechIcon'
 import { ownedPlanets, readyInfluence, unitLabel } from '../format'
 import { PANEL_SCALE, spriteSize } from '../sprites'
@@ -11,6 +12,9 @@ const POOLS = ['tactic', 'fleet', 'strategy'] as const
 const FORCE_ORDER: UnitType[] = ['flagship', 'warsun', 'dreadnought', 'carrier', 'cruiser', 'destroyer', 'fighter', 'infantry', 'pds', 'spacedock']
 
 export function SidePanel({ state, seat }: { state: GameState; seat: Seat }) {
+  // hovering a force opens its reference card next to the column; the column itself does not scroll, so the
+  // card is rendered here rather than inside the scrolling content, where it would be clipped away
+  const [shown, setShown] = useState<UnitType | null>(null)
   const player = state.players[seat]
   const planets = ownedPlanets(state, seat)
   const counts = new Map<UnitType, number>()
@@ -82,7 +86,9 @@ export function SidePanel({ state, seat }: { state: GameState; seat: Seat }) {
             {FORCE_ORDER.filter(type => counts.has(type)).map(type => {
               const size = spriteSize(type, PANEL_SCALE)
               return (
-                <div className={`fc${type === 'dreadnought' ? ' wide' : ''}`} key={type} data-testid={`forces-${seat}-${type}`}>
+                <div className={`fc${type === 'dreadnought' ? ' wide' : ''}`} key={type} data-testid={`forces-${seat}-${type}`}
+                  onMouseEnter={() => setShown(type)} onMouseLeave={() => setShown(null)}
+                  onFocus={() => setShown(type)} onBlur={() => setShown(null)} tabIndex={0}>
                   <img src={spriteUrl(player.color, type)} alt="" width={size.width} height={size.height} />
                   <b>{counts.get(type)}</b>{' '}<span className="n">{unitLabel(type, player)}</span>
                 </div>
@@ -91,6 +97,11 @@ export function SidePanel({ state, seat }: { state: GameState; seat: Seat }) {
           </div>
         </div>
       </div>
+      {shown ? (
+        <div className="unitcard" data-testid={`unitcard-${seat}-${shown}`}>
+          <img src={unitCardUrl(shown, player.faction)} alt={unitLabel(shown, player)} />
+        </div>
+      ) : null}
     </div>
   )
 }
