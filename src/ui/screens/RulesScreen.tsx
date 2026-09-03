@@ -156,7 +156,7 @@ export function RulesScreen() {
             {POST_IDS.map(id => {
               const post = POSTS[id]
               return (
-                <div className="post" key={id}>
+                <div className="postrow" key={id}>
                   <img className="art" src={post.art} alt={post.name} />
                   <div className="body">
                     <div className="name">{post.name}</div>
