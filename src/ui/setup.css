@@ -121,6 +121,8 @@
 /* the games this browser holds: one row each, newest first */
 .lobbyui .saved{margin-top:30px}
 .lobbyui .saved .panel{padding:22px 22px 14px;display:flex;flex-direction:column}
+/* three and a half rows, then the list scrolls: the page keeps its height however many games are saved */
+.lobbyui .glist{max-height:182px;overflow-y:auto;overscroll-behavior:contain}
 .lobbyui .gamerow{display:flex;align-items:center;gap:16px;padding:11px 2px;border-top:1px solid rgba(201,162,77,.22)}
 .lobbyui .gamerow:first-child{border-top:0}
 .lobbyui .gcode{flex:none;width:104px;font:600 15px/1 var(--hud);letter-spacing:.22em;color:var(--gold-hi)}
