@@ -145,6 +145,8 @@ describe('the setup screen', () => {
 
     fireEvent.click(screen.getByTestId('btn-resume-AAA222'))
     expect(window.location.hash).toBe('#/g/AAA222')
+    // this one was saved before the browser claimed a seat, so the game asks once how to play it
+    fireEvent.click(screen.getByTestId('btn-mode-hotseat'))
     expect(screen.getByTestId('board-screen')).toBeTruthy()
     expect(screen.getByTestId('player-0').textContent).toContain('Despot')
   })

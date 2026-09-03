@@ -2,7 +2,9 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
+import { toActionPhase } from '../engine/testUtils'
 import App from './App'
+import { playerId, readClaim, saveGame, writeClaim } from './persist'
 import { navigate } from './route'
 
 function startGame(north: string, south: string): string {
@@ -70,10 +72,85 @@ describe('a game code in the URL', () => {
     expect(screen.getByTestId('board-screen')).toBeTruthy()
   })
 
+  it('never asks the host of a game started from the lobby how they want to play it', () => {
+    window.location.hash = '#/?seed=7'
+    render(<App ticking={false} />)
+    const url = startGame('Despot', 'Kael')
+    expect(screen.queryByTestId('mode-question')).toBeNull()
+    expect(screen.getByTestId('board-screen')).toBeTruthy()
+    expect(readClaim(url.replace('#/g/', ''), playerId())?.seats).toEqual([0, 1])
+  })
+
   it('sends #/play to the lobby when this browser holds no game', () => {
     window.location.hash = '#/play'
     render(<App ticking={false} />)
     expect(screen.getByTestId('setup-screen')).toBeTruthy()
     expect(window.location.hash).toBe('#/')
+  })
+})
+
+describe('a game this browser has no claim for', () => {
+  /** A saved game with no claim: what an older save, or a link opened for the first time, looks like. */
+  function saved(code: string): void {
+    saveGame({ code, seed: 7, minutes: 15, state: toActionPhase(), history: [], clockMs: [900000, 900000], handoff: null })
+  }
+
+  it('asks how to play it before it shows the board', () => {
+    saved('MODE22')
+    window.location.hash = '#/g/MODE22'
+    render(<App ticking={false} />)
+    expect(screen.getByTestId('mode-question')).toBeTruthy()
+    expect(screen.queryByTestId('board-screen')).toBeNull()
+    fireEvent.click(screen.getByTestId('btn-mode-hotseat'))
+    expect(screen.getByTestId('board-screen')).toBeTruthy()
+    expect(readClaim('MODE22', playerId())?.seats).toEqual([0, 1])
+    expect(screen.getByTestId('hint')).toBeTruthy()
+  })
+
+  it('takes one seat and locks the board to it', () => {
+    saved('SEAT22')
+    window.location.hash = '#/g/SEAT22'
+    render(<App ticking={false} />)
+    fireEvent.click(screen.getByTestId('btn-take-seat-1'))
+    expect(screen.getByTestId('board-screen')).toBeTruthy()
+    expect(readClaim('SEAT22', playerId())?.seats).toEqual([1])
+    expect(screen.getByTestId('turn-line').textContent).toContain('A is to act')
+    expect(screen.getByTestId('btn-tactical').hasAttribute('disabled')).toBe(true)
+  })
+
+  it('offers only the seat the other browser left, and asks again for another game', () => {
+    saved('HALF22')
+    writeClaim('HALF22', { seats: [0], playerId: 'somebody-else' })
+    window.location.hash = '#/g/HALF22'
+    render(<App ticking={false} />)
+    expect(screen.getByTestId('btn-take-seat-0').hasAttribute('disabled')).toBe(true)
+    expect(screen.getByTestId('btn-take-seat-1').hasAttribute('disabled')).toBe(false)
+    fireEvent.click(screen.getByTestId('btn-take-seat-1'))
+    expect(screen.getByTestId('board-screen')).toBeTruthy()
+
+    // a second game this browser has no claim for asks its own question
+    saved('OTHR22')
+    act(() => { navigate('#/g/OTHR22') })
+    expect(screen.getByTestId('mode-question')).toBeTruthy()
+  })
+
+  it('leaves a visitor to a game two browsers hold watching the board', () => {
+    saved('FULL22')
+    writeClaim('FULL22', { seats: [0], playerId: 'first' })
+    writeClaim('FULL22', { seats: [1], playerId: 'second' })
+    window.location.hash = '#/g/FULL22'
+    render(<App ticking={false} />)
+    fireEvent.click(screen.getByTestId('btn-watch'))
+    expect(readClaim('FULL22', playerId())?.seats).toEqual([])
+    expect(screen.getByTestId('board-screen')).toBeTruthy()
+    expect(screen.getByTestId('turn-line').textContent).toContain('Watching')
+    expect(screen.getByTestId('btn-pass').hasAttribute('disabled')).toBe(true)
+  })
+
+  it('still says a game it does not hold at all is elsewhere', () => {
+    window.location.hash = '#/g/GONE22'
+    render(<App ticking={false} />)
+    expect(screen.getByTestId('unknown-game')).toBeTruthy()
+    expect(screen.queryByTestId('mode-question')).toBeNull()
   })
 })

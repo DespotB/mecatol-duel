@@ -1,14 +1,16 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { GameProvider, useGame } from './store'
-import { latestGameCode, loadGame } from './persist'
+import { latestGameCode, loadGame, openSeats, playerId, readClaim, readClaims, writeClaim } from './persist'
+import type { Claim } from './persist'
 import { codeFromRoute, gamePath, navigate, playRedirect, useHashRoute } from './route'
 import { BoardScreen } from './screens/BoardScreen'
 import { GameOverScreen } from './screens/GameOverScreen'
+import { ModeScreen } from './screens/ModeScreen'
 import { RulesScreen } from './screens/RulesScreen'
 import { SetupScreen } from './screens/SetupScreen'
 import { UnknownGameScreen } from './screens/UnknownGameScreen'
 import type { GameConfig } from './store'
-import type { Move, StrategyCardId } from '../engine/types'
+import type { Move, Seat, StrategyCardId } from '../engine/types'
 import { ModelStyleProvider } from './modelStyle'
 import { MusicProvider } from './music'
 
@@ -29,6 +31,8 @@ function useDemoBootstrap() {
     if (session || typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
     if (params.get('demo') !== '1') return
+    // a demo is a hot-seat game, so it answers the mode question for itself and lands on the board
+    writeClaim(DEMO_CODE, { seats: [0, 1], playerId: playerId() })
     const panel = params.get('panel')
     // `&panel=handoff` / `&panel=log` are manual/visual QA hooks: they resume straight into a state
     // that already shows the overlay or has log entries, so a headless screenshot needs no clicks.
@@ -107,19 +111,42 @@ function useDemoScript() {
  * One saved game, addressed by its code. The store may already hold it (it was just started, or the
  * player came from the lobby); otherwise it is read from this browser's storage on the spot. The read is
  * synchronous, so the "not on this device" panel is only ever shown for a game that really is absent.
+ *
+ * Before the board, the claim: a game this browser has no claim for asks how it wants to play this one,
+ * and the answer is written under the code and never asked again.
  */
 function GameRoute({ code }: { code: string }) {
   const { session, resume } = useGame()
   const open = session !== null && session.code === code
   const stored = useMemo(() => open ? null : loadGame(code), [open, code])
+  const [claim, setClaim] = useState<Claim | null>(() => readClaim(code, playerId()))
+  // a different game is a different question, so the claim is re-read whenever the address changes
+  useEffect(() => { setClaim(readClaim(code, playerId())) }, [code])
+  const held = claim !== null
   useEffect(() => {
-    if (stored) resume(stored)
-  }, [stored, resume])
-  if (session !== null && session.code === code) {
+    if (held && stored) resume(stored)
+  }, [held, stored, resume])
+  const answer = useCallback((seats: Seat[]) => {
+    const made: Claim = { seats, playerId: playerId() }
+    writeClaim(code, made)
+    setClaim(made)
+  }, [code])
+  const game = open && session !== null ? session : stored
+  // a game that is on no device here at all: the claim question would have nothing to ask about
+  if (game === null) return <UnknownGameScreen code={code} />
+  if (!held) {
+    return (
+      <ModeScreen
+        code={code} names={[game.state.players[0].name, game.state.players[1].name]}
+        free={openSeats(readClaims(code), playerId())} onClaim={answer}
+      />
+    )
+  }
+  if (open && session !== null) {
     return session.state.winner !== null ? <GameOverScreen /> : <BoardScreen />
   }
   // one frame while the store adopts the game the line above just read
-  return stored ? null : <UnknownGameScreen code={code} />
+  return null
 }
 
 function Screens() {
