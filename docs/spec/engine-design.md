@@ -86,7 +86,7 @@ export interface GameState {
   winner: Seat | null
   log: LogEntry[]
 }
-export type LogEntry = { t: 'move'; seat: Seat | null; move: Move } | { t: 'roll'; owner: Owner; rolls: DieRoll[]; context: string } | { t: 'info'; text: string }
+export type LogEntry = { t: 'move'; seat: Seat | null; move: Move; seed: number } | { t: 'roll'; owner: Owner; rolls: DieRoll[]; context: string } | { t: 'info'; text: string }
 ```
 
 ## Moves (`src/engine/moves.ts`)

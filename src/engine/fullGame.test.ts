@@ -179,4 +179,18 @@ describe('R3.1 to R3.3 full game', () => {
     }
     expect(byPoints + byRound6).toBe(10)
   })
+  it('the log replays: the logged moves and their logged seeds rebuild the final state', () => {
+    for (const seed of [1, 13, 89]) {
+      const { state } = playGame(seed)
+      let replayed = createGame(DUEL_CONFIG, seed)
+      // the log carries the seed of every move, so a replay needs nothing the engine did not record
+      for (const entry of state.log) {
+        if (entry.t !== 'move') continue
+        const r = applyMove(replayed, entry.move, entry.seed)
+        if (!r.ok) throw new Error(`replay rejected ${entry.move.type}: ${r.error}`)
+        replayed = r.value
+      }
+      expect(replayed).toEqual(state)
+    }
+  })
 })

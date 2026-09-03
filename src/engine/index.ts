@@ -13,7 +13,7 @@ export function applyMove(state: GameState, move: Move, seed: number): Result<Ga
   if (state.winner !== null) return { ok: false, error: 'game over' }
   // the move is logged before it is dispatched, so it always precedes the dice rolls it produced; a rejected
   // move returns the error and the caller keeps its untouched state, log entry included
-  const logged: GameState = { ...state, log: [...state.log, { t: 'move', seat: state.active, move }] }
+  const logged: GameState = { ...state, log: [...state.log, { t: 'move', seat: state.active, move, seed }] }
   try {
     switch (move.type) {
       case 'pickStrategyCard': return pickStrategyCard(logged, move.card)
