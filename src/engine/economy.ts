@@ -28,6 +28,9 @@ export function exhaustPlanets(state: GameState, seat: Seat, planets: string[]):
 
 export function payCost(state: GameState, seat: Seat, cost: number, planets: string[], tradeGoods: number): Result<GameState> {
   const player = state.players[seat]
+  // the count comes straight out of a move, so it is checked for shape before it is compared: `NaN` passes
+  // every `<` and `>`, and a numeric string turns the addition below into string concatenation
+  if (!Number.isInteger(tradeGoods)) return { ok: false, error: 'the trade good count must be a whole number' }
   if (tradeGoods < 0 || tradeGoods > player.tradeGoods) return { ok: false, error: 'not enough trade goods' }
   const spent = exhaustPlanets(state, seat, planets)
   if (!spent.ok) return spent

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { capacity, fleetPoolLimit, nonFighterShips, payCost, productionCost, productionLimit, readyResources } from './economy'
+import { applyMove } from './index'
 import { createGame } from './setup'
-import type { GameConfig } from './types'
+import { deepFreeze, toActionPhase, withCards, withPlanetOwner, withPlayer, withTactical } from './testUtils'
+import type { GameConfig, GameState, Result } from './types'
 
 const config: GameConfig = { players: [{ faction: 'l1z1x', color: 'blue', name: 'A' }, { faction: 'letnev', color: 'red', name: 'B' }], speaker: 0 }
 
@@ -58,4 +60,53 @@ describe('R4.4 economy helpers', () => {
   it('payCost fails for an unknown planet id', () => {
     expect(payCost(g, 0, 1, ['not-a-planet'], 0).ok).toBe(false)
   })
+})
+
+// a move carries its trade good count from outside the engine. `NaN` passes every `<` and `>` comparison and a
+// numeric string turns the payment sums into string concatenation, so both must be rejected on shape.
+describe('a caller-supplied trade good count must be a non-negative integer', () => {
+  const BAD: [string, number][] = [['NaN', NaN], ["the string '1'", '1' as unknown as number]]
+  const value = (r: Result<GameState>): GameState => {
+    if (!r.ok) throw new Error(r.error)
+    return r.value
+  }
+  /** The emergency shipyard is only legal without a space dock, so the seat's docks come off the board first. */
+  const withoutDocks = (state: GameState, seat: 0 | 1): GameState => deepFreeze({
+    ...state,
+    systems: Object.fromEntries(Object.entries(state.systems).map(([id, sys]) => [id, {
+      ...sys, planets: sys.planets.map(p => ({ ...p, structures: p.structures.filter(u => !(u.type === 'spacedock' && u.owner === seat)) })),
+    }])),
+  })
+
+  it('payCost rejects them before it compares', () => {
+    const fresh = createGame(config, 1)
+    for (const [, bad] of BAD) expect(payCost(fresh, 0, 1, ['000'], bad).ok).toBe(false)
+    expect(payCost(fresh, 0, 1, ['000'], 1.5).ok).toBe(false)
+    expect(payCost(fresh, 0, 1, ['000'], 0).ok).toBe(true)
+  })
+
+  for (const [label, bad] of BAD) {
+    it(`R4.4: produce rejects ${label} as trade goods`, () => {
+      const s = withTactical(toActionPhase(), { systemId: 'home-n', step: 'production' })
+      expect(applyMove(s, { type: 'produce', units: { infantry: 2 }, planets: [], tradeGoods: bad }, 0).ok).toBe(false)
+    })
+    it(`R6: the emergency shipyard rejects ${label} as trade goods`, () => {
+      const s = withoutDocks(toActionPhase(), 0)
+      expect(applyMove(s, { type: 'shipyard', planetId: '000', planets: [], tradeGoods: bad }, 0).ok).toBe(false)
+    })
+    it(`R5/R6: the Technology primary and secondary reject ${label} as trade goods`, () => {
+      const s = withPlayer(withCards(withCards(toActionPhase(), 1, []), 0, ['technology']), 0, { tradeGoods: 1 })
+      const primary = { techId: 'antimass_deflectors', secondTechId: 'gravity_drive', planets: [], tradeGoods: bad }
+      expect(applyMove(s, { type: 'strategic', card: 'technology', params: primary }, 0).ok).toBe(false)
+      const played = value(applyMove(s, { type: 'strategic', card: 'technology' }, 0))
+      const answer = { techId: 'sarween_tools', planets: [], tradeGoods: bad }
+      expect(applyMove(played, { type: 'secondary', card: 'technology', accept: true, params: answer }, 0).ok).toBe(false)
+    })
+    it(`R6: the Leadership primary rejects ${label} as trade goods`, () => {
+      let s = withCards(withCards(toActionPhase(), 1, []), 0, ['leadership'])
+      s = withPlanetOwner(s, 'bereg', 'lirta-iv', 0)      // 3 influence, so a string count would concatenate to 31
+      s = withPlayer(s, 0, { tradeGoods: 1 })
+      expect(applyMove(s, { type: 'strategic', card: 'leadership', params: { planets: ['lirta-iv'], tradeGoods: bad } }, 0).ok).toBe(false)
+    })
+  }
 })

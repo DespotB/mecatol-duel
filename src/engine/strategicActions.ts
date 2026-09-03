@@ -83,9 +83,12 @@ function addTradeGoods(state: GameState, seat: Seat, n: number): GameState {
  * as influence too, spent 1 for 1 alongside planets.
  */
 function leadership(state: GameState, seat: Seat, params: StrategicParams, base: number): Result<GameState> {
+  const tradeGoods = params.tradeGoods ?? 0
+  // same shape check as `payCost`: `NaN` slips through both comparisons, a numeric string makes the influence
+  // sum below a concatenation ("3" + "1" = 31 influence), so both are rejected before anything is compared
+  if (!Number.isInteger(tradeGoods)) return { ok: false, error: 'R6: the trade good count must be a whole number' }
   const spent = exhaustPlanets(state, seat, params.planets ?? [])
   if (!spent.ok) return spent
-  const tradeGoods = params.tradeGoods ?? 0
   const player = state.players[seat]
   if (tradeGoods < 0 || tradeGoods > player.tradeGoods) return { ok: false, error: 'R6: not enough trade goods' }
   const players = [...spent.value.state.players] as GameState['players']
