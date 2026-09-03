@@ -1,6 +1,9 @@
+import { unitStats } from '../data/units'
+import { capacity, cheapestPlanets, fleetPoolLimit, nonFighterShips, productionCost } from './economy'
 import { applyMove } from './index'
+import { movableShips } from './movement'
 import { createGame } from './setup'
-import type { GameConfig, GameState, Owner, Player, Seat, StrategyCardId, TacticalContext, Unit, UnitType } from './types'
+import type { GameConfig, GameState, Move, Owner, Player, Seat, StrategyCardId, TacticalContext, Unit, UnitType } from './types'
 
 export function deepFreeze<T>(value: T): T {
   if (value !== null && (typeof value === 'object' || Array.isArray(value)) && !Object.isFrozen(value)) {
@@ -117,4 +120,49 @@ export function toStatusPhase(state: GameState): GameState {
 
 export function hitsIn(state: GameState, context: string): number {
   return state.log.flatMap(e => e.t === 'roll' && e.context === context ? e.rolls : []).filter(r => r.hit).length
+}
+
+export function shuffle<T>(list: T[], rng: () => number): T[] {
+  const out = [...list]
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1))
+    const tmp = out[i]
+    out[i] = out[j]
+    out[j] = tmp
+  }
+  return out
+}
+
+/**
+ * Turns a template move into a concrete one; falls back to the closing move of the step. Only `moveShips`
+ * and `produce` need this, every other enumerated move already carries usable parameters.
+ */
+export function fillTemplate(state: GameState, move: Move, rng: () => number): Move {
+  const tac = state.tactical
+  const seat = state.active
+  const player = state.players[seat]
+  const stats = { faction: player.faction, techs: player.techs }
+  if (move.type === 'moveShips') {
+    if (!tac) return { type: 'endMovement' }
+    const dest = state.systems[tac.systemId]
+    const mineThere = dest.space.filter(u => u.owner === seat)
+    const room = fleetPoolLimit(player) - nonFighterShips(dest.space, seat)
+    for (const option of shuffle(movableShips(state, seat), rng)) {
+      const ship = state.systems[option.from].space.find(u => u.id === option.unitId)
+      if (!ship || ship.type === 'fighter' || room < 1) continue
+      const free = capacity([...mineThere, ship], seat, stats) - mineThere.filter(u => u.type === 'infantry' || u.type === 'fighter').length
+      const slots = Math.max(0, Math.min(free, unitStats(ship.type, stats).capacity))
+      const cargo = state.systems[option.from].planets.flatMap(p => p.ground.filter(u => u.owner === seat)).slice(0, slots).map(u => u.id)
+      return { type: 'moveShips', moves: [{ unitId: option.unitId, from: option.from, carrying: cargo }] }
+    }
+    return { type: 'endMovement' }
+  }
+  if (move.type === 'produce') {
+    if (player.reinforcements.infantry < 1) return { type: 'endTactical' }
+    const cost = productionCost({ infantry: 1 }, stats, player.techs.includes('sarween_tools'))
+    const planets = cheapestPlanets(state, seat, cost)
+    if (!planets) return { type: 'endTactical' }
+    return { type: 'produce', units: { infantry: 1 }, planets, tradeGoods: 0 }
+  }
+  return move
 }
