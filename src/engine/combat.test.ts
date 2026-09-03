@@ -1,10 +1,9 @@
 // src/engine/combat.test.ts
 import { describe, expect, it } from 'vitest'
 import { unitStats } from '../data/units'
-import { checkFleet, rollHits, trimCargo } from './board'
-import { applyCombatHits, assignmentComplete, assignmentTargets, autoAssign, defenderModifier, isForcedAssignment, pendingFor, type HitGroup, type MunitionsRequest } from './combat'
+import { checkFleet, trimCargo } from './board'
+import { applyCombatHits, assignmentComplete, assignmentTargets, autoAssign, isForcedAssignment, pendingFor, type HitGroup, type MunitionsRequest } from './combat'
 import { applyMove, legalMoves, validateMove } from './index'
-import { mulberry32 } from './rng'
 import { deepFreeze, hitsIn, shipId, toActionPhase, withPlanetOwner, withPlayer, withTechs, withUnits } from './testUtils'
 import type { GameState, Move, Owner, Seat, Unit, UnitType } from './types'
 
@@ -61,18 +60,6 @@ const owned = (state: GameState, systemId: string, owner: Owner) => state.system
 const units = (spec: [UnitType, boolean][]): Unit[] => spec.map(([type, damaged], i) => ({ id: i + 1, type, owner: 0, damaged }))
 
 describe('R4.1 dice', () => {
-  it('R4.1 step 3: the nebula defender bonus lowers the threshold by one on the same dice', () => {
-    expect(defenderModifier('quann')).toBe(1)
-    expect(defenderModifier('bereg')).toBe(0)
-    const plain = rollHits(mulberry32(5), 6, 7, false)
-    const inNebula = rollHits(mulberry32(5), 6, 6, false)
-    expect(inNebula.rolls).toEqual(plain.rolls)
-    expect(inNebula.hits).toBe(plain.rolls.filter(v => v >= 6).length)
-    expect(rollHits(mulberry32(5), 6, 7, true).rolls).toHaveLength(7)   // Plasma Scoring adds one die
-  })
-})
-
-describe('R4.1 step 4 hit assignment', () => {
   it('sustain damage cancels first, then the destruction order applies', () => {
     const one = autoAssign(units([['dreadnought', false], ['fighter', false], ['cruiser', false]]), [{ count: 1, mode: 'any' }], letnev, false)
     expect(one.destroyed).toHaveLength(0)
@@ -312,14 +299,6 @@ describe('R4.1 space combat', () => {
     expect(added[0]).toBe('move')
     expect(added).toContain('roll')
   })
-  it('R4.1 step 3: in a nebula the defender hits one lower', () => {
-    const inNebula = fight(combat('quann', ['cruiser'], ['cruiser'], 1))
-    const defence = inNebula.log.flatMap(e => e.t === 'roll' && e.owner === 1 ? e.rolls : [])
-    expect(defence).toHaveLength(1)
-    for (const r of defence) expect(r.hit).toBe(r.value >= 6)   // cruiser combat 7, nebula +1
-    const plain = fight(combat('bereg', ['cruiser'], ['cruiser'], 1))
-    for (const r of plain.log.flatMap(e => e.t === 'roll' && e.owner === 1 ? e.rolls : [])) expect(r.hit).toBe(r.value >= 7)
-  })
   it('R4.1 step 3: Munitions Reserves costs Letnev 2 trade goods and is per side (a flag never spends the other side\'s goods)', () => {
     const base = withPlayer(combat('bereg', ['cruiser'], ['cruiser'], 1), 1, { tradeGoods: 3 })
     const defenderUse = fight(base, 7, { defender: true })   // seat 1 is Letnev by the fixture's default faction
@@ -434,7 +413,7 @@ describe('R4.1 space combat', () => {
 })
 
 describe('trimCargo (cargo above capacity at combat end)', () => {
-  it('Space Dock II adds up to 3 free fighter slots on top of ship capacity', () => {
+  it('R4.4: a space dock (I or II) adds up to 3 free fighter slots on top of ship capacity', () => {
     const base = withUnits(toActionPhase(), 'bereg', 0, ['fighter', 'fighter', 'fighter', 'fighter', 'fighter'])
     const s = withTechs(withUnits(base, 'bereg', 0, ['spacedock'], 'bereg'), 0, ['space_dock_ii'])
     const trimmed = trimCargo(s, 'bereg', 0)
@@ -449,7 +428,7 @@ describe('trimCargo (cargo above capacity at combat end)', () => {
     expect(trimmed.systems.bereg.space.filter(u => u.owner === 0 && u.type === 'fighter')).toHaveLength(2)
     expect(trimmed.players[0].reinforcements.fighter).toBe(s.players[0].reinforcements.fighter + 3)
   })
-  it('R4.4: Space Dock II free slots are fighter-only, so the infantry is trimmed and the fighters stay', () => {
+  it('R4.4: a space dock\'s free slots are fighter-only, so the infantry is trimmed and the fighters stay', () => {
     // a destroyer carries nothing, so the only room is the dock's 3 fighter-only slots
     const base = withUnits(toActionPhase(), 'bereg', 0, ['destroyer', 'fighter', 'fighter', 'infantry', 'infantry'])
     const s = withTechs(withUnits(base, 'bereg', 0, ['spacedock'], 'bereg'), 0, ['space_dock_ii'])

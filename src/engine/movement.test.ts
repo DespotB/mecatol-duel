@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { pendingFor } from './combat'
 import { applyMove, legalMoves } from './index'
+import { movementObstacle, shipsThatCanReach } from './movement'
 import { deepFreeze, groundIds, hitsIn, shipId, toActionPhase, withPlanetOwner, withTechs, withUnits } from './testUtils'
 import type { GameState, Seat } from './types'
 
@@ -47,34 +48,26 @@ describe('R3.2 movement', () => {
     const smaller = activate(withUnits(base, 'bereg', 0, ['cruiser', 'fighter']), 0, 'bereg')
     expect(move(smaller, shipId(smaller, 'home-n', 'fighter'), 'home-n').ok).toBe(true)   // 1 + 2 = 3
   })
-  it('R3.2 step 2: fighters left behind by a departing carrier are trimmed to the origin\'s remaining capacity', () => {
-    // home-n starts with an L1Z1X Super-Dreadnought (capacity 2) and 3 fighters; the carrier moving away alone
-    // leaves only capacity 2 behind, so 1 of the 3 stranded fighters must be destroyed and returned to reinforcements.
+  it('R3.2 step 2: fighters left behind by a departing carrier stay if the origin\'s dock covers them', () => {
+    // home-n starts with an L1Z1X Super-Dreadnought (capacity 2), its own space dock and 3 fighters; the
+    // carrier moving away alone leaves only capacity 2 behind, but the dock's 3 free fighter slots (R4.4,
+    // Space Dock I or II) cover all 3 stranded fighters, so none are destroyed.
     const s = activate(toActionPhase(), 0, 'bereg')
     const before = s.players[0].reinforcements.fighter
     const r = move(s, shipId(s, 'home-n', 'carrier'), 'home-n')
     if (!r.ok) throw new Error(r.error)
-    expect(r.value.systems['home-n'].space.filter(u => u.owner === 0 && u.type === 'fighter')).toHaveLength(2)
+    expect(r.value.systems['home-n'].space.filter(u => u.owner === 0 && u.type === 'fighter')).toHaveLength(3)
+    expect(r.value.players[0].reinforcements.fighter).toBe(before)
+  })
+  it('R3.2 step 2: fighters left behind by a departing carrier are trimmed once they exceed the dock\'s cover too', () => {
+    // 3 more fighters on top of the 3 that start at home-n: 6 total stranded once the carrier leaves, but the
+    // remaining dreadnought's capacity (2) plus the dock's 3 free slots only cover 5, so 1 is destroyed.
+    const s = activate(withUnits(toActionPhase(), 'home-n', 0, ['fighter', 'fighter', 'fighter']), 0, 'bereg')
+    const before = s.players[0].reinforcements.fighter
+    const r = move(s, shipId(s, 'home-n', 'carrier'), 'home-n')
+    if (!r.ok) throw new Error(r.error)
+    expect(r.value.systems['home-n'].space.filter(u => u.owner === 0 && u.type === 'fighter')).toHaveLength(5)
     expect(r.value.players[0].reinforcements.fighter).toBe(before + 1)
-  })
-  it('R1 anomaly: the asteroid field can only be entered with Antimass Deflectors', () => {
-    const north = activate(withUnits(toActionPhase(), 'home-n', 0, ['destroyer']), 0, 'sakulag')
-    expect(move(north, shipId(north, 'home-n', 'destroyer'), 'home-n').ok).toBe(false)
-    const armed = activate(withUnits(withTechs(toActionPhase(), 0, ['antimass_deflectors']), 'home-n', 0, ['destroyer']), 0, 'sakulag')
-    expect(move(armed, shipId(armed, 'home-n', 'destroyer'), 'home-n').ok).toBe(true)
-    const letnev = activate(toActionPhase(), 1, 'sakulag')   // Letnev starts with Antimass Deflectors
-    expect(move(letnev, shipId(letnev, 'home-s', 'destroyer', 1), 'home-s').ok).toBe(true)
-  })
-  it('R1 anomaly: a ship must end its movement in the nebula and has move 1 when it starts there', () => {
-    const intoNebula = activate(toActionPhase(), 1, 'quann')
-    expect(move(intoNebula, shipId(intoNebula, 'home-s', 'destroyer', 1), 'home-s').ok).toBe(true)
-    const blocked = activate(withUnits(toActionPhase(), 'starpoint', 0, ['destroyer']), 1, 'bereg')
-    expect(move(blocked, shipId(blocked, 'home-s', 'destroyer', 1), 'home-s').ok).toBe(false)   // the only route left crosses the nebula
-    const inNebula = withUnits(toActionPhase(), 'quann', 1, ['cruiser'])
-    const far = activate(inNebula, 1, 'starpoint')
-    expect(move(far, shipId(far, 'quann', 'cruiser', 1), 'quann').ok).toBe(false)   // two steps with move 1
-    const near = activate(inNebula, 1, 'home-s')
-    expect(move(near, shipId(near, 'quann', 'cruiser', 1), 'quann').ok).toBe(true)
   })
   it('R1 wormholes: the alpha wormhole makes bereg and starpoint one step apart', () => {
     const s = activate(withUnits(toActionPhase(), 'bereg', 0, ['carrier']), 0, 'starpoint')
@@ -83,7 +76,9 @@ describe('R3.2 movement', () => {
   it('R3.2 step 2: ships may not move through a system that contains enemy or guardian ships', () => {
     const open = activate(withUnits(toActionPhase(), 'home-n', 0, ['destroyer']), 0, 'quann')
     expect(move(open, shipId(open, 'home-n', 'destroyer'), 'home-n').ok).toBe(true)   // via bereg
-    const blocked = activate(withUnits(withUnits(toActionPhase(), 'home-n', 0, ['destroyer']), 'bereg', 1, ['destroyer']), 0, 'quann')
+    // both two-step routes have to be closed: quann sits behind bereg, behind sakulag and behind the guardians
+    const fleets = withUnits(withUnits(withUnits(toActionPhase(), 'home-n', 0, ['destroyer']), 'bereg', 1, ['destroyer']), 'sakulag', 1, ['destroyer'])
+    const blocked = activate(fleets, 0, 'quann')
     expect(move(blocked, shipId(blocked, 'home-n', 'destroyer'), 'home-n').ok).toBe(false)
   })
   it('R3.2 step 2: ships in a system that contains your own command token cannot move', () => {
@@ -172,5 +167,28 @@ describe('R3.2 movement', () => {
     expect(after.value.systems['home-n'].space.filter(u => u.owner === 1)).toHaveLength(0)
     expect(after.value.players[1].reinforcements.carrier).toBe(before.carrier + 1)
     expect(after.value.players[1].reinforcements.infantry).toBe(before.infantry + 2)
+  })
+})
+
+describe('R3.2 reachability, so the interface can say why nothing moves', () => {
+  it('reports which ships could reach a system that is not activated yet', () => {
+    const s = toActionPhase()
+    expect(shipsThatCanReach(s, 0, 'mecatol').length).toBeGreaterThan(0)
+    expect(shipsThatCanReach(s, 0, 'sakulag').length).toBeGreaterThan(0)
+    expect(shipsThatCanReach(s, 0, 'starpoint')).toHaveLength(0)   // two systems away, every starting ship moves 1
+  })
+  it('names the range as the obstacle for a system two steps away', () => {
+    expect(movementObstacle(toActionPhase(), 0, 'starpoint')).toBe('range')
+  })
+  it('names the enemy fleet that blocks the only path', () => {
+    const s = withUnits(withTechs(toActionPhase(), 0, ['gravity_drive']), 'mecatol', 1, ['cruiser'])
+    expect(movementObstacle(s, 0, 'home-s')).toBe('blocked')
+  })
+  it('reports no obstacle for a system the ships can reach', () => {
+    expect(movementObstacle(toActionPhase(), 0, 'bereg')).toBeNull()
+  })
+  it('reports that there are no ships left to move when they all sit in the target', () => {
+    const s = toActionPhase()
+    expect(movementObstacle(s, 0, 'home-n')).toBe('none')
   })
 })

@@ -79,17 +79,16 @@ export function rollRevival(state: GameState, destroyed: Unit[], seed: number): 
   return next
 }
 
-/** R4.4: Space Dock II lets up to 3 fighters in the system ignore capacity. */
+/** R4.4: a space dock (I or II) lets up to 3 fighters in the system ignore capacity. */
 export function freeFighterSlots(state: GameState, seat: Seat, systemId: string): number {
-  if (!state.players[seat].techs.includes('space_dock_ii')) return 0
   return state.systems[systemId].planets.some(p => p.structures.some(u => u.type === 'spacedock' && u.owner === seat)) ? 3 : 0
 }
 
 /**
- * R4.4: how many carried fighters and infantry fit. Space Dock II's free slots are fighter-only, so fighters
- * claim them first; the ships' own capacity then carries the infantry, and whatever capacity is left over
- * carries the remaining fighters. The one allocation shared by `fleetExcess` and `trimCargo`, so a trimmed
- * fleet always passes `checkFleet`.
+ * R4.4: how many carried fighters and infantry fit. A space dock's (I or II) free slots are fighter-only, so
+ * fighters claim them first; the ships' own capacity then carries the infantry, and whatever capacity is left
+ * over carries the remaining fighters. The one allocation shared by `fleetExcess` and `trimCargo`, so a
+ * trimmed fleet always passes `checkFleet`.
  */
 function fitCargo(space: Unit[], owner: Owner, stats: StatsOwner, freeSlots: number): { fighters: number; infantry: number; keepFighters: number; keepInfantry: number } {
   const mine = space.filter(u => u.owner === owner)
@@ -157,9 +156,10 @@ export function maxFightersAllowed(state: GameState, seat: Seat, systemId: strin
 
 /**
  * Destroys carried infantry and fighters above the remaining capacity, when a combat ends or a retreat
- * resolves. Space Dock II's free fighter slots are fighter-only (`fitCargo`), so they never rescue infantry;
- * with Fighter II, fighters beyond capacity are kept up to the remaining fleet pool room (the excess counts
- * against the pool, matching `checkFleet`), the rest are destroyed and returned to reinforcements.
+ * resolves. A space dock's (I or II) free fighter slots are fighter-only (`fitCargo`), so they never rescue
+ * infantry; with Fighter II, fighters beyond capacity are kept up to the remaining fleet pool room (the
+ * excess counts against the pool, matching `checkFleet`), the rest are destroyed and returned to
+ * reinforcements.
  */
 export function trimCargo(state: GameState, systemId: string, owner: Owner): GameState {
   const sys = state.systems[systemId]

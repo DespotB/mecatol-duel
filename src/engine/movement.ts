@@ -1,4 +1,3 @@
-import { systemDef } from '../data/map'
 import { isShip, unitStats, type StatsOwner } from '../data/units'
 import { neighbours } from './adjacency'
 import { checkFleet, statsOwner, trimCargo } from './board'
@@ -7,19 +6,20 @@ import type { CombatState, GameState, Result, Seat, System, Unit } from './types
 
 export interface MoveSpec { unitId: number; from: string; carrying: number[] }
 
-function passable(state: GameState, seat: Seat, id: string, destination: boolean, antimass: boolean): boolean {
-  const def = systemDef(id)
-  if (def.anomaly === 'asteroid' && !antimass) return false                       // R1: asteroid field
-  if (!destination && def.anomaly === 'nebula') return false                      // R1: a ship entering a nebula must end there
-  if (destination) return true
+/** R1: the duel map carries no anomalies, so the only thing that stops a ship short is a fleet in the way. */
+function passable(state: GameState, seat: Seat, id: string, destination: boolean, ignoreFleets: boolean): boolean {
+  if (destination || ignoreFleets) return true
   return !state.systems[id].space.some(u => u.owner !== seat && isShip(u.type))   // R3.2: no moving through enemy or guardian ships
 }
 
-/** Shortest legal path length in steps, or null when the destination is out of reach. */
-export function pathLength(state: GameState, seat: Seat, from: string, to: string, moveValue: number): number | null {
+/**
+ * Shortest legal path length in steps, or null when the destination is out of reach. `ignoreFleets` drops
+ * the rule that a fleet in the way stops movement; only `movementObstacle` uses it, to tell a blocked path
+ * apart from one that was always too long.
+ */
+export function pathLength(state: GameState, seat: Seat, from: string, to: string, moveValue: number, ignoreFleets = false): number | null {
   if (from === to || moveValue < 1) return null
-  const antimass = state.players[seat].techs.includes('antimass_deflectors')
-  if (!passable(state, seat, to, true, antimass)) return null
+  if (!passable(state, seat, to, true, ignoreFleets)) return null
   const seen = new Set([from])
   let frontier = [from]
   for (let d = 1; d <= moveValue && frontier.length; d++) {
@@ -28,35 +28,64 @@ export function pathLength(state: GameState, seat: Seat, from: string, to: strin
       if (n === to) return d
       if (seen.has(n)) continue
       seen.add(n)
-      if (passable(state, seat, n, false, antimass)) next.push(n)
+      if (passable(state, seat, n, false, ignoreFleets)) next.push(n)
     }
     frontier = next
   }
   return null
 }
 
-function moveValueOf(state: GameState, seat: Seat, unit: Unit, from: string): number {
+function moveValueOf(state: GameState, seat: Seat, unit: Unit): number {
   const player = state.players[seat]
-  const stats = unitStats(unit.type, { faction: player.faction, techs: player.techs })
-  return systemDef(from).anomaly === 'nebula' ? Math.min(stats.move, 1) : stats.move
+  return unitStats(unit.type, { faction: player.faction, techs: player.techs }).move
+}
+
+/** Every ship of the seat that could reach `systemId`, whether or not that system is activated yet. */
+export function shipsThatCanReach(state: GameState, seat: Seat, systemId: string): { unitId: number; from: string }[] {
+  const bonus = state.players[seat].techs.includes('gravity_drive') ? 1 : 0
+  const out: { unitId: number; from: string }[] = []
+  for (const sys of Object.values(state.systems)) {
+    if (sys.id === systemId || sys.activatedBy.includes(seat)) continue
+    for (const u of sys.space) {
+      if (u.owner !== seat || !isShip(u.type)) continue
+      if (pathLength(state, seat, sys.id, systemId, moveValueOf(state, seat, u) + bonus) !== null) {
+        out.push({ unitId: u.id, from: sys.id })
+      }
+    }
+  }
+  return out
 }
 
 /** Every ship of the seat that could reach the active system this activation. */
 export function movableShips(state: GameState, seat: Seat): { unitId: number; from: string }[] {
   const tac = state.tactical
   if (!tac || tac.step !== 'movement') return []
+  return shipsThatCanReach(state, seat, tac.systemId)
+}
+
+/**
+ * Why no ship of the seat reaches `systemId`, so the interface can say it out loud instead of a bare
+ * "nothing can reach this system": a hostile fleet on the only path, plain range, or simply having no ship
+ * left to move. `null` means ships do reach the system.
+ */
+export type MovementObstacle = 'blocked' | 'range' | 'none'
+export function movementObstacle(state: GameState, seat: Seat, systemId: string): MovementObstacle | null {
+  if (shipsThatCanReach(state, seat, systemId).length > 0) return null
   const bonus = state.players[seat].techs.includes('gravity_drive') ? 1 : 0
-  const out: { unitId: number; from: string }[] = []
+  let anyShip = false
+  let blocked = false
   for (const sys of Object.values(state.systems)) {
-    if (sys.id === tac.systemId || sys.activatedBy.includes(seat)) continue
+    if (sys.id === systemId || sys.activatedBy.includes(seat)) continue
     for (const u of sys.space) {
       if (u.owner !== seat || !isShip(u.type)) continue
-      if (pathLength(state, seat, sys.id, tac.systemId, moveValueOf(state, seat, u, sys.id) + bonus) !== null) {
-        out.push({ unitId: u.id, from: sys.id })
-      }
+      anyShip = true
+      // the same search once more, but with hostile fleets ignored: a path that only appears then was blocked
+      const reach = moveValueOf(state, seat, u) + bonus
+      if (pathLength(state, seat, sys.id, systemId, reach, true) !== null) blocked = true
     }
   }
-  return out
+  if (!anyShip) return 'none'
+  return blocked ? 'blocked' : 'range'
 }
 
 export function moveShips(state: GameState, specs: MoveSpec[]): Result<GameState> {
@@ -75,7 +104,7 @@ export function moveShips(state: GameState, specs: MoveSpec[]): Result<GameState
     if (src.activatedBy.includes(seat)) return { ok: false, error: `R3.2: ships in ${spec.from} already carry your command token` }
     const ship = src.space.find(u => u.id === spec.unitId && u.owner === seat && isShip(u.type))
     if (!ship || taken.has(ship.id)) return { ok: false, error: `no movable ship ${spec.unitId} in ${spec.from}` }
-    const value = moveValueOf(state, seat, ship, spec.from)
+    const value = moveValueOf(state, seat, ship)
     if (value < 1) return { ok: false, error: `a ${ship.type} cannot move on its own` }
     let steps = pathLength(state, seat, spec.from, tac.systemId, value)
     if (steps === null && gravityDrive) {

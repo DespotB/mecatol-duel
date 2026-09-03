@@ -1,8 +1,12 @@
 import { useState } from 'react'
+import { FACTIONS } from '../../data/factions'
 import { PUBLIC_OBJECTIVES } from '../../data/objectives'
-import { CARD_NAME, ownedPlanets, planetLabel, systemLabel } from '../format'
+import { controlsMecatol } from '../../engine'
+import { BADGE, MISC, strategyCardUrl, techArtUrl, tokenUrl } from '../art'
+import { CARD_NAME, ownedPlanets, planetLabel, systemLabel, techLabel } from '../format'
 import { strategicVariants } from '../moveOptions'
 import { PayRow } from './PayRow'
+import { Rewards } from './Rewards'
 import { TechDrawer } from './TechDrawer'
 import { TokenSheet } from './TokenSheet'
 import { useGame } from '../store'
@@ -28,6 +32,7 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
   const state = session.state
   const seat = state.active
   const player = state.players[seat]
+  const opponent = state.players[seat === 0 ? 1 : 0]
   const variants = strategicVariants(legal, card)
   const systems = [...new Set(variants.flatMap(v => v.systemId ? [v.systemId] : []))]
   const techOptions = variants.flatMap(v => v.techId ? [v.techId] : [])
@@ -73,7 +78,10 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
 
         {card === 'leadership' ? (
           <>
-            <div className="sub">Three command tokens, and one more for every 3 influence you spend.</div>
+            <div className="sub">You get command tokens.</div>
+            <Rewards items={[
+              { icon: tokenUrl(player.faction, 'command'), alt: 'Command token', count: gained, label: 'Command tokens' },
+            ]} />
             <PayRow state={state} seat={seat} unit="influence" needed={0} planets={planets} onPlanets={ids => { setPlanets(ids); setTokens(null) }}
               tradeGoods={tradeGoods} onTradeGoods={n => { setTradeGoods(n); setTokens(null) }} />
             <TokenSheet current={player.tokens} gained={gained} value={sheet} onChange={setTokens} />
@@ -82,7 +90,11 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
 
         {card === 'diplomacy' ? (
           <>
-            <div className="sub">Your opponent places a command token in the chosen system. Then ready up to two of your planets.</div>
+            <div className="sub">Your opponent locks the chosen system. You ready up to two planets.</div>
+            <Rewards items={[
+              { icon: BADGE.influenceReady, alt: 'Ready planet', count: planets.length > 0 ? planets.length : 2, label: 'Ready planet' },
+              { icon: tokenUrl(opponent.faction, 'command'), alt: 'Opponent command token', count: 1, label: 'Opponent token' },
+            ]} />
             <div className="rowline">
               {systems.map(id => (
                 <button key={id} type="button" className={`pay${systemId === id ? ' on' : ''}`} data-testid={`system-pick-${id}`} onClick={() => setSystemId(id)}>
@@ -103,18 +115,27 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
         ) : null}
 
         {card === 'trade' ? (
-          <div className="rowline">
-            <span className="sub">Three trade goods and your commodities back.</span>
-            <label className="pay">
-              <input type="checkbox" data-testid="share-toggle" checked={share} onChange={e => setShare(e.target.checked)} />
-              Let {state.players[seat === 0 ? 1 : 0].name} replenish too
-            </label>
-          </div>
+          <>
+            <div className="sub">You get trade goods and your commodities back.</div>
+            <Rewards items={[
+              { icon: MISC.tradeGood, alt: 'Trade good', count: 3, label: 'Trade goods' },
+              { icon: MISC.commodity, alt: 'Commodity', count: Math.max(0, FACTIONS[player.faction].commodityValue - player.commodities), label: 'Commodities' },
+            ]} />
+            <div className="rowline">
+              <label className="pay">
+                <input type="checkbox" data-testid="share-toggle" checked={share} onChange={e => setShare(e.target.checked)} />
+                Let {opponent.name} replenish too
+              </label>
+            </div>
+          </>
         ) : null}
 
         {card === 'warfare' ? (
           <>
-            <div className="sub">Take one command token off the board, gain one, then rearrange your sheet.</div>
+            <div className="sub">Take one command token off the board and rearrange your sheet.</div>
+            <Rewards items={[
+              { icon: tokenUrl(player.faction, 'command'), alt: 'Command token', count: 1, label: 'Command token' },
+            ]} />
             <div className="rowline">
               {systems.map(id => (
                 <button key={id} type="button" className={`pay${systemId === id ? ' on' : ''}`} data-testid={`system-pick-${id}`}
@@ -130,13 +151,20 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
         {card === 'technology' ? (
           <>
             <div className="sub">Research one technology.</div>
+            <Rewards items={[
+              { icon: techId ? techArtUrl(techId) : strategyCardUrl('technology'), alt: techId ? techLabel(techId) : 'Technology', count: 1, label: techId ? techLabel(techId) : 'Technology' },
+            ]} />
             <TechDrawer state={state} seat={seat} allowed={techOptions} selected={techId} onSelect={setTechId} />
           </>
         ) : null}
 
         {card === 'imperial' ? (
           <>
-            <div className="sub">Score one fulfilled public objective, plus a victory point if you hold Mecatol Rex.</div>
+            <div className="sub">Score one fulfilled objective.</div>
+            <Rewards items={[
+              { icon: tokenUrl(player.faction, 'control'), alt: 'Victory point', count: 1, label: 'Victory point' },
+              ...(controlsMecatol(state, seat) ? [{ icon: tokenUrl(player.faction, 'control'), alt: 'Victory point, Mecatol Rex', count: 1, label: 'Mecatol Rex' }] : []),
+            ]} />
             <div className="rowline">
               {objectives.map(id => (
                 <button key={id} type="button" className={`pay${objectiveId === id ? ' on' : ''}`} data-testid={`objective-pick-${id}`} onClick={() => setObjectiveId(id)}>

@@ -37,14 +37,14 @@ describe('a scripted hot-seat game', () => {
     click('strategy-card-warfare')
     expect(text('round')).toBe('Round 1 of 6, action phase')
     expect(text('strategy-state-leadership')).toBe('Despot, ready')
-    expect(text('strategy-state-diplomacy')).toBe('+1 trade good')
+    expect(screen.getByTestId('strategy-state-diplomacy').getAttribute('aria-label')).toBe('+1 trade good')
     expect(text('turn-0')).toBe('Your turn')                       // Leadership is initiative 1
 
     // turn 1: R3.2 tactical action with movement and an invasion
     click('btn-tactical')
     click('tile-bereg')
     expect(text('tokens-0-tactic')).toBe('2')
-    fireEvent.click(screen.getByLabelText('Carrier I from [0.0.0]'))
+    fireEvent.click(screen.getByTestId('ship-home-n-carrier-plus'))
     for (let i = 0; i < 3; i++) click('cargo-home-n-fighter-plus')
     click('cargo-home-n-infantry-plus')
     click('btn-move-ships')
@@ -99,9 +99,13 @@ describe('a scripted hot-seat game', () => {
     click('btn-strategic-confirm')
     expect(text('tokens-0-tactic')).toBe('6')
     handoff()
-    expect(text('secondary-units')).toContain('1 Infantry I')
+    expect(text('secondary-units')).toContain('Produce at Arc Prime')
+    expect(screen.getByTestId('btn-secondary-accept').hasAttribute('disabled')).toBe(true)   // nothing chosen yet
+    click('step-infantry-plus')
+    click('step-infantry-plus')
+    click('pay-arc-prime')
     click('btn-secondary-accept')
-    expect(text('forces-1-infantry')).toBe('4 Infantry I')
+    expect(text('forces-1-infantry')).toBe('5 Infantry I')
     expect(text('tokens-1-strategy')).toBe('1')
     expect(text('turn-1')).toBe('Your turn')
 
@@ -141,7 +145,7 @@ describe('a scripted hot-seat game', () => {
     expect(screen.getByTestId('objective-control_4_outside_home')).toBeTruthy()
     expect(text('round')).toBe('Round 2 of 6, strategy phase')
     expect(text('strategy-state-leadership')).toBe('Unpicked')
-    expect(text('strategy-state-diplomacy')).toBe('+1 trade good')
+    expect(screen.getByTestId('strategy-state-diplomacy').getAttribute('aria-label')).toBe('+1 trade good')
 
     // the log carries the whole round
     click('btn-log')

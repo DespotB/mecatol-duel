@@ -1,10 +1,13 @@
 import { useState } from 'react'
+import type { CSSProperties } from 'react'
 import { BoardMap } from '../board/BoardMap'
 import { ActionBar } from '../hud/ActionBar'
 import type { ActionMode } from '../hud/ActionBar'
 import { SidePanel } from '../hud/SidePanel'
 import { TopBar } from '../hud/TopBar'
+import { productionLimit, shipsThatCanReach } from '../../engine'
 import { useGame } from '../store'
+import { useViewportScale } from '../useViewportScale'
 import type { StrategyCardId } from '../../engine/types'
 // tactical flows (Task 4a)
 import { CombatDialog } from '../flows/CombatDialog'
@@ -18,6 +21,7 @@ import { StatusDialog } from '../flows/StatusDialog'
 import { StrategicDialog } from '../flows/StrategicDialog'
 import { CARD_NAME } from '../format'
 import { strategicCards } from '../moveOptions'
+import { systemLabel } from '../format'
 import { HandoffOverlay } from '../HandoffOverlay'
 import { LogPanel } from '../LogPanel'
 
@@ -31,7 +35,9 @@ const HINTS: Record<string, string> = {
 }
 
 export function BoardScreen() {
-  const { session, legal, apply } = useGame()
+  const { session, legal, apply, clockRunning } = useGame()
+  // the docked regions scale their contents with --k, the board inside the stage with --s (see theme.css)
+  const { k, s } = useViewportScale()
   const [mode, setMode] = useState<ActionMode>(null)
   // `?panel=log` is a dev-only manual/visual QA hook (see App.tsx's demo bootstrap) so a headless
   // screenshot can land on the open log panel without a click.
@@ -45,48 +51,87 @@ export function BoardScreen() {
   const selectable = mode === 'tactical'
     ? legal.flatMap(m => m.type === 'startTactical' ? [m.systemId] : [])
     : []
+  // R3.2: activating a system your ships cannot enter is legal but usually a mistake, so the board says so
+  // before the click rather than the movement panel saying it afterwards
+  const outOfReach = selectable.filter(id => shipsThatCanReach(state, state.active, id).length === 0)
   const hint = drafting ? HINTS.strategy : state.phase === 'status' ? HINTS.status : HINTS[mode ?? 'idle']
+  // R4.4: production needs a space dock of your own in the activated system, so `productionLimit` is 0
+  // everywhere else. Without one there is nothing to decide at the end of the action, and the drawer would
+  // only ask the player to confirm an empty production, so the turn simply ends.
+  const producing = state.tactical !== null
+    && (state.tactical.step === 'production' || state.tactical.step === 'done')
+    && productionLimit(state, state.active, state.tactical.systemId) > 0
+  // the same step without a dock: nothing to produce, so a slim bar closes the action instead of the drawer
+  const idleTactical = state.tactical !== null
+    && (state.tactical.step === 'production' || state.tactical.step === 'done')
+    && !producing
   return (
     <>
-      <div className="app" data-testid="board-screen" inert={session.handoff !== null}>
+      <div
+        className="app" data-testid="board-screen" inert={session.handoff !== null}
+        style={{ '--k': k, '--s': s } as CSSProperties}
+      >
         <div className="space"><div className="stars" /><div className="neb" /><div className="swirl" /><div className="limb" /><div className="dust" /></div>
-        <TopBar state={state} clockMs={session.clockMs} clockMinutes={session.minutes} handoff={session.handoff} onPick={onPick} />
+        <TopBar state={state} clockMs={session.clockMs} clockMinutes={session.minutes} clockRunning={clockRunning} onPick={onPick} />
         <SidePanel state={state} seat={0} />
         <SidePanel state={state} seat={1} />
-        <BoardMap
-          state={state}
-          activeSystemId={state.tactical?.systemId ?? null}
-          selectable={selectable}
-          onSelect={systemId => { if (apply({ type: 'startTactical', systemId })) setMode(null) }}
-        />
-        {/* tactical flows (Task 4a) */}
-        <>
-          {state.tactical?.step === 'movement' ? <MovementPanel /> : null}
-          {state.tactical?.step === 'spaceCombat' ? <CombatDialog /> : null}
-          {state.tactical?.step === 'invasion' ? <InvasionPanel /> : null}
-          {state.tactical && (state.tactical.step === 'production' || state.tactical.step === 'done') ? <ProduceDrawer /> : null}
-        </>
-        <ActionBar mode={mode} onMode={setMode} hint={hint} onLog={() => setShowLog(!showLog)} />
-        {/* strategic, component and status flows (Task 4b) */}
-        <div className="flows-4b">
-          {mode === 'strategic' && card === null ? (
-            <div className="dialog cut" data-testid="strategic-picker">
+        {/* the board and everything that overlays it, docked between the bars and the two columns */}
+        <div className="stage" data-testid="stage">
+          <BoardMap
+            state={state}
+            activeSystemId={state.tactical?.systemId ?? null}
+            selectable={selectable}
+            outOfReach={outOfReach}
+            onSelect={systemId => { if (apply({ type: 'startTactical', systemId })) setMode(null) }}
+          />
+          {/* tactical flows (Task 4a) */}
+          <>
+            {state.tactical?.step === 'movement' ? <MovementPanel /> : null}
+            {state.tactical?.step === 'spaceCombat' ? <CombatDialog /> : null}
+            {state.tactical?.step === 'invasion' ? <InvasionPanel /> : null}
+            {producing ? <ProduceDrawer /> : null}
+          {idleTactical ? (
+            <div className="drawer bottom cut" data-testid="end-tactical-bar">
               <div className="in">
-                <div className="dhead"><span className="tab">Strategic action</span></div>
-                <div className="rowline">
-                  {strategicCards(legal).map(id => (
-                    <button key={id} type="button" className="btn" data-testid={`strategic-pick-${id}`} onClick={() => setCard(id)}>{CARD_NAME[id]}</button>
-                  ))}
+                <div className="dhead">
+                  <span className="tab">{systemLabel(state.tactical?.systemId ?? '')}</span>
+                  <span className="sub">No space dock here, so there is nothing to produce.</span>
+                  <div className="right">
+                    <button
+                      type="button" className="btn gold" data-testid="btn-end-tactical"
+                      disabled={!legal.some(m => m.type === 'endTactical')}
+                      onClick={() => apply({ type: 'endTactical' })}
+                    >
+                      End tactical action
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
           ) : null}
-          {mode === 'strategic' && card !== null ? <StrategicDialog card={card} onClose={() => { setCard(null); setMode(null) }} /> : null}
-          {mode === 'component' ? <ComponentPanel onClose={() => setMode(null)} /> : null}
-          {state.pendingSecondary !== null ? <SecondaryPanel /> : null}
-          {state.phase === 'status' ? <StatusDialog /> : null}
+          </>
+          {/* strategic, component and status flows (Task 4b) */}
+          <div className="flows-4b">
+            {mode === 'strategic' && card === null ? (
+              <div className="dialog cut" data-testid="strategic-picker">
+                <div className="in">
+                  <div className="dhead"><span className="tab">Strategic action</span></div>
+                  <div className="rowline">
+                    {strategicCards(legal).map(id => (
+                      <button key={id} type="button" className="btn" data-testid={`strategic-pick-${id}`} onClick={() => setCard(id)}>{CARD_NAME[id]}</button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            {mode === 'strategic' && card !== null ? <StrategicDialog card={card} onClose={() => { setCard(null); setMode(null) }} /> : null}
+            {mode === 'component' ? <ComponentPanel onClose={() => setMode(null)} /> : null}
+            {state.pendingSecondary !== null ? <SecondaryPanel /> : null}
+            {state.phase === 'status' ? <StatusDialog /> : null}
+          </div>
+          {showLog ? <LogPanel state={state} onClose={() => setShowLog(false)} /> : null}
         </div>
-        {showLog ? <LogPanel state={state} onClose={() => setShowLog(false)} /> : null}
+        <ActionBar mode={mode} onMode={setMode} hint={hint} onLog={() => setShowLog(!showLog)} />
       </div>
       <HandoffOverlay />
     </>

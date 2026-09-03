@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { toActionPhase } from '../../engine/testUtils'
 import { BoardMap } from './BoardMap'
+import type { Seat } from '../../engine/types'
 
 const state = toActionPhase()
 
@@ -12,7 +13,9 @@ describe('the board', () => {
     for (const id of ['home-n', 'bereg', 'sakulag', 'mecatol', 'quann', 'starpoint', 'home-s']) {
       expect(screen.getByTestId(`tile-${id}`)).toBeTruthy()
     }
-    expect(screen.getByTestId('hex-mecatol').getAttribute('src')).toContain('18_MR.png')
+    // R1: the tile file is the background alone, the planets are drawn on top from their own renders
+    expect(screen.getByTestId('hex-mecatol').getAttribute('src')).toContain('00_blue.png')
+    expect(screen.getByTestId('planet-art-mecatol-rex').getAttribute('src')).toContain('planet_Mecatol.png')
   })
 
   it('stacks the units of a system with a count badge', () => {
@@ -44,14 +47,16 @@ describe('the board', () => {
     for (const ship of ships) expect(ship.getAttribute('src')).toContain('/grey_')
   })
 
-  it('R1: composed tiles carry a planet plate, printed tiles do not, and wormholes show their glyph', () => {
+  it('R1: every planet carries its own nameplate, and wormholes show their glyph', () => {
     render(<BoardMap state={state} />)
     expect(screen.getByTestId('plate-sakulag').textContent).toBe('21Sakulag')
     expect(screen.getByTestId('plate-centauri').textContent).toBe('13Centauri')
-    expect(screen.queryByTestId('plate-bereg')).toBeNull()
+    expect(screen.getByTestId('plate-bereg').textContent).toBe('31Bereg')
+    expect(screen.getByTestId('plate-mecatol-rex').textContent).toBe('16Mecatol Rex')
+    expect(screen.getByTestId('sigil-home-n').getAttribute('src')).toContain('l1z1x.png')
+    expect(screen.getByTestId('sigil-home-s').getAttribute('src')).toContain('letnev.png')
     expect(screen.getByTestId('wormhole-bereg').getAttribute('src')).toContain('WHalpha')
     expect(screen.getByTestId('wormhole-quann').getAttribute('src')).toContain('WHbeta')
-    expect(screen.getByTestId('anomaly-sakulag')).toBeTruthy()
   })
 
   it('only calls back for a system the caller marked selectable', () => {
@@ -89,5 +94,25 @@ describe('the board', () => {
     render(<BoardMap state={state} />)
     expect(screen.getByTestId('post-west').textContent).toContain('Kasda Exchange')
     expect(screen.getByTestId('post-east').textContent).toContain('Vorhal Freeport')
+  })
+
+  it('shows a played command token per seat with a token on the system, and none on an idle system', () => {
+    const activated = {
+      ...state,
+      systems: {
+        ...state.systems,
+        bereg: { ...state.systems.bereg, activatedBy: [0] as Seat[] },
+        sakulag: { ...state.systems.sakulag, activatedBy: [0, 1] as Seat[] },
+      },
+    }
+    render(<BoardMap state={activated} />)
+    const seat0 = screen.getByTestId('activation-bereg-0')
+    expect(seat0.getAttribute('src')).toContain('l1z1x_command.png')
+    expect(seat0.getAttribute('alt')).toBe(`${state.players[0].name} command token`)
+    expect(screen.getByTestId('activation-sakulag-0').getAttribute('src')).toContain('l1z1x_command.png')
+    expect(screen.getByTestId('activation-sakulag-1').getAttribute('src')).toContain('letnev_command.png')
+    expect(screen.getByTestId('activation-sakulag-1').getAttribute('alt')).toBe(`${state.players[1].name} command token`)
+    expect(screen.queryByTestId('activation-quann-0')).toBeNull()
+    expect(screen.queryByTestId('activation-quann-1')).toBeNull()
   })
 })

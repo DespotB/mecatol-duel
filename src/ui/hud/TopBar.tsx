@@ -7,10 +7,10 @@ import type { GameState, Seat, StrategyCardId } from '../../engine/types'
 
 const ALL_CARDS: StrategyCardId[] = ['leadership', 'diplomacy', 'trade', 'warfare', 'technology', 'imperial']
 
-function PlayerBlock({ state, seat, clockMs, clockMaxMs, handoff }: { state: GameState; seat: Seat; clockMs: number; clockMaxMs: number; handoff: Seat | null }) {
+function PlayerBlock({ state, seat, clockMs, clockMaxMs, clockRunning }: { state: GameState; seat: Seat; clockMs: number; clockMaxMs: number; clockRunning: boolean }) {
   const player = state.players[seat]
   const active = state.active === seat && state.winner === null
-  const running = active && state.phase === 'action' && handoff === null
+  const running = active && clockRunning
   return (
     <div className={`pblock${seat === 1 ? ' right' : ''}`} data-testid={`player-${seat}`}>
       <div className="portrait">
@@ -43,8 +43,9 @@ function StrategyStrip({ state, onPick }: { state: GameState; onPick?: (card: St
         const pool = state.strategyPool.find(c => c.id === card)
         const owner = cardOwner(state, card)
         const entry = owner === null ? undefined : state.players[owner].strategyCards.find(c => c.id === card)
+        const bonus = pool?.bonus ?? 0
         const label = pool
-          ? pool.bonus > 0 ? `+${pool.bonus} trade good${pool.bonus > 1 ? 's' : ''}` : 'Unpicked'
+          ? bonus > 0 ? `+${bonus} trade good${bonus > 1 ? 's' : ''}` : 'Unpicked'
           : owner === null ? 'Returned' : `${state.players[owner].name}, ${entry?.used ? 'played' : 'ready'}`
         const pickable = pool !== undefined && onPick !== undefined
         return (
@@ -55,7 +56,17 @@ function StrategyStrip({ state, onPick }: { state: GameState; onPick?: (card: St
             onClick={pickable ? () => onPick(card) : undefined}
           >
             <span className="card"><img src={strategyCardUrl(card)} alt={CARD_NAME[card]} /></span>
-            <span className="st" data-testid={`strategy-state-${card}`}>{label}</span>
+            {/* the trade goods on an unpicked card are shown as the tokens themselves, fanned like a real
+                stack, rather than as a line of text under the card */}
+            <span className="st" data-testid={`strategy-state-${card}`} aria-label={label} title={label}>
+              {bonus > 0
+                ? (
+                  <span className="tgfan" data-testid={`strategy-bonus-${card}`}>
+                    {Array.from({ length: bonus }, (_, i) => <img key={i} src={MISC.tradeGood} alt="" width={19} height={19} />)}
+                  </span>
+                )
+                : label}
+            </span>
           </button>
         )
       })}
@@ -96,16 +107,16 @@ function Objectives({ state }: { state: GameState }) {
 }
 
 export function TopBar(
-  { state, clockMs, clockMinutes, handoff, onPick }:
-  { state: GameState; clockMs: [number, number]; clockMinutes: number; handoff: Seat | null; onPick?: (card: StrategyCardId) => void },
+  { state, clockMs, clockMinutes, clockRunning, onPick }:
+  { state: GameState; clockMs: [number, number]; clockMinutes: number; clockRunning: boolean; onPick?: (card: StrategyCardId) => void },
 ) {
   const clockMaxMs = clockMinutes * 60000
   return (
     <div className="topbar">
-      <PlayerBlock state={state} seat={0} clockMs={clockMs[0]} clockMaxMs={clockMaxMs} handoff={handoff} />
+      <PlayerBlock state={state} seat={0} clockMs={clockMs[0]} clockMaxMs={clockMaxMs} clockRunning={clockRunning} />
       <StrategyStrip state={state} onPick={onPick} />
       <Objectives state={state} />
-      <PlayerBlock state={state} seat={1} clockMs={clockMs[1]} clockMaxMs={clockMaxMs} handoff={handoff} />
+      <PlayerBlock state={state} seat={1} clockMs={clockMs[1]} clockMaxMs={clockMaxMs} clockRunning={clockRunning} />
     </div>
   )
 }

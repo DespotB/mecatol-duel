@@ -2,6 +2,7 @@ import { activatableSystems, canPass } from './actionPhase'
 import { canMunitions, defaultAssignment, pendingFor, retreatTargets } from './combat'
 import { SHIPYARD_COST, canInheritance, canShipyard, inheritanceTechs, shipyardPlanets, tradePostOptions } from './componentActions'
 import { cheapestPlanets, productionCost, productionLimit, readyInfluence } from './economy'
+import { PRODUCIBLE } from './production'
 import { bombardablePlanets, groundCombatPending, landablePlanets } from './invasion'
 import { movableShips } from './movement'
 import { fulfils } from './objectives'
@@ -113,14 +114,19 @@ function secondaryMoves(state: GameState, seat: Seat, card: StrategyCardId): Mov
       // R6, consistent with the Diplomacy filter above: already replenished is a no-op token burn, not useful
       return player.commodities < FACTIONS[player.faction].commodityValue ? [{ type: 'secondary', card, accept: true, params }] : []
     case 'warfare': {
+      // R6: the secondary is the space dock's full PRODUCTION ability, so the window opens as soon as any one
+      // unit is affordable; the responder picks the units and the payment, the handler checks them.
       const home = state.systems[homeSystemId(seat)]
       const dock = home.planets.some(p => p.structures.some(u => u.type === 'spacedock' && u.owner === seat))
-      if (!dock || player.reinforcements.infantry < 1 || productionLimit(state, seat, home.id) < 1) return []
+      if (!dock || productionLimit(state, seat, home.id) < 1) return []
       const stats = { faction: player.faction, techs: player.techs }
-      const cost = productionCost({ infantry: 1 }, stats, player.techs.includes('sarween_tools'))
-      const planets = cheapestPlanets(state, seat, cost)
-      if (!planets) return []
-      return [{ type: 'secondary', card, accept: true, params: { units: { infantry: 1 }, planets, tradeGoods: 0 } }]
+      for (const type of PRODUCIBLE) {
+        if (player.reinforcements[type] < 1) continue
+        const cost = productionCost({ [type]: 1 }, stats, player.techs.includes('sarween_tools'))
+        const planets = cheapestPlanets(state, seat, cost)
+        if (planets) return [{ type: 'secondary', card, accept: true, params: { units: { [type]: 1 }, planets, tradeGoods: 0 } }]
+      }
+      return []
     }
     case 'technology': {
       const planets = cheapestPlanets(state, seat, 4)

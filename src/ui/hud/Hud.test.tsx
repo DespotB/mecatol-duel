@@ -22,7 +22,9 @@ describe('the HUD', () => {
     renderWithSession(toActionPhase(), <BoardScreen />)
     expect(screen.getByTestId('strategy-state-warfare').textContent).toBe('A, ready')
     expect(screen.getByTestId('strategy-state-leadership').textContent).toBe('B, ready')
-    expect(screen.getByTestId('strategy-state-trade').textContent).toBe('+1 trade good')
+    // the bonus is drawn as trade good tokens, so the wording lives in the accessible name
+    expect(screen.getByTestId('strategy-state-trade').getAttribute('aria-label')).toBe('+1 trade good')
+    expect(screen.getByTestId('strategy-bonus-trade').querySelectorAll('img').length).toBe(1)
     expect(screen.getByTestId('strategy-card-technology').className).toContain('own-0')
   })
 

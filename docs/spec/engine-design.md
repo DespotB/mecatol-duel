@@ -41,7 +41,6 @@ export interface Planet {
 export interface System {
   id: string; name: string
   planets: Planet[]
-  anomaly: 'asteroid' | 'nebula' | null
   wormhole: 'alpha' | 'beta' | null
   space: Unit[]                    // ships
   activatedBy: Seat[]              // command tokens on the system this round
@@ -149,7 +148,7 @@ export interface StatusParams { tokens: { tactic: number; fleet: number; strateg
 | `src/engine/strategyPhase.ts` | draft and initiative |
 | `src/engine/actionPhase.ts` | activation, passing, turn alternation |
 | `src/engine/board.ts` | shared unit helpers: stats owner, dice, unit removal, reinforcements, capacity and fleet checks |
-| `src/engine/movement.ts` | adjacency with wormholes, move validation, anomalies |
+| `src/engine/movement.ts` | adjacency with wormholes, move validation, reachability |
 | `src/engine/combat.ts` | space combat, anti-fighter barrage, space cannon, hit assignment, retreat |
 | `src/engine/invasion.ts` | bombardment, landing, ground combat, control change |
 | `src/engine/production.ts` | produce move |

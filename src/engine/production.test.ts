@@ -37,10 +37,15 @@ describe('R4.4 production', () => {
     expect(produce(s, { fighter: 2, infantry: 2 }, ['000']).ok).toBe(true)
     expect(produce(withTechs(s, 0, ['sarween_tools']), { infantry: 2 }, []).ok).toBe(true)   // cost 1 minus 1
   })
-  it('R4.4: a War Sun needs the technology and only one flagship may exist', () => {
+  it('R4.4: a War Sun needs no technology and may be produced from the first round', () => {
     const rich = withPlayer(producing(), 0, { tradeGoods: 20 })
-    expect(produce(rich, { warsun: 1 }, [], 12).ok).toBe(false)
-    expect(produce(withTechs(rich, 0, ['war_sun']), { warsun: 1 }, [], 12).ok).toBe(true)    // 3 non-fighter ships is exactly the fleet pool
+    const r = produce(rich, { warsun: 1 }, [], 12)
+    if (!r.ok) throw new Error(r.error)
+    expect(r.value.systems['home-n'].space.filter(u => u.owner === 0 && u.type === 'warsun')).toHaveLength(1)
+    expect(r.value.players[0].tradeGoods).toBe(8)
+  })
+  it('R4.4: only one flagship may exist at a time', () => {
+    const rich = withPlayer(producing(), 0, { tradeGoods: 20 })
     expect(produce(rich, { flagship: 2 }, [], 16).ok).toBe(false)
     const hasFlagship = withUnits(rich, 'home-n', 0, ['flagship'])
     // restore the reinforcement spent by the fixture so this hits the uniqueness guard, not a reinforcement shortage
@@ -51,20 +56,22 @@ describe('R4.4 production', () => {
     const s = producing()
     const empty = withPlayer(s, 0, { reinforcements: { ...s.players[0].reinforcements, cruiser: 0 }, tradeGoods: 20 })
     expect(produce(empty, { cruiser: 1 }, [], 2).ok).toBe(false)
-    const rich = withTechs(withPlayer(s, 0, { tradeGoods: 20 }), 0, ['war_sun'])
+    const rich = withPlayer(s, 0, { tradeGoods: 20 })
     expect(produce(rich, { warsun: 1, cruiser: 1 }, [], 14).ok).toBe(false)   // 2 present plus 2 produced is over the fleet pool of 3
     expect(produce(rich, { cruiser: 1 }, [], 2).ok).toBe(true)
   })
-  it('R4.4: fighters above the capacity are trimmed and the production still succeeds', () => {
+  it('R4.4: the dock\'s free slots (Space Dock I, no tech needed) admit fighters up to capacity plus 3', () => {
     const rich = withPlayer(producing(), 0, { tradeGoods: 10 })
     expect(fighters(rich)).toBe(3)                                  // carrier 4 plus super-dreadnought 2 is capacity 6
     const r = produce(rich, { fighter: 6 }, [], 3)
     if (!r.ok) throw new Error(r.error)
-    expect(fighters(r.value)).toBe(6)                               // only three fit
-    expect(r.value.log.some(e => e.t === 'info' && e.text.includes('not produced'))).toBe(true)
-    const dock2 = produce(withTechs(rich, 0, ['space_dock_ii']), { fighter: 6 }, [], 3)
-    if (!dock2.ok) throw new Error(dock2.error)
-    expect(fighters(dock2.value)).toBe(9)                           // three free Space Dock II slots
+    expect(fighters(r.value)).toBe(9)                               // capacity 6 plus the dock's 3 free slots: all 6 fit
+    expect(r.value.log.some(e => e.t === 'info' && e.text.includes('not produced'))).toBe(false)
+    // beyond that room, fighters are still trimmed regardless of the tech: Space Dock II doesn't add more slots
+    const overflow = produce(withTechs(rich, 0, ['space_dock_ii']), { fighter: 8 }, [], 3)
+    if (!overflow.ok) throw new Error(overflow.error)
+    expect(fighters(overflow.value)).toBe(9)                        // still capped at capacity 6 plus 3 free slots
+    expect(overflow.value.log.some(e => e.t === 'info' && e.text.includes('not produced'))).toBe(true)
     const none = produce(withPlayer(rich, 0, { tradeGoods: 10 }), { fighter: 0 }, [])
     expect(none.ok).toBe(false)
   })
@@ -82,12 +89,14 @@ describe('R4.4 production', () => {
     const rich = withPlayer(packed, 1, { tradeGoods: 10 })
     const fightersS = (state: GameState) => state.systems['home-s'].space.filter(u => u.owner === 1 && u.type === 'fighter').length
     expect(fightersS(rich)).toBe(5)
-    const r = produce(rich, { dreadnought: 1, fighter: 2 }, [], 5)
+    const r = produce(rich, { dreadnought: 1, fighter: 6 }, [], 10)
     if (!r.ok) throw new Error(r.error)
-    expect(fightersS(r.value)).toBe(6)                              // only the new dreadnought's +1 capacity fits one more
+    // capacity 5 plus the new dreadnought's +1 plus the dock's 3 free slots is 9 total room; 5 existing fighters
+    // leave room for exactly 4 of the 6 requested
+    expect(fightersS(r.value)).toBe(9)
     expect(r.value.log.some(e => e.t === 'info' && e.text.includes('not produced'))).toBe(true)
   })
-  it('R4.4: Space Dock II free slots admit fighters even when carried infantry already fill the ship capacity', () => {
+  it('R4.4: the dock\'s free slots admit fighters even when carried infantry already fill the ship capacity', () => {
     const s = producing()
     const dockOnly = s.systems['home-n'].space.filter(u => u.owner !== 0 || u.type === 'dreadnought')   // drop the carrier and starting fighters, keep the capacity-2 dreadnought
     const packed: GameState = { ...s, systems: { ...s.systems, 'home-n': { ...s.systems['home-n'], space: dockOnly } } }
@@ -99,12 +108,13 @@ describe('R4.4 production', () => {
     expect(r.value.log.some(e => e.t === 'info' && e.text.includes('not produced'))).toBe(false)
   })
   it('R4.4: the reinforcement check runs on the trimmed order, so short fighters trim instead of rejecting', () => {
-    const rich = withPlayer(producing(), 0, { tradeGoods: 10 })
-    expect(fighters(rich)).toBe(3)                                  // capacity 6, so only 3 more fit
+    // 3 existing plus 3 more: capacity 6 plus the dock's 3 free slots (9 total) leaves room for only 3 more
+    const rich = withPlayer(withUnits(producing(), 'home-n', 0, ['fighter', 'fighter', 'fighter']), 0, { tradeGoods: 10 })
+    expect(fighters(rich)).toBe(6)
     const short = withPlayer(rich, 0, { reinforcements: { ...rich.players[0].reinforcements, fighter: 3 } })
     const r = produce(short, { fighter: 6 }, [], 3)                 // 6 wanted, 3 in the reinforcements, room for 3
     if (!r.ok) throw new Error(r.error)
-    expect(fighters(r.value)).toBe(6)
+    expect(fighters(r.value)).toBe(9)
     expect(r.value.players[0].reinforcements.fighter).toBe(0)
     expect(r.value.log.some(e => e.t === 'info' && e.text.includes('not produced'))).toBe(true)
     const shorter = withPlayer(rich, 0, { reinforcements: { ...rich.players[0].reinforcements, fighter: 2 } })

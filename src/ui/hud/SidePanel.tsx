@@ -2,6 +2,7 @@ import { FACTIONS } from '../../data/factions'
 import { techDef } from '../../data/techs'
 import { fleetPoolLimit, readyResources, unitsOf } from '../../engine'
 import { BADGE, MISC, spriteUrl, tokenUrl } from '../art'
+import { TechIcon } from '../TechIcon'
 import { ownedPlanets, readyInfluence, unitLabel } from '../format'
 import { PANEL_SCALE, spriteSize } from '../sprites'
 import type { GameState, Seat, UnitType } from '../../engine/types'
@@ -70,7 +71,7 @@ export function SidePanel({ state, seat }: { state: GameState; seat: Seat }) {
           <span className="lbl bul">Technologies</span>
           {player.techs.map(id => (
             <div className="techrow" key={id}>
-              <span className={`tdot ${techDef(id).colour ?? 'none'}`} />
+              <TechIcon techId={id} colour={player.color} />
               <span data-testid={`tech-${seat}-${id}`}>{techDef(id).name}</span>
             </div>
           ))}
