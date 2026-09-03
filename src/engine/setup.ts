@@ -40,7 +40,7 @@ export function createGame(config: GameConfig, seed: number): GameState {
   const systems: Record<string, System> = {}
   for (const def of SYSTEMS) {
     const planets: Planet[] = def.planets.map(p => ({ id: p.id, name: p.name, resources: p.resources, influence: p.influence, owner: def.home, exhausted: false, ground: [], structures: [] }))
-    systems[def.id] = { id: def.id, name: def.name, planets, anomaly: def.anomaly, wormhole: def.wormhole, space: [], activatedBy: [] }
+    systems[def.id] = { id: def.id, name: def.name, planets, wormhole: def.wormhole, space: [], activatedBy: [] }
   }
   for (const seat of [0, 1] as Seat[]) {
     const home = SYSTEMS.find(s => s.home === seat)

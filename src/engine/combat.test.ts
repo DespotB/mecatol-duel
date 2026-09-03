@@ -1,10 +1,9 @@
 // src/engine/combat.test.ts
 import { describe, expect, it } from 'vitest'
 import { unitStats } from '../data/units'
-import { checkFleet, rollHits, trimCargo } from './board'
-import { applyCombatHits, assignHits, defenderModifier, type HitGroup, type MunitionsRequest } from './combat'
+import { checkFleet, trimCargo } from './board'
+import { applyCombatHits, assignHits, type HitGroup, type MunitionsRequest } from './combat'
 import { applyMove } from './index'
-import { mulberry32 } from './rng'
 import { deepFreeze, hitsIn, toActionPhase, withPlanetOwner, withPlayer, withTechs, withUnits } from './testUtils'
 import type { GameState, Owner, Unit, UnitType } from './types'
 
@@ -37,18 +36,6 @@ const owned = (state: GameState, systemId: string, owner: Owner) => state.system
 const units = (spec: [UnitType, boolean][]): Unit[] => spec.map(([type, damaged], i) => ({ id: i + 1, type, owner: 0, damaged }))
 
 describe('R4.1 dice', () => {
-  it('R4.1 step 3: the nebula defender bonus lowers the threshold by one on the same dice', () => {
-    expect(defenderModifier('quann')).toBe(1)
-    expect(defenderModifier('bereg')).toBe(0)
-    const plain = rollHits(mulberry32(5), 6, 7, false)
-    const inNebula = rollHits(mulberry32(5), 6, 6, false)
-    expect(inNebula.rolls).toEqual(plain.rolls)
-    expect(inNebula.hits).toBe(plain.rolls.filter(v => v >= 6).length)
-    expect(rollHits(mulberry32(5), 6, 7, true).rolls).toHaveLength(7)   // Plasma Scoring adds one die
-  })
-})
-
-describe('R4.1 step 4 hit assignment', () => {
   it('sustain damage cancels first, then the destruction order applies', () => {
     const one = assignHits(units([['dreadnought', false], ['fighter', false], ['cruiser', false]]), [{ count: 1, mode: 'any' }], letnev, false)
     expect(one.destroyed).toHaveLength(0)
@@ -167,14 +154,6 @@ describe('R4.1 space combat', () => {
     const added = fight(s).log.slice(s.log.length).map(e => e.t)
     expect(added[0]).toBe('move')
     expect(added).toContain('roll')
-  })
-  it('R4.1 step 3: in a nebula the defender hits one lower', () => {
-    const inNebula = fight(combat('quann', ['cruiser'], ['cruiser'], 1))
-    const defence = inNebula.log.flatMap(e => e.t === 'roll' && e.owner === 1 ? e.rolls : [])
-    expect(defence).toHaveLength(1)
-    for (const r of defence) expect(r.hit).toBe(r.value >= 6)   // cruiser combat 7, nebula +1
-    const plain = fight(combat('bereg', ['cruiser'], ['cruiser'], 1))
-    for (const r of plain.log.flatMap(e => e.t === 'roll' && e.owner === 1 ? e.rolls : [])) expect(r.hit).toBe(r.value >= 7)
   })
   it('R4.1 step 3: Munitions Reserves costs Letnev 2 trade goods and is per side (a flag never spends the other side\'s goods)', () => {
     const base = withPlayer(combat('bereg', ['cruiser'], ['cruiser'], 1), 1, { tradeGoods: 3 })

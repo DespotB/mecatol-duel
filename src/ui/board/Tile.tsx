@@ -1,6 +1,6 @@
 import { systemDef } from '../../data/map'
 import { BADGE, MISC, SIGIL, ownerKey, planetArtUrl, tileUrl, tokenUrl } from '../art'
-import { ACTIVATION_SPOT, ANOMALY_SPOT, FLEET_ANCHOR, PLANET_SPOTS, TILE_H, TILE_POS, TILE_W, WORMHOLE_SPOTS } from '../layout'
+import { ACTIVATION_SPOT, FLEET_ANCHOR, PLANET_SPOTS, TILE_H, TILE_POS, TILE_W, WORMHOLE_SPOTS } from '../layout'
 import { UnitStack, groupUnits } from './UnitStack'
 import type { Color, GameState, Owner, Planet, System } from '../../engine/types'
 
@@ -110,9 +110,6 @@ export function Tile({ state, system, active, selectable, outOfReach = false, on
       {def.wormhole ? (
         <img className="wh" src={def.wormhole === 'alpha' ? MISC.alpha : MISC.beta} alt={`${def.wormhole} wormhole`}
           data-testid={`wormhole-${system.id}`} style={WORMHOLE_SPOTS[system.id]} width={26} height={26} />
-      ) : null}
-      {def.anomaly === 'asteroid' ? (
-        <img className="chev" src={MISC.anomaly} alt="asteroid field" data-testid={`anomaly-${system.id}`} style={ANOMALY_SPOT} width={64} />
       ) : null}
       {def.home !== null ? (
         <img className="sigil" src={SIGIL[state.players[def.home].faction]} alt="" data-testid={`sigil-${system.id}`} width={34} />

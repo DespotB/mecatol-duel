@@ -27,11 +27,6 @@ const SPACE_CANNON_SALT_BASE = 5
 
 interface Ctx { systemId: string; attacker: Seat; defender: Owner; round: number }
 
-/** R4.1 step 3: the defender rolls at +1 in a nebula, which is one lower on the threshold. */
-export function defenderModifier(systemId: string): number {
-  return systemDef(systemId).anomaly === 'nebula' ? 1 : 0
-}
-
 /** R4.1 steps 4 and 6: sustain first, then the destruction order; restricted hits with no target are lost. */
 export function assignHits(units: Unit[], groups: HitGroup[], owner: StatsOwner, nes: boolean): { units: Unit[]; destroyed: Unit[]; sustainedIds: number[]; lost: number } {
   let list = units.map(u => ({ ...u }))
@@ -320,7 +315,7 @@ export function combatRound(state: GameState, munitions: MunitionsRequest | unde
   if (wantDefender && !canMunitions(state, ctx.defender)) return { ok: false, error: 'Munitions Reserves is not available to the defender' }
   const salt = ctx.round * 4
   const a = combatRolls(state, ctx, ctx.attacker, 0, wantAttacker, seed, salt + 10)
-  const d = combatRolls(state, ctx, ctx.defender, defenderModifier(ctx.systemId), wantDefender, seed, salt + 11)
+  const d = combatRolls(state, ctx, ctx.defender, 0, wantDefender, seed, salt + 11)
   let next = state
   if (wantAttacker) next = payMunitions(next, ctx.attacker)
   if (wantDefender) next = payMunitions(next, ctx.defender)
