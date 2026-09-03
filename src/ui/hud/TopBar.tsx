@@ -43,8 +43,9 @@ function StrategyStrip({ state, onPick }: { state: GameState; onPick?: (card: St
         const pool = state.strategyPool.find(c => c.id === card)
         const owner = cardOwner(state, card)
         const entry = owner === null ? undefined : state.players[owner].strategyCards.find(c => c.id === card)
+        const bonus = pool?.bonus ?? 0
         const label = pool
-          ? pool.bonus > 0 ? `+${pool.bonus} trade good${pool.bonus > 1 ? 's' : ''}` : 'Unpicked'
+          ? bonus > 0 ? `+${bonus} trade good${bonus > 1 ? 's' : ''}` : 'Unpicked'
           : owner === null ? 'Returned' : `${state.players[owner].name}, ${entry?.used ? 'played' : 'ready'}`
         const pickable = pool !== undefined && onPick !== undefined
         return (
@@ -55,7 +56,17 @@ function StrategyStrip({ state, onPick }: { state: GameState; onPick?: (card: St
             onClick={pickable ? () => onPick(card) : undefined}
           >
             <span className="card"><img src={strategyCardUrl(card)} alt={CARD_NAME[card]} /></span>
-            <span className="st" data-testid={`strategy-state-${card}`}>{label}</span>
+            {/* the trade goods on an unpicked card are shown as the tokens themselves, fanned like a real
+                stack, rather than as a line of text under the card */}
+            <span className="st" data-testid={`strategy-state-${card}`} aria-label={label} title={label}>
+              {bonus > 0
+                ? (
+                  <span className="tgfan" data-testid={`strategy-bonus-${card}`}>
+                    {Array.from({ length: bonus }, (_, i) => <img key={i} src={MISC.tradeGood} alt="" width={19} height={19} />)}
+                  </span>
+                )
+                : label}
+            </span>
           </button>
         )
       })}

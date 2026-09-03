@@ -2,9 +2,11 @@ import { PUBLIC_OBJECTIVES } from '../../data/objectives'
 import { LogPanel } from '../LogPanel'
 import { navigate } from '../route'
 import { useGame } from '../store'
+import { useFitScale } from '../useViewportScale'
 import type { Seat } from '../../engine/types'
 
 export function GameOverScreen() {
+  const fit = useFitScale()
   const { session, abandon } = useGame()
   const winnerSeat = session ? session.state.winner : null
   if (!session || winnerSeat === null) return null
@@ -13,7 +15,7 @@ export function GameOverScreen() {
   const state = session.state
   const winner = state.players[winnerSeat]
   return (
-    <div className="setup" data-testid="game-over">
+    <div className="setup" data-testid="game-over" style={{ zoom: fit }}>
       <div className="space"><div className="stars" /><div className="neb" /><div className="limb" /><div className="dust" /></div>
       <header className="hero">
         <h1 className="title goldtext" data-testid="winner">{winner.name} wins</h1>
