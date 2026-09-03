@@ -7,7 +7,8 @@
  * ability, which is once per round for the whole table: the first player to use it takes it.
  */
 export type PostId = 'sarnex' | 'tessik' | 'orrun' | 'kesh' | 'vandel' | 'dromm'
-export type PostAbility = 'none' | 'techExchange' | 'clearingHouse' | 'charter' | 'layover' | 'refit'
+// 'none' is kept as a legal shape for a post without an ability; all six in the table have one
+export type PostAbility = 'none' | 'timeTrade' | 'techExchange' | 'clearingHouse' | 'charter' | 'layover' | 'refit'
 
 export interface PostDef {
   id: PostId
@@ -26,8 +27,9 @@ export interface PostDef {
 
 export const POSTS: Record<PostId, PostDef> = {
   sarnex: {
-    id: 'sarnex', name: 'Sarnex Wheel', kind: 'station', commodityLimit: 4,
-    ability: 'none', abilityName: '', abilityText: 'No special ability: its size is its ability.',
+    id: 'sarnex', name: 'Sarnex Time Machine Wheel', kind: 'station', commodityLimit: 4,
+    ability: 'timeTrade', abilityName: 'Time trade',
+    abilityText: 'Pay half the time left on your chess clock, rounded down to the second, and take 1 victory point.',
     art: '/assets/posts/sarnex.png',
   },
   tessik: {
@@ -39,7 +41,7 @@ export const POSTS: Record<PostId, PostDef> = {
   orrun: {
     id: 'orrun', name: 'Orrun Port Authority', kind: 'station', commodityLimit: 2,
     ability: 'clearingHouse', abilityName: 'Clearing house',
-    abilityText: 'Exhaust your ready planets and take one trade good per resource or influence spent, up to 3 trade goods; each planet pays either its resources or its influence, never both.',
+    abilityText: 'Exhaust one ready planet you control and take one trade good per resource or influence it prints, your choice which of the two, never both.',
     art: '/assets/posts/orrun.png',
   },
   kesh: {
@@ -57,7 +59,7 @@ export const POSTS: Record<PostId, PostDef> = {
   dromm: {
     id: 'dromm', name: 'Dromm Heavy Hauler', kind: 'ship', commodityLimit: 2,
     ability: 'refit', abilityName: 'Refit',
-    abilityText: 'Return ships you have in a system linked to this post and take one ship from your reinforcements whose cost is not higher, placed in the same system; fighters and infantry cannot be part of a refit and any difference in cost is lost.',
+    abilityText: 'Return any ships you have in a system linked to this post and take any ships from your reinforcements whose total cost is not higher, placed in the same system; fighters count at half a cost each, infantry is not a ship, and any difference in cost is lost.',
     art: '/assets/posts/dromm.png',
   },
 }

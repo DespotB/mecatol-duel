@@ -101,8 +101,10 @@ describe('R6/R8 component actions', () => {
     expect(sell(withPlayer(s, 0, { passed: true }), 'east', 1).ok).toBe(false)
   })
   it('R8: the trade post is still open after the action is spent, but never during one', () => {
-    // seat 0 takes Sakulag, so the west post is linked; the tactical action then ends without passing the turn
-    const s = withPlanetOwner(toActionPhase(), 'sakulag', 'sakulag', 0)
+    // seat 0 takes Sakulag, so the west post is linked; the tactical action then ends without passing the turn.
+    // The Dromm refit needs ships in Sakulag or Starpoint and seat 0 has none, so the sale is the only free
+    // move the west post offers here.
+    const s = withPosts(withPlanetOwner(toActionPhase(), 'sakulag', 'sakulag', 0), 'dromm', 'kesh')
     const running: GameState = deepFreeze({ ...s, tactical: { systemId: 'bereg', step: 'done' } })
     expect(sell(running, 'west', 2).ok).toBe(false)                 // R8: not while a tactical action runs
     const spent = value(applyMove(running, { type: 'endTactical' }, 0))

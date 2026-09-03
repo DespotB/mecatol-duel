@@ -133,10 +133,12 @@ export interface StatusParams { tokens: { tactic: number; fleet: number; strateg
  * actually in play on that side, never by which fields the caller filled in.
  */
 export interface PostAbilityParams {
-  techId?: string; takeTechId?: string              // techExchange: the one returned, the one taken
-  planets?: string[]; influencePlanets?: string[]   // clearingHouse: planets paying resources, planets paying influence
-  pool?: 'tactic' | 'fleet' | 'strategy'            // charter, layover
-  give?: number[]; take?: UnitType                  // refit: unit ids returned, unit type taken
+  techId?: string; takeTechId?: string                 // techExchange: the one returned, the one taken
+  planet?: string; pays?: 'resources' | 'influence'    // clearingHouse: the one planet exhausted and which value it pays
+  pool?: 'tactic' | 'fleet' | 'strategy'               // charter, layover
+  give?: number[]                                      // refit: the unit ids returned
+  take?: Partial<Record<UnitType, number>>             // refit: the units taken, the shape `produce` uses
+  // timeTrade needs no parameters: the victory point is the engine's, the clock is the interface's
 }
 
 export interface UnitStats {

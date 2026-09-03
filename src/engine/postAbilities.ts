@@ -1,16 +1,17 @@
 import { TRADE_POSTS } from '../data/map'
 import type { PostDef } from '../data/posts'
-import { findTech, type TechDef } from '../data/techs'
-import { NON_FIGHTER_SHIPS, unitStats } from '../data/units'
+import { TECHS, findTech, type TechDef } from '../data/techs'
+import { SHIP_TYPES, isShip, unitStats, type StatsOwner } from '../data/units'
 import { checkFleet, destroyUnits, statsOwner } from './board'
 import { postDef, postLinked, turnReady } from './componentActions'
 import { exhaustPlanets } from './economy'
-import type { GameState, PostAbilityParams, Result, Seat, Unit } from './types'
+import { addVp } from './objectives'
+import type { GameState, PostAbilityParams, Result, Seat, Unit, UnitType } from './types'
 
-/** R8: the clearing house never pays out more than this, however much is exhausted for it. */
-export const CLEARING_HOUSE_MAX = 3
 /** R8: what the charter pays for the command token it takes back. */
 export const CHARTER_TRADE_GOODS = 4
+/** R8: what half a chess clock buys at the Sarnex Time Machine Wheel. */
+export const TIME_TRADE_VP = 1
 /** R8: the pools a returned command token may come out of; R3.3 knows no others. */
 const POOLS = ['tactic', 'fleet', 'strategy'] as const
 
@@ -64,25 +65,34 @@ function techExchange(state: GameState, seat: Seat, params: PostAbilityParams): 
 }
 
 /**
- * R8 Orrun Port Authority: exhaust ready planets for one trade good per resource or influence spent, at most
- * three. Each planet appears in one of the two lists and pays that side only; `exhaustPlanets` refuses a
- * planet that is already exhausted, which is also what stops a planet from being named twice.
+ * R8 Orrun Port Authority: exhaust exactly one ready planet and take one trade good per resource or per
+ * influence it prints, whichever of the two the caller names. Never both sides, never a second planet: the
+ * single planet is the whole limit.
  */
 function clearingHouse(state: GameState, seat: Seat, params: PostAbilityParams): Result<GameState> {
-  const byResources = params.planets ?? []
-  const byInfluence = params.influencePlanets ?? []
-  if (!byResources.length && !byInfluence.length) return { ok: false, error: 'R8: name at least one planet to exhaust' }
-  const resources = exhaustPlanets(state, seat, byResources)
-  if (!resources.ok) return resources
-  const influence = exhaustPlanets(resources.value.state, seat, byInfluence)
-  if (!influence.ok) return influence
-  const gained = resources.value.resources + influence.value.influence
-  if (gained < 1) return { ok: false, error: 'R8: the planets named are worth nothing on the side they pay' }
-  if (gained > CLEARING_HOUSE_MAX) return { ok: false, error: `R8: at most ${CLEARING_HOUSE_MAX} trade goods, this pays ${gained}` }
-  const next = influence.value.state
+  const planetId = params.planet
+  const pays = params.pays
+  if (planetId === undefined) return { ok: false, error: 'R8: name the one planet to exhaust' }
+  if (pays !== 'resources' && pays !== 'influence') {
+    return { ok: false, error: 'R8: say whether the planet pays its resources or its influence' }
+  }
+  const spent = exhaustPlanets(state, seat, [planetId])
+  if (!spent.ok) return spent
+  const gained = pays === 'resources' ? spent.value.resources : spent.value.influence
+  if (gained < 1) return { ok: false, error: `R8: ${planetId} prints no ${pays}` }
+  const next = spent.value.state
   const players = [...next.players] as GameState['players']
   players[seat] = { ...players[seat], tradeGoods: players[seat].tradeGoods + gained }
   return { ok: true, value: { ...next, players } }
+}
+
+/**
+ * R8 Sarnex Time Machine Wheel: half the seat's remaining clock for 1 victory point. The engine is time-free,
+ * so it grants and logs the point and nothing else; the interface halves that seat's clock when it applies
+ * the move. A replay of the log therefore rebuilds the score without knowing anything about clocks.
+ */
+function timeTrade(state: GameState, seat: Seat): Result<GameState> {
+  return { ok: true, value: addVp(state, seat, TIME_TRADE_VP, 'time trade at the Sarnex Time Machine Wheel') }
 }
 
 /**
@@ -98,7 +108,17 @@ function returnToken(state: GameState, seat: Seat, params: PostAbilityParams): R
   if (player.tokens[pool] < 1) return { ok: false, error: `R8: no command token in the ${pool} pool` }
   const players = [...state.players] as GameState['players']
   players[seat] = { ...player, tokens: { ...player.tokens, [pool]: player.tokens[pool] - 1 } }
-  return { ok: true, value: { ...state, players } }
+  const next: GameState = { ...state, players }
+  // R4.4: only the fleet pool carries ships, and the engine never destroys ships to make a sheet fit. The
+  // same guard the Warfare redistribution uses, narrowed to the one pool whose shrinking can break a fleet:
+  // if a fleet on the board would be over the pool afterwards, the token stays where it is.
+  if (pool === 'fleet') {
+    for (const sys of Object.values(next.systems)) {
+      if (!sys.space.some(u => u.owner === seat)) continue
+      if (!checkFleet(next, seat, sys.id).ok) return { ok: false, error: `R8/R4.4: returning that token would leave your fleet in ${sys.id} over the pool` }
+    }
+  }
+  return { ok: true, value: next }
 }
 
 /** R8 Kesh Line Freighter: one command token from any pool for 4 trade goods. */
@@ -111,44 +131,67 @@ function charter(state: GameState, seat: Seat, params: PostAbilityParams): Resul
 }
 
 /**
- * R8 Dromm Heavy Hauler: return ships from one system this post serves and take one ship of no greater cost
- * into the same system. Fighters and infantry are out on both sides, any difference in cost is lost, and the
- * fleet that comes out of it has to hold up to `checkFleet`, so a swap that strands cargo is refused.
+ * R8: what a ship is worth in a refit. Fighters are produced two to a cost, so one is worth half a cost and
+ * a dreadnought is worth eight of them. This is deliberately not `productionCost`, which rounds a part-order
+ * up to a whole cost; a refit weighs hulls, it does not buy them.
+ */
+function refitValue(type: UnitType, stats: StatsOwner): number {
+  const s = unitStats(type, stats)
+  return s.cost / s.producedPerCost
+}
+
+/**
+ * R8 Dromm Heavy Hauler: return any ships from one system this post serves and take any ships out of the
+ * reinforcements whose total cost is no higher, into the same system. One big hull for many small ones or the
+ * other way round, whatever adds up; the difference is lost. Infantry is not a ship and is out of both lists
+ * by `isShip`, and the fleet that comes out of it has to hold up to `checkFleet`, so a swap that strands
+ * cargo or overruns the fleet pool is refused rather than trimmed.
  */
 function refit(state: GameState, seat: Seat, post: 'west' | 'east', params: PostAbilityParams): Result<GameState> {
   const give = params.give ?? []
-  const take = params.take
+  const take = params.take ?? {}
   if (!give.length) return { ok: false, error: 'R8: name the ships to return' }
   if (new Set(give).size !== give.length) return { ok: false, error: 'R8: a ship can only be returned once' }
-  if (take === undefined) return { ok: false, error: 'R8: name the ship to take' }
-  if (take === 'fighter' || take === 'infantry') return { ok: false, error: 'R8: fighters and infantry cannot be part of a refit' }
-  if (!NON_FIGHTER_SHIPS.includes(take)) return { ok: false, error: `R8: ${take} is not a ship` }
+  const wanted = (Object.entries(take) as [UnitType, number][]).filter(([, n]) => n !== 0)
+  if (!wanted.length) return { ok: false, error: 'R8: name the ships to take' }
+  const stats = statsOwner(state, seat)
+  let cost = 0
+  for (const [type, n] of wanted) {
+    if (!Number.isInteger(n) || n < 0) return { ok: false, error: `R8: ${type} must be a whole number of ships` }
+    if (!isShip(type)) return { ok: false, error: `R8: ${type} is not a ship` }
+    cost += n * refitValue(type, stats)
+  }
   const systemId = TRADE_POSTS[post].find(id => state.systems[id].space.some(u => u.id === give[0]))
   if (systemId === undefined) return { ok: false, error: `R8: the ships must be in one system linked to the ${post} post` }
   const units: Unit[] = []
+  let returned = 0
   for (const id of give) {
     const unit = state.systems[systemId].space.find(u => u.id === id)
     if (!unit) return { ok: false, error: `R8: the ships returned must be all in the same system, ${id} is not in ${systemId}` }
     if (unit.owner !== seat) return { ok: false, error: `R8: ship ${id} in ${systemId} is not yours` }
-    if (!NON_FIGHTER_SHIPS.includes(unit.type)) return { ok: false, error: 'R8: fighters and infantry cannot be part of a refit' }
+    if (!isShip(unit.type)) return { ok: false, error: `R8: ${unit.type} is not a ship` }
     units.push(unit)
+    returned += refitValue(unit.type, stats)
   }
-  // the returned ships are in the reinforcements before the new one is drawn, so a hull may be recast as its
-  // own kind; the difference in cost is simply lost, as the spec says
+  if (cost > returned) return { ok: false, error: `R8: the ships taken cost ${cost}, the ships returned are worth ${returned}` }
+  // the returned hulls reach the reinforcements before the new ones are drawn, so a fleet may be recast as
+  // its own kinds; whatever is left over of the cost is simply lost, as the spec says
   let next = destroyUnits(state, systemId, units)
   const me = next.players[seat]
-  if (me.reinforcements[take] < 1) return { ok: false, error: `R8: no ${take} in the reinforcements` }
-  const stats = statsOwner(state, seat)
-  const returned = units.reduce((sum, u) => sum + unitStats(u.type, stats).cost, 0)
-  const cost = unitStats(take, stats).cost
-  if (cost > returned) return { ok: false, error: `R8: ${take} costs ${cost}, the ships returned are worth ${returned}` }
+  const reinforcements = { ...me.reinforcements }
+  const built: Unit[] = []
+  let nextUnitId = next.nextUnitId
+  for (const [type, n] of wanted) {
+    if (reinforcements[type] < n) return { ok: false, error: `R8: only ${reinforcements[type]} ${type} in the reinforcements` }
+    reinforcements[type] -= n
+    for (let i = 0; i < n; i++) built.push({ id: nextUnitId++, type, owner: seat, damaged: false })
+  }
   const players = [...next.players] as GameState['players']
-  players[seat] = { ...me, reinforcements: { ...me.reinforcements, [take]: me.reinforcements[take] - 1 } }
-  const built: Unit = { id: next.nextUnitId, type: take, owner: seat, damaged: false }
+  players[seat] = { ...me, reinforcements }
   const sys = next.systems[systemId]
   next = {
-    ...next, players, nextUnitId: next.nextUnitId + 1,
-    systems: { ...next.systems, [systemId]: { ...sys, space: [...sys.space, built] } },
+    ...next, players, nextUnitId,
+    systems: { ...next.systems, [systemId]: { ...sys, space: [...sys.space, ...built] } },
   }
   const fleet = checkFleet(next, seat, systemId)
   if (!fleet.ok) return fleet
@@ -179,6 +222,7 @@ export function postAbility(state: GameState, post: 'west' | 'east', params: Pos
 
 function resolveAbility(state: GameState, seat: Seat, post: 'west' | 'east', def: PostDef, params: PostAbilityParams): Result<GameState> {
   switch (def.ability) {
+    case 'timeTrade': return timeTrade(state, seat)
     case 'techExchange': return techExchange(state, seat, params)
     case 'clearingHouse': return clearingHouse(state, seat, params)
     case 'charter': return charter(state, seat, params)
@@ -189,4 +233,115 @@ function resolveAbility(state: GameState, seat: Seat, post: 'west' | 'east', def
     // `postAbilityReady` has already refused a post without an ability, so this is unreachable
     case 'none': return { ok: false, error: `R8: the ${def.name} has no special ability` }
   }
+}
+
+/**
+ * R8: the ready-made picks the interface offers at a post, every one of them directly playable — the
+ * enumerator contract of `docs/spec/engine-design.md`, so `legalMoves` can hand the first one straight to a
+ * driver. The lists are kept finite and small on purpose: every legal pair for the technology exchange, one
+ * canonical planet pick per achievable payout for the clearing house, every pool that holds a token for the
+ * charter and the layover, and one give-set per ship the refit could take out of each of the post's systems.
+ * A richer pick the interface builds itself is checked by `postAbility`, which is the only authority.
+ */
+export function postAbilityOptions(state: GameState, seat: Seat, post: 'west' | 'east'): PostAbilityParams[] {
+  const ready = postAbilityReady(state, post)
+  if (!ready.ok || ready.value.seat !== seat) return []
+  switch (ready.value.def.ability) {
+    // the time trade needs nothing named: the point is the engine's, the clock is the interface's
+    case 'timeTrade': return [{}]
+    case 'techExchange': return techExchangeOptions(state, seat)
+    case 'clearingHouse': return clearingHouseOptions(state, seat)
+    case 'charter':
+    case 'layover': return poolOptions(state, seat)
+    case 'refit': return refitOptions(state, seat, post)
+    case 'none': return []
+  }
+}
+
+function techExchangeOptions(state: GameState, seat: Seat): PostAbilityParams[] {
+  const owned = state.players[seat].techs.map(id => findTech(id)).filter(t => t !== undefined)
+  const out: PostAbilityParams[] = []
+  for (const give of owned) {
+    if (give.kind !== 'general' || give.colour === null) continue
+    for (const take of TECHS) {
+      if (take.kind !== 'general' || take.colour === null) continue
+      if (take.colour === give.colour || tier(take) !== tier(give)) continue
+      if (state.players[seat].techs.includes(take.id)) continue
+      out.push({ techId: give.id, takeTechId: take.id })
+    }
+  }
+  return out
+}
+
+/**
+ * R8: the pools that still hold a token, the fullest first, so the offered default is the least painful.
+ * Each one goes through `returnToken`, which is what refuses a fleet token that a fleet on the board needs.
+ */
+function poolOptions(state: GameState, seat: Seat): PostAbilityParams[] {
+  const tokens = state.players[seat].tokens
+  return POOLS.filter(pool => tokens[pool] >= 1)
+    .sort((a, b) => tokens[b] - tokens[a])
+    .map((pool): PostAbilityParams => ({ pool }))
+    .filter(params => returnToken(state, seat, params).ok)
+}
+
+/**
+ * R8: every ready planet the seat controls, once for each of the two values it prints, the richest pick
+ * first. A planet that prints nothing on a side is not offered for that side, because it would pay nothing.
+ */
+function clearingHouseOptions(state: GameState, seat: Seat): PostAbilityParams[] {
+  const picks: { params: PostAbilityParams; value: number }[] = []
+  for (const sys of Object.values(state.systems)) {
+    for (const p of sys.planets) {
+      if (p.owner !== seat || p.exhausted) continue
+      if (p.resources >= 1) picks.push({ params: { planet: p.id, pays: 'resources' }, value: p.resources })
+      if (p.influence >= 1) picks.push({ params: { planet: p.id, pays: 'influence' }, value: p.influence })
+    }
+  }
+  return picks.sort((a, b) => b.value - a.value).map(pick => pick.params)
+}
+
+/** How many of the seat's non-fighter ships in one system a refit search looks at; 2^8 subsets is the cap. */
+const REFIT_SEARCH_LIMIT = 8
+
+/**
+ * R8: a starting pick per ship the refit could take out of one of the post's systems, each paid for by the
+ * cheapest set of hulls that covers it and survives `checkFleet`. The many-to-many swaps the ability allows
+ * are the interface's to assemble; every candidate here is put through `refit` itself, so an offered option
+ * is never one the handler would refuse.
+ */
+function refitOptions(state: GameState, seat: Seat, post: 'west' | 'east'): PostAbilityParams[] {
+  const out: PostAbilityParams[] = []
+  const stats = statsOwner(state, seat)
+  for (const systemId of TRADE_POSTS[post]) {
+    const ships = state.systems[systemId].space
+      .filter(u => u.owner === seat && isShip(u.type))
+      .slice(0, REFIT_SEARCH_LIMIT)
+    if (!ships.length) continue
+    const subsets: { ids: number[]; value: number }[] = []
+    for (let mask = 1; mask < 1 << ships.length; mask++) {
+      let value = 0
+      const ids: number[] = []
+      for (let i = 0; i < ships.length; i++) {
+        if (!(mask & (1 << i))) continue
+        value += refitValue(ships[i].type, stats)
+        ids.push(ships[i].id)
+      }
+      subsets.push({ ids, value })
+    }
+    subsets.sort((a, b) => a.value - b.value || a.ids.length - b.ids.length)
+    for (const type of SHIP_TYPES) {
+      // the returned hulls reach the reinforcements first, so a type all on the board is still takeable
+      if (state.players[seat].reinforcements[type] + ships.filter(u => u.type === type).length < 1) continue
+      const cost = refitValue(type, stats)
+      for (const subset of subsets) {
+        if (subset.value < cost) continue
+        const params: PostAbilityParams = { give: subset.ids, take: { [type]: 1 } }
+        if (!refit(state, seat, post, params).ok) continue
+        out.push(params)
+        break
+      }
+    }
+  }
+  return out
 }
