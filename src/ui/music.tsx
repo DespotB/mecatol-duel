@@ -67,8 +67,11 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       element.pause()
       return
     }
-    const start = () => { void element.play().catch(() => undefined) }
-    void element.play().catch(() => {
+    // `play()` returns a promise in a browser and nothing at all in jsdom, so both are handled: the
+    // autoplay rejection is what schedules the retry, and a missing promise simply has nothing to retry
+    const play = (): Promise<void> => Promise.resolve(element.play() as Promise<void> | undefined).then(() => undefined)
+    const start = () => { void play().catch(() => undefined) }
+    void play().catch(() => {
       // remembered from an earlier visit: the browser waits for this page to be touched at all
       window.addEventListener('pointerdown', start, { once: true })
       window.addEventListener('keydown', start, { once: true })
