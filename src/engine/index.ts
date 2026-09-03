@@ -14,8 +14,8 @@ export function applyMove(state: GameState, move: Move, seed: number): Result<Ga
       case 'pass': result = pass(state); break
       case 'endTactical': result = endTactical(state); break
       case 'moveShips': result = moveShips(state, move.moves); break
-      case 'endMovement': result = endMovement(state); break
-      case 'combatRound': result = combatRound(state, move.munitions ?? false, seed); break
+      case 'endMovement': result = endMovement(state, seed); break
+      case 'combatRound': result = combatRound(state, move.munitions, seed); break
       case 'retreat': result = retreat(state, move.to); break
       default: result = { ok: false, error: `not implemented: ${move.type}` }
     }

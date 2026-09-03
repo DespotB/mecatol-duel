@@ -1,7 +1,7 @@
 // src/engine/movement.test.ts
 import { describe, expect, it } from 'vitest'
 import { applyMove } from './index'
-import { deepFreeze, groundIds, shipId, toActionPhase, withTechs, withUnits } from './testUtils'
+import { deepFreeze, groundIds, hitsIn, shipId, toActionPhase, withPlanetOwner, withTechs, withUnits } from './testUtils'
 import type { GameState, Seat } from './types'
 
 function activate(state: GameState, seat: Seat, systemId: string): GameState {
@@ -112,5 +112,18 @@ describe('R3.2 movement', () => {
     if (!combat.ok) throw new Error(combat.error)
     expect(combat.value.tactical?.step).toBe('spaceCombat')
     expect(combat.value.tactical?.combat).toEqual({ round: 0, attacker: 0, defender: 'guardian', retreating: null, retreatTo: null, lastRolls: [] })
+  })
+  it('R4.1 step 1: endMovement resolves space cannon offense when only a PDS defends an otherwise empty system, then continues to the invasion', () => {
+    const withPds = withUnits(withPlanetOwner(toActionPhase(), 'bereg', 'bereg', 1), 'bereg', 1, ['pds'], 'bereg')
+    const s = activate(withUnits(withPds, 'home-n', 0, ['destroyer', 'destroyer']), 0, 'bereg')
+    const ids = s.systems['home-n'].space.filter(u => u.owner === 0 && u.type === 'destroyer').map(u => u.id)
+    const moved = applyMove(s, { type: 'moveShips', moves: ids.map(id => ({ unitId: id, from: 'home-n', carrying: [] })) }, 0)
+    if (!moved.ok) throw new Error(moved.error)
+    const after = applyMove(moved.value, { type: 'endMovement' }, 5)
+    if (!after.ok) throw new Error(after.error)
+    expect(after.value.tactical?.step).toBe('invasion')
+    const entries = after.value.log.filter(e => e.t === 'roll' && e.context === 'space cannon offense')
+    expect(entries).toHaveLength(1)
+    expect(after.value.systems.bereg.space.filter(u => u.owner === 0)).toHaveLength(2 - hitsIn(after.value, 'space cannon offense'))
   })
 })

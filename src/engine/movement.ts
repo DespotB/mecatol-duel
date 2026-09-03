@@ -1,7 +1,8 @@
 import { systemDef } from '../data/map'
 import { isShip, unitStats, type StatsOwner } from '../data/units'
 import { neighbours } from './adjacency'
-import { checkFleet } from './board'
+import { checkFleet, statsOwner } from './board'
+import { spaceCannonOffense } from './combat'
 import type { GameState, Result, Seat, System, Unit } from './types'
 
 export interface MoveSpec { unitId: number; from: string; carrying: number[] }
@@ -110,7 +111,7 @@ export function moveShips(state: GameState, specs: MoveSpec[]): Result<GameState
   return { ok: true, value: next }
 }
 
-export function endMovement(state: GameState): Result<GameState> {
+export function endMovement(state: GameState, seed: number): Result<GameState> {
   const tac = state.tactical
   if (!tac || tac.step !== 'movement') return { ok: false, error: 'not in the movement step' }
   const seat = state.active
@@ -121,5 +122,8 @@ export function endMovement(state: GameState): Result<GameState> {
     const combat = { round: 0, attacker: seat, defender: foes[0].owner, retreating: null, retreatTo: null, lastRolls: [] }
     return { ok: true, value: { ...state, tactical: { ...tac, step: 'spaceCombat', combat } } }
   }
-  return { ok: true, value: { ...state, tactical: { ...tac, step: 'invasion', invasion: { planetId: null, landed: [], bombarded: [] } } } }
+  // R4.1 step 1: a defending PDS still fires even when there are no enemy ships to trigger a full space combat.
+  const enemyPds = mine.length > 0 && sys.planets.some(p => p.structures.some(u => u.owner !== seat && unitStats(u.type, statsOwner(state, u.owner)).spaceCannon))
+  const next = enemyPds ? spaceCannonOffense(state, tac.systemId, seat, seed) : state
+  return { ok: true, value: { ...next, tactical: { ...tac, step: 'invasion', invasion: { planetId: null, landed: [], bombarded: [] } } } }
 }

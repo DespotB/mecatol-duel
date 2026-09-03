@@ -82,14 +82,25 @@ export function checkFleet(state: GameState, seat: Seat, systemId: string): Resu
   return { ok: true, value: true }
 }
 
-/** Destroys carried infantry and fighters above the remaining capacity, when a combat ends or a retreat resolves. */
+/**
+ * Destroys carried infantry and fighters above the remaining capacity, when a combat ends or a retreat
+ * resolves. Space Dock II's free fighter slots count toward capacity like R4.4 production; with Fighter II,
+ * fighters beyond capacity are kept up to the remaining fleet pool room (the excess counts against the pool,
+ * matching `checkFleet`), the rest are destroyed and returned to reinforcements.
+ */
 export function trimCargo(state: GameState, systemId: string, owner: Owner): GameState {
   const sys = state.systems[systemId]
-  const cap = capacity(sys.space, owner, statsOwner(state, owner))
   const mine = sys.space.filter(u => u.owner === owner)
   const infantry = mine.filter(u => u.type === 'infantry')
   const fighters = mine.filter(u => u.type === 'fighter')
+  const free = owner === 'guardian' ? 0 : freeFighterSlots(state, owner, systemId)
+  const cap = capacity(sys.space, owner, statsOwner(state, owner)) + Math.min(free, fighters.length)
   const keepInfantry = Math.min(infantry.length, cap)
-  const keepFighters = hasTech(state, owner, 'fighter_ii') ? fighters.length : Math.min(fighters.length, Math.max(0, cap - keepInfantry))
+  const capacityFighters = Math.min(fighters.length, Math.max(0, cap - keepInfantry))
+  let keepFighters = capacityFighters
+  if (owner !== 'guardian' && state.players[owner].techs.includes('fighter_ii')) {
+    const poolRoom = Math.max(0, fleetPoolLimit(state.players[owner]) - nonFighterShips(sys.space, owner))
+    keepFighters = capacityFighters + Math.min(fighters.length - capacityFighters, poolRoom)
+  }
   return destroyUnits(state, systemId, [...infantry.slice(keepInfantry), ...fighters.slice(keepFighters)])
 }

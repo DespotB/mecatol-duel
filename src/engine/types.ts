@@ -71,7 +71,7 @@ export type Move =
   | { type: 'startTactical'; systemId: string }
   | { type: 'moveShips'; moves: { unitId: number; from: string; carrying: number[] }[] }   // all into tactical.systemId
   | { type: 'endMovement' }
-  | { type: 'combatRound'; munitions?: boolean }        // resolves one round (or the pre-combat steps on round 0)
+  | { type: 'combatRound'; munitions?: { attacker?: boolean; defender?: boolean } }   // resolves one round (or the pre-combat steps on round 0); Munitions Reserves is per side
   | { type: 'retreat'; to: string }
   | { type: 'bombard'; planetId: string }
   | { type: 'land'; planetId: string; infantryIds: number[] }

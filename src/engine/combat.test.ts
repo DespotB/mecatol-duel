@@ -1,8 +1,8 @@
 // src/engine/combat.test.ts
 import { describe, expect, it } from 'vitest'
 import { unitStats } from '../data/units'
-import { rollHits } from './board'
-import { applyCombatHits, assignHits, defenderModifier, type HitGroup } from './combat'
+import { rollHits, trimCargo } from './board'
+import { applyCombatHits, assignHits, defenderModifier, type HitGroup, type MunitionsRequest } from './combat'
 import { applyMove } from './index'
 import { mulberry32 } from './rng'
 import { deepFreeze, hitsIn, toActionPhase, withPlanetOwner, withPlayer, withTechs, withUnits } from './testUtils'
@@ -21,7 +21,7 @@ function combat(systemId: string, attacker: UnitType[], defenderUnits: UnitType[
   })
 }
 
-const fight = (state: GameState, seed = 7, munitions?: boolean) => {
+const fight = (state: GameState, seed = 7, munitions?: MunitionsRequest) => {
   const r = applyMove(deepFreeze(state), { type: 'combatRound', ...(munitions === undefined ? {} : { munitions }) }, seed)
   if (!r.ok) throw new Error(r.error)
   return r.value
@@ -79,7 +79,7 @@ describe('R4.1 step 4 hit assignment', () => {
     expect(fighters.units).toHaveLength(2)
     expect(fighters.lost).toBe(2)
   })
-  it('Duranium Armor repairs one unit that did not sustain this round', () => {
+  it('applyCombatHits itself never repairs; Duranium Armor repair is a separate post-round step (repairAfterRound)', () => {
     const base = combat('bereg', ['cruiser'], ['dreadnought', 'dreadnought'], 1)
     const ids = owned(base, 'bereg', 1).map(u => u.id)
     const damaged: GameState = {
@@ -87,11 +87,22 @@ describe('R4.1 step 4 hit assignment', () => {
       systems: { ...base.systems, bereg: { ...base.systems.bereg, space: base.systems.bereg.space.map(u => u.id === ids[1] ? { ...u, damaged: true } : u) } },
     }
     const hit: HitGroup[] = [{ count: 1, mode: 'any' }]
-    const without = applyCombatHits(deepFreeze(damaged), 'bereg', 1, hit)
-    expect(without.systems.bereg.space.filter(u => u.owner === 1 && u.damaged)).toHaveLength(2)
-    const repaired = applyCombatHits(withTechs(damaged, 1, ['duranium_armor']), 'bereg', 1, hit)
-    expect(repaired.systems.bereg.space.filter(u => u.owner === 1 && u.damaged)).toHaveLength(1)
-    expect(repaired.systems.bereg.space.filter(u => u.owner === 1)).toHaveLength(2)
+    const withDuranium = applyCombatHits(withTechs(damaged, 1, ['duranium_armor']), 'bereg', 1, hit)
+    expect(withDuranium.systems.bereg.space.filter(u => u.owner === 1 && u.damaged)).toHaveLength(2)
+    expect(withDuranium.systems.bereg.space.filter(u => u.owner === 1)).toHaveLength(2)
+  })
+  it('R4.1 step 4: Duranium Armor repairs one damaged unit after a round in which it did not sustain, but never in round 0', () => {
+    const preDamage = (state: GameState): GameState => {
+      const id = owned(state, 'bereg', 1)[0].id
+      return { ...state, systems: { ...state.systems, bereg: { ...state.systems.bereg, space: state.systems.bereg.space.map(u => u.id === id ? { ...u, damaged: true } : u) } } }
+    }
+    const round0 = withTechs(preDamage(combat('bereg', ['cruiser'], ['dreadnought'], 0)), 1, ['duranium_armor'])
+    const afterRound0 = fight(round0, 1)
+    expect(owned(afterRound0, 'bereg', 1)[0]?.damaged).toBe(true)   // no repair happens during round 0
+
+    const round2 = withTechs(preDamage(combat('bereg', ['cruiser'], ['dreadnought'], 2)), 1, ['duranium_armor'])
+    const afterRound2 = fight(round2, 2)   // seed 2: both the cruiser and the dreadnought miss this round
+    expect(owned(afterRound2, 'bereg', 1)[0]?.damaged).toBe(false)
   })
   it('destroyed units go back to the reinforcements', () => {
     const s = combat('bereg', ['cruiser'], ['cruiser'], 1)
@@ -159,11 +170,41 @@ describe('R4.1 space combat', () => {
     const plain = fight(combat('bereg', ['cruiser'], ['cruiser'], 1))
     for (const r of plain.log.flatMap(e => e.t === 'roll' && e.owner === 1 ? e.rolls : [])) expect(r.hit).toBe(r.value >= 7)
   })
-  it('R4.1 step 3: Munitions Reserves costs Letnev 2 trade goods', () => {
-    const base = combat('bereg', ['cruiser'], ['cruiser'], 1)
-    const after = fight(withPlayer(base, 1, { tradeGoods: 3 }), 7, true)
-    expect(after.players[1].tradeGoods).toBe(1)
-    expect(applyMove(base, { type: 'combatRound', munitions: true }, 7).ok).toBe(false)
+  it('R4.1 step 3: Munitions Reserves costs Letnev 2 trade goods and is per side (a flag never spends the other side\'s goods)', () => {
+    const base = withPlayer(combat('bereg', ['cruiser'], ['cruiser'], 1), 1, { tradeGoods: 3 })
+    const defenderUse = fight(base, 7, { defender: true })   // seat 1 is Letnev by the fixture's default faction
+    expect(defenderUse.players[1].tradeGoods).toBe(1)
+    expect(defenderUse.players[0].tradeGoods).toBe(base.players[0].tradeGoods)
+    expect(applyMove(base, { type: 'combatRound', munitions: { attacker: true } }, 7).ok).toBe(false)   // seat 0 is l1z1x, not Letnev
+
+    // force both seats to Letnev to prove requesting one side's flag never touches the other side's trade goods
+    const bothLetnev = withPlayer(withPlayer(base, 0, { faction: 'letnev', tradeGoods: 5 }), 1, { tradeGoods: 5 })
+    const attackerUse = fight(bothLetnev, 7, { attacker: true })
+    expect(attackerUse.players[0].tradeGoods).toBe(3)
+    expect(attackerUse.players[1].tradeGoods).toBe(5)
+  })
+  it('R4.1 step 6: Munitions Reserves cannot be requested before combat rounds begin (round 0)', () => {
+    const s = withPlayer(combat('bereg', ['cruiser'], ['cruiser'], 0), 1, { tradeGoods: 3 })
+    expect(applyMove(s, { type: 'combatRound', munitions: { defender: true } }, 7).ok).toBe(false)
+  })
+  it('R4.1 step 3: a rerolled miss is logged as the original roll plus a separate "... reroll" entry, only for the side that requested it', () => {
+    const base = withPlayer(withPlayer(combat('bereg', ['cruiser'], ['cruiser'], 1), 0, { faction: 'letnev', tradeGoods: 4 }), 1, { tradeGoods: 4 })
+    const after = fight(base, 1, { attacker: true })   // seed 1: the attacker's single die misses at round 1, triggering a reroll
+    const original = after.log.filter(e => e.t === 'roll' && e.context === 'space combat round 1' && e.owner === 0)
+    const reroll = after.log.filter(e => e.t === 'roll' && e.context === 'space combat round 1 reroll' && e.owner === 0)
+    expect(original).toHaveLength(1)
+    expect(original[0].t === 'roll' && original[0].rolls).toHaveLength(1)
+    expect(reroll).toHaveLength(1)
+    expect(reroll[0].t === 'roll' && reroll[0].rolls).toHaveLength(1)
+    expect(after.log.some(e => e.t === 'roll' && e.context.includes('reroll') && e.owner === 1)).toBe(false)   // the defender never requested it
+  })
+  it('R4.1 step 6: round 0 stops after a pre-combat step that wipes a side; no barrage against an empty fleet', () => {
+    const base = combat('bereg', ['fighter'], ['destroyer'], 0)
+    const s = withUnits(base, 'bereg', 1, ['pds'], 'bereg')
+    const after = fight(s, 1)   // seed 1: the lone PDS hits the lone attacker fighter
+    expect(owned(after, 'bereg', 0)).toHaveLength(0)
+    expect(after.log.some(e => e.t === 'roll' && e.context === 'anti-fighter barrage')).toBe(false)
+    expect(after.tactical?.step).toBe('done')
   })
   it('R4.1 step 6: the combat ends when one side has no ships and the winner goes on', () => {
     const after = fightToEnd(combat('bereg', ['dreadnought', 'dreadnought', 'cruiser'], ['fighter'], 1), 100)
@@ -193,6 +234,11 @@ describe('R4.1 space combat', () => {
     expect(after.tactical?.step).toBe('done')
     expect(after.log.some(e => e.t === 'info' && e.text.includes('retreats'))).toBe(true)
   })
+  it('R4.1 step 5: a structure (PDS or space dock) on a planet counts as the attacker\'s presence for a retreat target', () => {
+    const later = combat('bereg', ['dreadnought'], ['dreadnought'], 2)
+    const withDock = withUnits(later, 'quann', 0, ['spacedock'], 'quann')
+    expect(applyMove(withDock, { type: 'retreat', to: 'quann' }, 0).ok).toBe(true)
+  })
   it('R4.1 step 5: an announced retreat is dropped when the combat ends in that round', () => {
     const announced = applyMove(combat('bereg', ['dreadnought', 'dreadnought', 'cruiser'], ['fighter'], 2), { type: 'retreat', to: 'home-n' }, 0)
     if (!announced.ok) throw new Error(announced.error)
@@ -207,5 +253,23 @@ describe('R4.1 space combat', () => {
     const after = fightToEnd(base, 300)
     const mine = owned(after, 'bereg', 0)
     expect(mine.filter(u => u.type === 'infantry')).toHaveLength(mine.some(u => u.type === 'carrier') ? 2 : 0)
+  })
+})
+
+describe('trimCargo (cargo above capacity at combat end)', () => {
+  it('Space Dock II adds up to 3 free fighter slots on top of ship capacity', () => {
+    const base = withUnits(toActionPhase(), 'bereg', 0, ['fighter', 'fighter', 'fighter', 'fighter', 'fighter'])
+    const s = withTechs(withUnits(base, 'bereg', 0, ['spacedock'], 'bereg'), 0, ['space_dock_ii'])
+    const trimmed = trimCargo(s, 'bereg', 0)
+    expect(trimmed.systems.bereg.space.filter(u => u.owner === 0 && u.type === 'fighter')).toHaveLength(3)
+    expect(trimmed.players[0].reinforcements.fighter).toBe(s.players[0].reinforcements.fighter + 2)
+  })
+  it('Fighter II fighters above capacity are kept up to the remaining fleet pool, the rest destroyed', () => {
+    const base = withUnits(toActionPhase(), 'bereg', 0, ['cruiser', 'fighter', 'fighter', 'fighter', 'fighter', 'fighter'])
+    const s = withTechs(base, 0, ['fighter_ii'])
+    const trimmed = trimCargo(s, 'bereg', 0)
+    // fleet pool 3 (l1z1x), one cruiser already counts against it, so 2 excess fighters survive as loose ships
+    expect(trimmed.systems.bereg.space.filter(u => u.owner === 0 && u.type === 'fighter')).toHaveLength(2)
+    expect(trimmed.players[0].reinforcements.fighter).toBe(s.players[0].reinforcements.fighter + 3)
   })
 })
