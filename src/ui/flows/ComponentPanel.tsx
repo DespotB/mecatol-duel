@@ -67,7 +67,7 @@ function paramsOf(def: PostDef, draft: Draft): PostAbilityParams {
 }
 
 export function ComponentPanel({ onClose }: { onClose: () => void }) {
-  const { session, legal, apply } = useGame()
+  const { session, legal, apply, canAct } = useGame()
   const [techId, setTechId] = useState<string | null>(null)
   const [amount, setAmount] = useState<Partial<Record<Post, number>>>({})
   const [open, setOpen] = useState<Post | null>(null)
@@ -246,14 +246,14 @@ export function ComponentPanel({ onClose }: { onClose: () => void }) {
                 <span className="lbl" data-testid={`post-sale-${post}`}>{def.name}</span>
                 <Stepper id={`sale-${post}`} value={commodities} min={Math.min(1, most)} max={most}
                   onChange={n => { setAmount(prev => ({ ...prev, [post]: n })) }} />
-                <button type="button" className="btn quiet" data-testid={`btn-tradepost-${post}`} disabled={sale !== null}
+                <button type="button" className="btn quiet" data-testid={`btn-tradepost-${post}`} disabled={!canAct || sale !== null}
                   onClick={() => { apply({ type: 'tradePost', post, commodities }) }}>
                   Sell {commodities} of {limit} commodities
                 </button>
                 {sale === null ? null : <span className="sub" data-testid={`sale-reason-${post}`}>{sale}</span>}
               </div>
               <div className="rowline">
-                <button type="button" className="btn quiet" data-testid={`btn-ability-${post}`} disabled={blocked !== null}
+                <button type="button" className="btn quiet" data-testid={`btn-ability-${post}`} disabled={!canAct || blocked !== null}
                   onClick={() => { openAbility(post) }}>{def.abilityName}</button>
                 <span className="sub">{def.abilityText}</span>
                 {blocked === null ? null : <span className="sub" data-testid={`ability-reason-${post}`}>{blocked}</span>}
@@ -274,7 +274,7 @@ export function ComponentPanel({ onClose }: { onClose: () => void }) {
         })}
         <div className="rowline">
           {yards.map(offer => (
-            <button key={offer.planetId} type="button" className="btn quiet" data-testid={`btn-shipyard-${offer.planetId}`}
+            <button key={offer.planetId} type="button" className="btn quiet" data-testid={`btn-shipyard-${offer.planetId}`} disabled={!canAct}
               onClick={() => { if (apply({ type: 'shipyard', planetId: offer.planetId, planets: offer.planets, tradeGoods: offer.tradeGoods })) onClose() }}>
               Emergency shipyard on {planetLabel(state, offer.planetId)}
             </button>
@@ -284,7 +284,7 @@ export function ComponentPanel({ onClose }: { onClose: () => void }) {
           <>
             <div className="rowline">
               <span className="sub">Inheritance Systems: exhaust the card and spend 2 resources to research one technology, prerequisites ignored.</span>
-              <button type="button" className="btn gold" data-testid="btn-inheritance" disabled={techId === null}
+              <button type="button" className="btn gold" data-testid="btn-inheritance" disabled={!canAct || techId === null}
                 onClick={() => { if (techId && apply({ type: 'research', techId, via: 'inheritance' })) onClose() }}>Research</button>
             </div>
             <TechDrawer state={state} seat={state.active} allowed={techs} selected={techId} onSelect={setTechId} />

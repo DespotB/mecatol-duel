@@ -1,4 +1,4 @@
-import type { GameState } from '../engine/types'
+import type { GameState, Seat } from '../engine/types'
 import type { Session } from './store'
 
 /**
@@ -9,6 +9,7 @@ import type { Session } from './store'
  */
 export const LEGACY_KEY = 'md:local'
 export const INDEX_KEY = 'md:games'
+export const PLAYER_KEY = 'md:player'
 export const MAX_GAMES = 20
 /** No I, L, O, 0 or 1: a code is read out loud across the table, and those five are misheard. */
 export const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
@@ -45,6 +46,10 @@ export function saveClock(code: string, clockMs: [number, number]): void {
 export function readClock(code: string): ClockRecord | null {
   const parsed = read(clockKey(code))
   return isClockRecord(parsed) ? parsed : null
+}
+
+export function claimKey(code: string): string {
+  return `md:claim:${code}`
 }
 
 /** What the lobby needs to list a game without parsing the whole state. */
@@ -166,11 +171,91 @@ export function newGameCode(exists: (code: string) => boolean): string {
   return code
 }
 
+/**
+ * Which seats one browser may act for in one game: `[0, 1]` hot-seat, `[0]` or `[1]` when the link went to
+ * someone else, `[]` for a watcher. It is a UI claim and nothing more: the engine stays a pure rules machine
+ * that does not know who is holding the mouse.
+ */
+export interface Claim {
+  seats: Seat[]
+  playerId: string
+}
+
+function isSeat(value: unknown): value is Seat {
+  return value === 0 || value === 1
+}
+
+function isClaim(value: unknown): value is Claim {
+  if (typeof value !== 'object' || value === null) return false
+  const c = value as Partial<Claim>
+  if (typeof c.playerId !== 'string' || c.playerId.length === 0) return false
+  // a seat claimed twice is a claim nobody wrote on purpose, so it is dropped rather than trusted
+  return Array.isArray(c.seats) && c.seats.every(isSeat) && new Set<unknown>(c.seats).size === c.seats.length
+}
+
+function mint(): string {
+  const source = globalThis.crypto as Crypto | undefined
+  if (source && typeof source.randomUUID === 'function') return source.randomUUID()
+  return `p-${Math.random().toString(36).slice(2, 12)}${Math.random().toString(36).slice(2, 12)}`
+}
+
+/**
+ * The browser's identity, minted once and reused for every game it ever opens. Never a login and never a
+ * name: it says "the same browser as before", nothing else. A storage that was cleared or is blocked simply
+ * makes a new visitor, which costs a claim and no game.
+ */
+export function playerId(): string {
+  const stored = read(PLAYER_KEY)
+  if (typeof stored === 'string' && stored.length > 0) return stored
+  const minted = mint()
+  write(PLAYER_KEY, minted)
+  return minted
+}
+
+/** Every claim this browser knows for one game: its own, and later the ones the server tells it about. */
+export function readClaims(code: string): Claim[] {
+  const parsed = read(claimKey(code))
+  if (!Array.isArray(parsed)) return []
+  return (parsed as unknown[]).filter(isClaim)
+}
+
+/** What this browser claimed for one game, or null while it has not answered the mode question yet. */
+export function readClaim(code: string, id: string): Claim | null {
+  return readClaims(code).find(entry => entry.playerId === id) ?? null
+}
+
+/** Writes one browser's claim, replacing whatever that same browser claimed before and only that. */
+export function writeClaim(code: string, claim: Claim): void {
+  write(claimKey(code), [claim, ...readClaims(code).filter(entry => entry.playerId !== claim.playerId)])
+}
+
+/**
+ * The seats this browser may act for. No claim at all means both: a game saved before claims existed, or a
+ * board rendered without one, is the hot-seat it has always been. An empty claim is a watcher, which is a
+ * decision somebody made and therefore is not the same thing as no claim.
+ */
+export function actingSeats(claim: Claim | null): Seat[] {
+  return claim === null ? [0, 1] : claim.seats
+}
+
+/** The seats a visitor can still take: every seat no other browser holds. Its own seat never blocks it. */
+export function openSeats(claims: Claim[], id: string): Seat[] {
+  const taken = new Set<Seat>(claims.filter(entry => entry.playerId !== id).flatMap(entry => entry.seats))
+  return ([0, 1] as Seat[]).filter(seat => !taken.has(seat))
+}
+
 function readIndex(): GameSummary[] {
   const parsed = read(INDEX_KEY)
   if (!Array.isArray(parsed)) return []
   // stable sort: entries written in the same millisecond keep the order they were written in
   return (parsed as unknown[]).filter(isSummary).sort((a, b) => b.updatedAt - a.updatedAt)
+}
+
+/** A game that is gone takes its seat claim with it; a stale claim would answer a question nobody asked. */
+function forget(code: string): void {
+  remove(gameKey(code))
+  remove(claimKey(code))
+  remove(clockKey(code))
 }
 
 function store(session: Session): void {
@@ -186,7 +271,7 @@ function store(session: Session): void {
   }
   write(gameKey(session.code), payload)
   const entries = [summary, ...readIndex().filter(e => e.code !== session.code)]
-  for (const dropped of entries.slice(MAX_GAMES)) remove(gameKey(dropped.code))
+  for (const dropped of entries.slice(MAX_GAMES)) forget(dropped.code)
   write(INDEX_KEY, entries.slice(0, MAX_GAMES))
 }
 
@@ -213,7 +298,7 @@ export function listGames(): GameSummary[] {
   const out: GameSummary[] = []
   for (const entry of readIndex()) {
     if (isPayload(read(gameKey(entry.code)))) out.push(entry)
-    else remove(gameKey(entry.code))
+    else forget(entry.code)
   }
   if (out.length !== readIndex().length) write(INDEX_KEY, out)
   return out
@@ -243,7 +328,6 @@ export function loadGame(code: string): Session | null {
 
 export function deleteGame(code: string): void {
   migrate()
-  remove(gameKey(code))
-  remove(clockKey(code))
+  forget(code)
   write(INDEX_KEY, readIndex().filter(entry => entry.code !== code))
 }

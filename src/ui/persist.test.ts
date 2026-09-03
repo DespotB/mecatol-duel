@@ -2,9 +2,11 @@
 import { describe, expect, it, vi } from 'vitest'
 import { toActionPhase } from '../engine/testUtils'
 import {
-  CODE_ALPHABET, INDEX_KEY, LEGACY_KEY, MAX_GAMES,
-  clockKey, deleteGame, gameKey, hasGame, latestGameCode, listGames, loadGame, newGameCode, saveClock, saveGame,
+  CODE_ALPHABET, INDEX_KEY, LEGACY_KEY, MAX_GAMES, PLAYER_KEY,
+  actingSeats, claimKey, clockKey, deleteGame, gameKey, hasGame, latestGameCode, listGames, loadGame,
+  newGameCode, openSeats, playerId, readClaim, readClaims, saveClock, saveGame, writeClaim,
 } from './persist'
+import type { Claim } from './persist'
 import type { Session } from './store'
 
 function session(code: string, clockMs: [number, number] = [123456, 654321]): Session {
@@ -152,6 +154,123 @@ describe('the game code', () => {
     expect(newGameCode(code => code === 'AAAAAA')).toBe('SSSSSS')
     random.mockRestore()
 
+  })
+})
+
+describe('the identity of one browser', () => {
+  it('mints a player id once and reuses it for every game', () => {
+    const first = playerId()
+    expect(first.length).toBeGreaterThan(8)
+    expect(playerId()).toBe(first)
+    expect(window.localStorage.getItem(PLAYER_KEY)).toContain(first)
+  })
+
+  it('is a new visitor once the storage is gone', () => {
+    const first = playerId()
+    window.localStorage.clear()
+    expect(playerId()).not.toBe(first)
+  })
+
+  it('survives a blocked storage by minting an id it cannot keep', () => {
+    const blocked = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('QuotaExceededError')
+    })
+    expect(() => playerId()).not.toThrow()
+    expect(playerId().length).toBeGreaterThan(8)
+    blocked.mockRestore()
+  })
+})
+
+describe('the seat claim of one browser on one game', () => {
+  const ME = 'me-1234'
+  const THEM = 'them-5678'
+
+  it('writes and reads a claim under the game code, one code at a time', () => {
+    writeClaim('AAA222', { seats: [0], playerId: ME })
+    writeClaim('BBB333', { seats: [0, 1], playerId: ME })
+    expect(readClaim('AAA222', ME)).toEqual({ seats: [0], playerId: ME })
+    expect(readClaim('BBB333', ME)).toEqual({ seats: [0, 1], playerId: ME })
+    expect(readClaim('CCC444', ME)).toBeNull()
+    expect(window.localStorage.getItem(claimKey('AAA222'))).not.toBeNull()
+  })
+
+  it('replaces what the same browser claimed before and leaves other browsers alone', () => {
+    writeClaim('AAA222', { seats: [0], playerId: THEM })
+    writeClaim('AAA222', { seats: [1], playerId: ME })
+    writeClaim('AAA222', { seats: [], playerId: ME })
+    expect(readClaim('AAA222', ME)).toEqual({ seats: [], playerId: ME })
+    expect(readClaim('AAA222', THEM)).toEqual({ seats: [0], playerId: THEM })
+    expect(readClaims('AAA222')).toHaveLength(2)
+  })
+
+  it('ignores an empty, broken or foreign claim instead of throwing', () => {
+    expect(readClaims('NOPE22')).toEqual([])
+    window.localStorage.setItem(claimKey('BAD222'), 'not json')
+    expect(readClaims('BAD222')).toEqual([])
+    window.localStorage.setItem(claimKey('ODD222'), JSON.stringify([
+      { seats: [0], playerId: ME },      // the one good entry
+      { seats: [2], playerId: THEM },    // no such seat
+      { seats: [0, 0], playerId: THEM }, // the same seat twice
+      { seats: [1] },                    // nobody holds it
+      'nonsense',
+    ]))
+    expect(readClaims('ODD222')).toEqual([{ seats: [0], playerId: ME }])
+  })
+
+  it('survives a blocked storage', () => {
+    const blocked = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('QuotaExceededError')
+    })
+    expect(() => { writeClaim('FUL222', { seats: [0, 1], playerId: ME }) }).not.toThrow()
+    blocked.mockRestore()
+    expect(readClaim('FUL222', ME)).toBeNull()
+  })
+
+  it('forgets the claim with the game', () => {
+    saveGame(session('DEL222'))
+    writeClaim('DEL222', { seats: [0, 1], playerId: ME })
+    deleteGame('DEL222')
+    expect(readClaim('DEL222', ME)).toBeNull()
+    expect(window.localStorage.getItem(claimKey('DEL222'))).toBeNull()
+  })
+
+  it('forgets the claim of a game pruned out of the list', () => {
+    const codes = Array.from({ length: MAX_GAMES + 1 }, (_, i) => `G${String(i).padStart(5, '0')}`)
+    for (const code of codes) {
+      saveGame(session(code))
+      writeClaim(code, { seats: [0, 1], playerId: ME })
+    }
+    expect(readClaim(codes[0], ME)).toBeNull()
+    expect(readClaim(codes[codes.length - 1], ME)).not.toBeNull()
+  })
+})
+
+describe('which seats a browser may act for', () => {
+  const ME = 'me-1234'
+  const THEM = 'them-5678'
+  const claim = (seats: Claim['seats'], id = ME): Claim => ({ seats, playerId: id })
+
+  it('reads the seats straight off the claim', () => {
+    expect(actingSeats(claim([0, 1]))).toEqual([0, 1])
+    expect(actingSeats(claim([1]))).toEqual([1])
+    expect(actingSeats(claim([]))).toEqual([])
+  })
+
+  it('plays both seats when there is no claim at all: that is what hot-seat was before claims existed', () => {
+    expect(actingSeats(null)).toEqual([0, 1])
+  })
+
+  it('offers every seat no other browser holds, the visitor\'s own seat included', () => {
+    expect(openSeats([], ME)).toEqual([0, 1])
+    expect(openSeats([claim([0], THEM)], ME)).toEqual([1])
+    expect(openSeats([claim([1], THEM)], ME)).toEqual([0])
+    expect(openSeats([claim([0], ME)], ME)).toEqual([0, 1])
+    expect(openSeats([claim([], THEM)], ME)).toEqual([0, 1])
+  })
+
+  it('leaves no seat for a visitor who arrives at a game two browsers already hold', () => {
+    expect(openSeats([claim([0], THEM), claim([1], 'third')], ME)).toEqual([])
+    expect(openSeats([claim([0, 1], THEM)], ME)).toEqual([])
   })
 })
 

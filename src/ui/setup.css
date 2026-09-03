@@ -221,6 +221,20 @@
 .lobbyui .minimap img.mr{outline:1px solid rgba(201,162,77,.9);outline-offset:-1px;
   clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%)}
 
+/* the mode question: one game, two answers, in the lobby's own language */
+.lobbyui .modeq{width:min(1080px,100%);margin:72px auto 0;display:grid;grid-template-columns:1fr 1fr;gap:26px}
+/* the two boxes are one grid row, so the taller answer sets the height and both feet sit on the same line */
+.lobbyui .modeq .panel{padding:26px 22px 18px;display:flex;flex-direction:column;gap:12px}
+.lobbyui .modeq .lead{display:flex;align-items:center;gap:12px;min-height:34px}
+.lobbyui .modeq .lead .ico{display:flex;align-items:center;gap:2px;flex:none}
+.lobbyui .modeq .lead .ico img{height:24px;width:auto;filter:drop-shadow(0 1px 1px rgba(0,0,0,.7))}
+.lobbyui .modeq .lead svg{flex:none}
+.lobbyui .modeq .line{margin:0;font:400 13.5px/1.35 var(--body);color:var(--ink-dim)}
+.lobbyui .modeq .line .lbl{display:block;margin-bottom:3px}
+.lobbyui .modeq .seatpick{display:flex;gap:10px;flex-wrap:wrap}
+.lobbyui .modeq .foot{margin-top:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+@media (max-width:1200px){.lobbyui .modeq{grid-template-columns:1fr}}
+
 /* a code this browser does not hold */
 .lobbyui .notfound{width:min(640px,100%);margin:34px auto 0}
 .lobbyui .notfound .panel{padding:28px 26px 22px;display:flex;flex-direction:column;gap:12px}

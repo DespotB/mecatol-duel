@@ -14,19 +14,25 @@ export interface ActionBarProps {
 }
 
 export function ActionBar({ mode, onMode, hint, onLog }: ActionBarProps) {
-  const { session, legal, apply, canUndo, undo, error } = useGame()
+  const { session, legal, apply, canUndo, undo, error, canAct, seats } = useGame()
   const [menu, setMenu] = useState(false)
   useEscape(() => { setMenu(false) })
   if (!session) return null
   const state = session.state
+  // every action is a move for the active seat, so a browser that does not hold that seat is offered none
   const can = {
-    tactical: legal.some(m => m.type === 'startTactical'),
-    strategic: legal.some(m => m.type === 'strategic'),
-    component: legal.some(m => m.type === 'research' || m.type === 'shipyard' || m.type === 'tradePost'),
-    pass: legal.some(m => m.type === 'pass'),
+    tactical: canAct && legal.some(m => m.type === 'startTactical'),
+    strategic: canAct && legal.some(m => m.type === 'strategic'),
+    component: canAct && legal.some(m => m.type === 'research' || m.type === 'shipyard' || m.type === 'tradePost'),
+    pass: canAct && legal.some(m => m.type === 'pass'),
     // R3.2: only offered once the action is spent, so the bar shows plainly that the turn is the last thing left
     endTurn: legal.some(m => m.type === 'endTurn'),
   }
+  // one line, where the hint sits: whose turn it is, and which seat this browser is watching it from
+  const acting = state.players[state.active].name
+  const turnLine = seats.length === 0
+    ? `Watching. It is ${acting}'s turn.`
+    : `${acting} is to act. You play ${state.players[seats[0]].name}.`
   return (
     <div className="bottombar">
       <div style={{ display: 'flex', gap: 8 }}>
@@ -62,15 +68,17 @@ export function ActionBar({ mode, onMode, hint, onLog }: ActionBarProps) {
         <button type="button" className="btn" data-testid="btn-pass"
           disabled={!can.pass} onClick={() => apply({ type: 'pass' })}>Pass</button>
         {can.endTurn ? (
-          <button type="button" className="btn gold" data-testid="btn-end-turn"
+          <button type="button" className="btn gold" data-testid="btn-end-turn" disabled={!canAct}
             onClick={() => apply({ type: 'endTurn' })}>End turn</button>
         ) : null}
       </div>
       <div className="hintbox">
         {/* the engine's own rejection text; `apply` clears it again on the next move it accepts */}
-        {error === null
-          ? <div className="h" data-testid="hint">{hint}</div>
-          : <div className="h err" role="alert" data-testid="engine-error">{error}</div>}
+        {error !== null
+          ? <div className="h err" role="alert" data-testid="engine-error">{error}</div>
+          : canAct
+            ? <div className="h" data-testid="hint">{hint}</div>
+            : <div className="h wait" data-testid="turn-line">{turnLine}</div>}
         <div className="r" data-testid="round">Round {state.round} of 6, {state.phase} phase</div>
       </div>
     </div>

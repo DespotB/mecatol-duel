@@ -7,7 +7,7 @@ import { useGame } from '../store'
 import type { UnitType } from '../../engine/types'
 
 export function ProduceDrawer() {
-  const { session, legal, apply } = useGame()
+  const { session, legal, apply, canAct } = useGame()
   const [units, setUnits] = useState<Partial<Record<UnitType, number>>>({})
   const [planets, setPlanets] = useState<string[]>([])
   const [tradeGoods, setTradeGoods] = useState(0)
@@ -32,12 +32,12 @@ export function ProduceDrawer() {
           </span>
           <div className="right">
             <button type="button" className="btn gold" data-testid="btn-produce"
-              disabled={total === 0 || total > limit || paid < cost}
+              disabled={!canAct || total === 0 || total > limit || paid < cost}
               onClick={() => { if (apply({ type: 'produce', units, planets, tradeGoods })) { setUnits({}); setPlanets([]); setTradeGoods(0) } }}>
               Confirm production
             </button>
             <button type="button" className="btn quiet" data-testid="btn-end-tactical"
-              disabled={!legal.some(m => m.type === 'endTactical')} onClick={() => apply({ type: 'endTactical' })}>End tactical action</button>
+              disabled={!canAct || !legal.some(m => m.type === 'endTactical')} onClick={() => apply({ type: 'endTactical' })}>End tactical action</button>
           </div>
         </div>
         <ProductionPicker state={state} seat={seat} limit={limit} units={units} onUnits={setUnits} />
