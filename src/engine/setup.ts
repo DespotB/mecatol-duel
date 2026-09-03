@@ -35,8 +35,15 @@ function makePlayer(seat: Seat, cfg: GameConfig['players'][number]): Player {
   }
 }
 
-/** R7: the pool is shuffled from the game seed, so the order of the objectives is different every game. */
-function shuffledObjectives(seed: number): string[] {
+/** R7: one objective is revealed per round and round 6 reveals nothing, so a game runs on six of them. */
+export const OBJECTIVES_PER_GAME = 6
+
+/**
+ * R7: the pool is shuffled from the game seed and six are drawn off the top, so both which objectives are in
+ * play and the order they arrive in change from game to game; the rest of the pool stays out. A replay of a
+ * seed draws the same six in the same order.
+ */
+function drawObjectives(seed: number): string[] {
   const rng = mulberry32(deriveSeed(seed, 91))
   const ids = PUBLIC_OBJECTIVES.map(o => o.id)
   for (let i = ids.length - 1; i > 0; i--) {
@@ -45,12 +52,12 @@ function shuffledObjectives(seed: number): string[] {
     ids[i] = ids[j]
     ids[j] = swap
   }
-  return ids
+  return ids.slice(0, OBJECTIVES_PER_GAME)
 }
 
 export function createGame(config: GameConfig, seed: number): GameState {
   const counter = { nextUnitId: 1 }
-  const order = shuffledObjectives(seed)
+  const order = drawObjectives(seed)
   const systems: Record<string, System> = {}
   for (const def of SYSTEMS) {
     const planets: Planet[] = def.planets.map(p => ({ id: p.id, name: p.name, resources: p.resources, influence: p.influence, owner: def.home, exhausted: false, ground: [], structures: [] }))

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { PUBLIC_OBJECTIVES } from '../data/objectives'
 import { unitStats } from '../data/units'
-import { ALL_STRATEGY_CARDS, GUARDIAN_FLEETS, createGame, rollGuardianFleet, unitsOf } from './setup'
+import { ALL_STRATEGY_CARDS, GUARDIAN_FLEETS, OBJECTIVES_PER_GAME, createGame, rollGuardianFleet, unitsOf } from './setup'
 import { deepFreeze } from './testUtils'
 import type { GameConfig, UnitType } from './types'
 
@@ -17,7 +18,20 @@ describe('R2 setup', () => {
     expect(g.round).toBe(1); expect(g.phase).toBe('strategy'); expect(g.active).toBe(0)
     expect(g.draft).toEqual([0, 1, 1, 0])
     expect(g.strategyPool.map(c => c.id)).toEqual(ALL_STRATEGY_CARDS)
-    expect(g.publicObjectives).toEqual([g.objectiveOrder[0]])   // R7: the pool is shuffled per game
+    expect(g.publicObjectives).toEqual([g.objectiveOrder[0]])   // R7: six are drawn from the pool per game
+  })
+  it('R7: draws six objectives from the pool, the same six for a seed and other six for another', () => {
+    expect(PUBLIC_OBJECTIVES.length).toBeGreaterThan(OBJECTIVES_PER_GAME)     // a pool, not the whole hand
+    const ids = PUBLIC_OBJECTIVES.map(o => o.id)
+    const drawn = createGame(config, 4).objectiveOrder
+    expect(drawn).toHaveLength(OBJECTIVES_PER_GAME)
+    expect(new Set(drawn).size).toBe(OBJECTIVES_PER_GAME)                     // nothing drawn twice
+    for (const id of drawn) expect(ids).toContain(id)
+    // a replay of a seed reveals the same six in the same order, and the rest stay out of that game
+    expect(createGame(config, 4).objectiveOrder).toEqual(drawn)
+    const others = [1, 2, 3, 5, 6, 7, 8].map(seed => createGame(config, seed).objectiveOrder.join(','))
+    expect(others).not.toContain(drawn.join(','))
+    expect(new Set(others).size).toBeGreaterThan(1)
   })
   it('places the printed starting units', () => {
     const north = g.systems['home-n'], south = g.systems['home-s']

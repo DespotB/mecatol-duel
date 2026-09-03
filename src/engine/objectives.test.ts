@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { FIRST_STRIKE, FOOTHOLD, PUBLIC_OBJECTIVES } from '../data/objectives'
 import { readyResources } from './economy'
-import { createGame } from './setup'
+import { OBJECTIVES_PER_GAME, createGame } from './setup'
 import { addVp, controlsMecatol, freeScoreable, fulfils, paidScoreable, scoreObjective, scoreable } from './objectives'
 import { DUEL_CONFIG, deepFreeze, toActionPhase, withExhausted, withPlanetOwner, withPlayer, withTechs, withUnits } from './testUtils'
 import type { GameState } from './types'
@@ -89,13 +89,15 @@ describe('R7 objectives', () => {
     expect(fulfils(withPlanetOwner(s, 'home-n', '000', 1), 1, FOOTHOLD.id)).toBe(true)
     expect(fulfils(s, 0, 'no_such_objective')).toBe(false)
   })
-  it('R7: the pool is shuffled per game and one objective is revealed at setup', () => {
-    const ids = PUBLIC_OBJECTIVES.map(o => o.id).sort()
+  it('R7: six objectives are drawn from the pool per game and one is revealed at setup', () => {
+    const ids = PUBLIC_OBJECTIVES.map(o => o.id)
     const orders = [1, 2, 3, 4, 5, 6, 7, 8].map(seed => createGame(DUEL_CONFIG, seed).objectiveOrder)
     for (const order of orders) {
-      expect([...order].sort()).toEqual(ids)
-      expect(order).toHaveLength(PUBLIC_OBJECTIVES.length)
+      expect(order).toHaveLength(OBJECTIVES_PER_GAME)
+      for (const id of order) expect(ids).toContain(id)
     }
+    // the ones left out change with the seed, so the draw is a draw and not a fixed prefix
+    expect(new Set(orders.map(o => ids.filter(id => !o.includes(id)).join(','))).size).toBeGreaterThan(1)
     expect(new Set(orders.map(o => o.join(','))).size).toBeGreaterThan(1)
     const game = createGame(DUEL_CONFIG, 7)
     expect(game.publicObjectives).toEqual([game.objectiveOrder[0]])

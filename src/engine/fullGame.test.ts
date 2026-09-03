@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { FACTIONS } from '../data/factions'
 import { homeSystemId } from '../data/map'
-import { PUBLIC_OBJECTIVES } from '../data/objectives'
 import { otherSeat } from './actionPhase'
 import { checkFleet } from './board'
 import { applyMove, legalMoves, validateMove } from './index'
-import { createGame, unitsOf } from './setup'
+import { OBJECTIVES_PER_GAME, createGame, unitsOf } from './setup'
 import { DUEL_CONFIG, fillTemplate, shuffle, toActionPhase, toStatusPhase, withCards, withExhausted, withPlanetOwner, withPlayer, withTechs } from './testUtils'
 import type { GameState, Move, Seat, StrategyCardId } from './types'
 
@@ -20,10 +19,10 @@ function invariants(state: GameState, landed: Map<string, Set<Seat>>): void {
   expect(new Set(units.map(u => u.id)).size).toBe(units.length)
   for (const u of units) expect(u.id).toBeLessThan(state.nextUnitId)
   expect(state.round).toBeLessThanOrEqual(6)
-  // R3.3 step 2 reveals before the victory check, so a finished round may be one ahead; the pool of five
-  // runs out before round 6 does, and nothing is revealed after that
-  expect(state.publicObjectives.length).toBeGreaterThanOrEqual(Math.min(state.round, PUBLIC_OBJECTIVES.length))
-  expect(state.publicObjectives.length).toBeLessThanOrEqual(PUBLIC_OBJECTIVES.length)
+  // R3.3 step 2 reveals before the victory check, so a finished round may be one ahead; the six drawn from
+  // the pool run out with round 6, which reveals nothing itself
+  expect(state.publicObjectives.length).toBeGreaterThanOrEqual(Math.min(state.round, OBJECTIVES_PER_GAME))
+  expect(state.publicObjectives.length).toBeLessThanOrEqual(OBJECTIVES_PER_GAME)
   expect(state.publicObjectives).toEqual(state.objectiveOrder.slice(0, state.publicObjectives.length))
   expect(state.phase === 'ended').toBe(state.winner !== null)
   for (const seat of [0, 1] as Seat[]) {

@@ -70,7 +70,7 @@ export interface GameState {
   strategyPool: { id: StrategyCardId; bonus: number }[]   // unpicked cards with trade goods
   draft: Seat[]                                          // remaining pick order in the strategy phase
   publicObjectives: string[]                             // revealed ids, in the order they were revealed
-  objectiveOrder: string[]                               // R7: the shuffled pool, one revealed per round
+  objectiveOrder: string[]                               // R7: the six drawn from the pool, one revealed per round
   mecatolCombatWinner: Seat | null                       // R7 First Strike: the race is over once this is set
   players: [Player, Player]
   systems: Record<string, System>
