@@ -38,7 +38,7 @@ export function StatusDialog() {
             <span className="chip gold" key={id}>{objectiveDef(id)?.text ?? id}</span>
           ))}
         </div>
-        <TokenSheet current={player.tokens} gained={gained} value={sheet} onChange={setTokens} />
+        <TokenSheet state={state} seat={seat} current={player.tokens} gained={gained} value={sheet} onChange={setTokens} />
       </div>
     </div>
   )

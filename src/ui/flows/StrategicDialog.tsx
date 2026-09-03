@@ -91,7 +91,7 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
             ]} />
             <PayRow state={state} seat={seat} unit="influence" needed={0} planets={planets} onPlanets={ids => { setPlanets(ids); setTokens(null) }}
               tradeGoods={tradeGoods} onTradeGoods={n => { setTradeGoods(n); setTokens(null) }} />
-            <TokenSheet current={player.tokens} gained={gained} value={sheet} onChange={setTokens} />
+            <TokenSheet state={state} seat={seat} current={player.tokens} gained={gained} value={sheet} onChange={setTokens} />
           </>
         ) : null}
 
@@ -151,7 +151,7 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
                 </button>
               ))}
             </div>
-            <TokenSheet current={player.tokens} gained={gained} redistribute value={sheet} onChange={setTokens} />
+            <TokenSheet state={state} seat={seat} current={player.tokens} gained={gained} redistribute value={sheet} onChange={setTokens} />
           </>
         ) : null}
 
