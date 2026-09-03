@@ -223,7 +223,7 @@
 .lobbyui .techlist{display:flex;align-items:center;gap:8px;font:500 13.5px var(--body);color:var(--text)}
 .lobbyui .techlist .ti{width:16px;height:16px;overflow:hidden;flex:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.7))}
 .lobbyui .techlist .ti img{width:16px;display:block}
-.lobbyui .techlist .sep{color:var(--ink-mute);margin:0 -4px}
+.lobbyui .techlist .sep{color:var(--ink-mute);margin:0 2px}
 
 /* map, clock, target and the start button */
 .lobbyui .settings{display:grid;grid-template-columns:1.25fr 1fr 1fr auto;gap:18px;align-items:center;
