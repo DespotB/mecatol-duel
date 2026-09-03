@@ -4,6 +4,7 @@ import { ActionBar } from '../hud/ActionBar'
 import type { ActionMode } from '../hud/ActionBar'
 import { SidePanel } from '../hud/SidePanel'
 import { TopBar } from '../hud/TopBar'
+import { shipsThatCanReach } from '../../engine'
 import { useGame } from '../store'
 import type { StrategyCardId } from '../../engine/types'
 // tactical flows (Task 4a)
@@ -31,7 +32,7 @@ const HINTS: Record<string, string> = {
 }
 
 export function BoardScreen() {
-  const { session, legal, apply } = useGame()
+  const { session, legal, apply, clockRunning } = useGame()
   const [mode, setMode] = useState<ActionMode>(null)
   // `?panel=log` is a dev-only manual/visual QA hook (see App.tsx's demo bootstrap) so a headless
   // screenshot can land on the open log panel without a click.
@@ -45,18 +46,22 @@ export function BoardScreen() {
   const selectable = mode === 'tactical'
     ? legal.flatMap(m => m.type === 'startTactical' ? [m.systemId] : [])
     : []
+  // R3.2: activating a system your ships cannot enter is legal but usually a mistake, so the board says so
+  // before the click rather than the movement panel saying it afterwards
+  const outOfReach = selectable.filter(id => shipsThatCanReach(state, state.active, id).length === 0)
   const hint = drafting ? HINTS.strategy : state.phase === 'status' ? HINTS.status : HINTS[mode ?? 'idle']
   return (
     <>
       <div className="app" data-testid="board-screen" inert={session.handoff !== null}>
         <div className="space"><div className="stars" /><div className="neb" /><div className="swirl" /><div className="limb" /><div className="dust" /></div>
-        <TopBar state={state} clockMs={session.clockMs} clockMinutes={session.minutes} handoff={session.handoff} onPick={onPick} />
+        <TopBar state={state} clockMs={session.clockMs} clockMinutes={session.minutes} clockRunning={clockRunning} onPick={onPick} />
         <SidePanel state={state} seat={0} />
         <SidePanel state={state} seat={1} />
         <BoardMap
           state={state}
           activeSystemId={state.tactical?.systemId ?? null}
           selectable={selectable}
+          outOfReach={outOfReach}
           onSelect={systemId => { if (apply({ type: 'startTactical', systemId })) setMode(null) }}
         />
         {/* tactical flows (Task 4a) */}

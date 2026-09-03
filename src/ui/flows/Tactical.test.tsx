@@ -23,7 +23,7 @@ describe('the tactical action', () => {
   it('R3.2 step 2: moves a carrier with fighters and infantry into the active system', () => {
     renderWithSession(toActionPhase(), <BoardScreen />)
     activate('bereg')
-    fireEvent.click(screen.getByLabelText('Carrier I from [0.0.0]'))
+    fireEvent.click(screen.getByTestId('ship-home-n-carrier-plus'))
     for (let i = 0; i < 3; i++) fireEvent.click(screen.getByTestId('cargo-home-n-fighter-plus'))
     fireEvent.click(screen.getByTestId('cargo-home-n-infantry-plus'))
     expect(screen.getByTestId('cargo-home-n-fighter').textContent).toBe('3')
@@ -34,10 +34,43 @@ describe('the tactical action', () => {
     expect(screen.queryByTestId('stack-home-n-0-fighter')).toBeNull()
   })
 
+  it('R3.2 step 2: shows the capacity of the picked ships and what it carries', () => {
+    renderWithSession(toActionPhase(), <BoardScreen />)
+    activate('bereg')
+    expect(screen.getByTestId('ship-card-home-n-carrier')).toBeTruthy()
+    expect(screen.getByTestId('cargo-card-home-n-fighter')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('ship-home-n-carrier-plus'))
+    expect(screen.getByTestId('capacity-home-n').textContent).toBe('Capacity 4, carrying 0')
+    for (let i = 0; i < 3; i++) fireEvent.click(screen.getByTestId('cargo-home-n-fighter-plus'))
+    expect(screen.getByTestId('capacity-home-n').textContent).toBe('Capacity 4, carrying 3')
+  })
+
+  it('R3.2 step 1: marks the systems no ship can reach before the activation', () => {
+    renderWithSession(toActionPhase(), <BoardScreen />)
+    fireEvent.click(screen.getByTestId('btn-tactical'))
+    expect(screen.getByTestId('noreach-sakulag')).toBeTruthy()     // asteroid field, no Antimass Deflectors
+    expect(screen.getByTestId('noreach-starpoint')).toBeTruthy()   // two systems away
+    expect(screen.queryByTestId('noreach-bereg')).toBeNull()
+    expect(screen.getByTestId('tile-sakulag').className).toContain('outofreach')
+  })
+
+  it('R3.2 step 2: names the asteroid field instead of a bare "nothing can reach this system"', () => {
+    renderWithSession(toActionPhase(), <BoardScreen />)
+    activate('sakulag')
+    expect(screen.getByTestId('movement-obstacle').textContent).toContain('Antimass Deflectors')
+    expect(screen.queryByTestId('origin-home-n')).toBeNull()
+  })
+
+  it('R3.2 step 2: names the range for a system two steps away', () => {
+    renderWithSession(toActionPhase(), <BoardScreen />)
+    activate('starpoint')
+    expect(screen.getByTestId('movement-obstacle').textContent).toContain('within range')
+  })
+
   it('R4.3: lands infantry on an empty planet and takes control of it', () => {
     renderWithSession(toActionPhase(), <BoardScreen />)
     activate('bereg')
-    fireEvent.click(screen.getByLabelText('Carrier I from [0.0.0]'))
+    fireEvent.click(screen.getByTestId('ship-home-n-carrier-plus'))
     fireEvent.click(screen.getByTestId('cargo-home-n-infantry-plus'))
     fireEvent.click(screen.getByTestId('btn-move-ships'))
     fireEvent.click(screen.getByTestId('btn-end-movement'))

@@ -9,5 +9,7 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.test.{ts,tsx}'],
     setupFiles: ['./src/ui/test/setup.ts'],
+    // the ten seeded full games in fullGame.test.ts sit right at the five second default on a loaded machine
+    testTimeout: 30000,
   },
 })

@@ -25,6 +25,8 @@ export interface GameStore {
   legal: Move[]
   error: string | null
   canUndo: boolean
+  /** Whether the active seat's clock is ticking right now; the top bar labels the clocks from it. */
+  clockRunning: boolean
   start(config: GameConfig, seed: number, minutes: number): void
   resume(session: Session): void
   apply(move: Move): boolean
@@ -117,8 +119,10 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, history])
 
-  // R6: the clock runs only for the seat to act, and only during the action phase
-  const running = session !== null && session.state.phase === 'action' && session.state.winner === null && session.handoff === null
+  // R6: the clock runs for whichever seat has something to decide, in every phase. Picking a strategy card
+  // or distributing status tokens is a turn like any other, so a player cannot hold the other one hostage
+  // by sitting on a draft pick. `legal` is memoised on the state, so this costs no enumeration per tick.
+  const running = session !== null && session.state.winner === null && session.handoff === null && legal.length > 0
   const seat = session ? session.state.active : 0
   useEffect(() => {
     if (!ticking || !running) return
@@ -133,8 +137,8 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     return () => clearInterval(id)
   }, [ticking, running, seat])
 
-  // R6: at zero the player passes automatically; while passing is illegal (an unused strategy card, an open
-  // secondary window, a running tactical action) the clock simply stays at zero until it becomes legal
+  // R6: at zero the player passes automatically; while passing is illegal (another phase, an unused strategy
+  // card, an open secondary window, a running tactical action) the clock stays at zero until it becomes legal
   useEffect(() => {
     if (!session || !running) return
     if (session.clockMs[session.state.active] > 0) return
@@ -153,9 +157,9 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
   }, [session])
 
   const store: GameStore = useMemo(() => ({
-    session, legal, error, canUndo: session !== null && session.history.length > 0,
+    session, legal, error, canUndo: session !== null && session.history.length > 0, clockRunning: running,
     start, resume, apply, undo, dismissHandoff, abandon,
-  }), [session, legal, error, start, resume, apply, undo, dismissHandoff, abandon])
+  }), [session, legal, error, running, start, resume, apply, undo, dismissHandoff, abandon])
 
   return <GameContext.Provider value={store}>{children}</GameContext.Provider>
 }

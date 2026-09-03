@@ -1,18 +1,24 @@
-import type { Color, FactionId, Owner, StrategyCardId, UnitType } from '../engine/types'
+import type { Color, FactionId, Owner, StrategyCardId, TechColor, UnitType } from '../engine/types'
 
 export const CARD_NUMBER: Record<StrategyCardId, number> = {
   leadership: 1, diplomacy: 2, trade: 5, warfare: 6, technology: 7, imperial: 8,
 }
 
+/**
+ * R1: every system is composed, never a printed tile with planets baked in. The tile file is the background
+ * alone (an empty starfield, or the anomaly art where the system is one), and every planet is drawn on top
+ * from its own render, so the whole map reads in one style and one nameplate design.
+ */
 const TILE_FILE: Record<string, string> = {
-  'home-n': '06_000.png', bereg: '35_Bereg.png', sakulag: '44_Asteroids.png', mecatol: '18_MR.png',
-  quann: '42_Nebula.png', starpoint: '00_blue.png', 'home-s': '10_ArcPime.png',
+  'home-n': '00_blue.png', bereg: '00_blue.png', sakulag: '44_Asteroids.png', mecatol: '00_blue.png',
+  quann: '42_Nebula.png', starpoint: '00_blue.png', 'home-s': '00_blue.png',
 }
 
-/** Planet art for the systems whose tile does not print the planet (R1: composed tiles). */
 const PLANET_FILE: Record<string, string> = {
-  sakulag: 'planet_Sakulag.png', quann: 'planet_Quann.png',
+  '000': 'planet_Planet000.png', bereg: 'planet_Bereg.png', 'lirta-iv': 'planet_LirtaIV.png',
+  'mecatol-rex': 'planet_Mecatol.png', sakulag: 'planet_Sakulag.png', quann: 'planet_Quann.png',
   starpoint: 'planet_Starpoint.png', centauri: 'planet_Vefut.png',
+  'arc-prime': 'planet_ArcPrime.png', 'wren-terra': 'planet_WrenTerra.png',
 }
 
 /** The card file names do not follow the technology ids, so the mapping is explicit. */
@@ -86,6 +92,9 @@ export function tokenUrl(faction: FactionId, kind: 'command' | 'command-fleet' |
 }
 export function strategyCardUrl(card: StrategyCardId): string {
   return `/assets/cards/strat_base_game_${CARD_NUMBER[card]}.png`
+}
+export function techIconUrl(colour: TechColor): string {
+  return `/assets/icons/tech_${colour}.png`
 }
 export function techArtUrl(techId: string): string {
   return `/assets/cards/${TECH_FILE[techId] ?? 'cardback_public2.png'}`

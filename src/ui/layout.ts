@@ -32,28 +32,46 @@ export interface PlanetSpot {
 }
 
 export const PLANET_SPOTS: Record<string, PlanetSpot> = {
-  '000': { ground: { left: 60, top: 100 }, structures: { left: 120, top: 56 } },
-  bereg: { ground: { left: 64, top: 40 }, structures: { left: 64, top: 8 } },
-  'lirta-iv': { ground: { left: 128, top: 124 }, structures: { left: 128, top: 160 } },
-  sakulag: {
-    ground: { left: 62, top: 98 }, structures: { left: 118, top: 98 },
-    art: { left: 72, top: 52, width: 86, height: 86 }, plate: { left: 70, top: 136 },
+  '000': {
+    ground: { left: 58, top: 104 }, structures: { left: 126, top: 56 },
+    art: { left: 64, top: 34, width: 102, height: 102 }, plate: { left: 58, top: 142 },
   },
-  'mecatol-rex': { ground: { left: 88, top: 62 }, structures: { left: 88, top: 96 } },
+  bereg: {
+    ground: { left: 66, top: 88 }, structures: { left: 66, top: 56 },
+    art: { left: 58, top: 34, width: 88, height: 88 }, plate: { left: 62, top: 8 },
+  },
+  'lirta-iv': {
+    ground: { left: 110, top: 148 }, structures: { left: 110, top: 116 },
+    art: { left: 104, top: 98, width: 82, height: 82 }, plate: { left: 58, top: 170 },
+  },
+  sakulag: {
+    ground: { left: 62, top: 98 }, structures: { left: 122, top: 98 },
+    art: { left: 70, top: 44, width: 92, height: 92 }, plate: { left: 60, top: 140 },
+  },
+  'mecatol-rex': {
+    ground: { left: 84, top: 66 }, structures: { left: 84, top: 100 },
+    art: { left: 62, top: 30, width: 108, height: 108 }, plate: { left: 50, top: 144 },
+  },
   quann: {
-    ground: { left: 60, top: 102 }, structures: { left: 116, top: 102 },
-    art: { left: 74, top: 56, width: 82, height: 82 }, plate: { left: 78, top: 138 },
+    ground: { left: 62, top: 100 }, structures: { left: 122, top: 100 },
+    art: { left: 70, top: 44, width: 92, height: 92 }, plate: { left: 62, top: 140 },
   },
   starpoint: {
-    ground: { left: 136, top: 50 }, structures: { left: 136, top: 84 },
-    art: { left: 102, top: 24, width: 90, height: 80 }, plate: { left: 98, top: 108 },
+    ground: { left: 112, top: 60 }, structures: { left: 112, top: 28 },
+    art: { left: 106, top: 30, width: 82, height: 82 }, plate: { left: 74, top: 8 },
   },
   centauri: {
-    ground: { left: 42, top: 118 }, structures: { left: 42, top: 152 },
-    art: { left: 40, top: 100, width: 64, height: 64 }, plate: { left: 52, top: 168 },
+    ground: { left: 52, top: 124 }, structures: { left: 52, top: 92 },
+    art: { left: 44, top: 94, width: 82, height: 82 }, plate: { left: 46, top: 170 },
   },
-  'arc-prime': { ground: { left: 68, top: 50 }, structures: { left: 118, top: 36 } },
-  'wren-terra': { ground: { left: 134, top: 118 }, structures: { left: 134, top: 152 } },
+  'arc-prime': {
+    ground: { left: 66, top: 88 }, structures: { left: 66, top: 56 },
+    art: { left: 58, top: 34, width: 88, height: 88 }, plate: { left: 62, top: 8 },
+  },
+  'wren-terra': {
+    ground: { left: 110, top: 148 }, structures: { left: 110, top: 116 },
+    art: { left: 104, top: 98, width: 82, height: 82 }, plate: { left: 58, top: 170 },
+  },
 }
 
 export const WORMHOLE_SPOTS: Record<string, Point> = {

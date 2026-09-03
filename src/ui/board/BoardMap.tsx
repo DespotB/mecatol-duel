@@ -7,16 +7,19 @@ export interface BoardMapProps {
   state: GameState
   activeSystemId?: string | null
   selectable?: string[]
+  /** Selectable systems no ship of the active seat can move into; they stay clickable but read as a dead end. */
+  outOfReach?: string[]
   onSelect?: (systemId: string) => void
 }
 
-export function BoardMap({ state, activeSystemId = null, selectable = [], onSelect }: BoardMapProps) {
+export function BoardMap({ state, activeSystemId = null, selectable = [], outOfReach = [], onSelect }: BoardMapProps) {
   return (
     <div className="map" data-testid="board-map">
       {SYSTEMS.map(def => (
         <Tile
           key={def.id} state={state} system={state.systems[def.id]}
-          active={activeSystemId === def.id} selectable={selectable.includes(def.id)} onSelect={onSelect}
+          active={activeSystemId === def.id} selectable={selectable.includes(def.id)}
+          outOfReach={outOfReach.includes(def.id)} onSelect={onSelect}
         />
       ))}
       <TradePosts state={state} seat={state.active} />

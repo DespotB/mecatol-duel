@@ -1,5 +1,6 @@
 import { TECHS } from '../../data/techs'
 import { techArtUrl } from '../art'
+import { TechColourIcon, TechIcon } from '../TechIcon'
 import type { GameState, Seat, TechColor } from '../../engine/types'
 
 const COLOURS: TechColor[] = ['blue', 'red', 'green', 'yellow']
@@ -33,7 +34,10 @@ export function TechDrawer({ state, seat, allowed, selected, onSelect }: TechDra
       <button key={techId} type="button" className={`tc ${state2}`} data-testid={`tech-card-${techId}`}
         disabled={!open} onClick={() => onSelect(techId)}>
         <img className="art" src={techArtUrl(techId)} alt="" />
-        <span className="cap">{name}{isOwned ? ', owned' : open ? '' : ', needs prerequisites'}</span>
+        <span className="cap">
+          <TechIcon techId={techId} colour={state.players[seat].color} size={14} />
+          {name}{isOwned ? ', owned' : open ? '' : ', needs prerequisites'}
+        </span>
       </button>
     )
   }
@@ -41,7 +45,7 @@ export function TechDrawer({ state, seat, allowed, selected, onSelect }: TechDra
     <div className="tcols" data-testid="tech-drawer">
       {columns.map(column => (
         <div className="tcol" key={column.colour}>
-          <h4><span className={`tdot ${column.colour}`} />{COLUMN_NAME[column.colour]}</h4>
+          <h4><TechColourIcon colour={column.colour} />{COLUMN_NAME[column.colour]}</h4>
           {column.techs.map(t => card(t.id, t.name))}
         </div>
       ))}
