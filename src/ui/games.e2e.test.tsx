@@ -30,7 +30,7 @@ describe('a game code in the URL', () => {
     expect(screen.getByTestId('player-0').textContent).toContain('Despot')
   })
 
-  it('tells another browser that the game is not on this device', () => {
+  it('tells a browser with no server and no local copy that no game carries the code', () => {
     window.location.hash = '#/?seed=7'
     const view = render(<App ticking={false} />)
     startGame('Despot', 'Kael')
@@ -40,9 +40,9 @@ describe('a game code in the URL', () => {
     window.localStorage.clear()
     render(<App ticking={false} />)
     const panel = screen.getByTestId('unknown-game')
-    expect(panel.textContent).toContain('This game is not on this device')
-    expect(panel.textContent).toContain('Games are saved in the browser they were started in.')
-    expect(panel.textContent).toContain('online play')
+    expect(panel.textContent).toContain('No game carries this code')
+    expect(panel.textContent).toContain('saved in that browser alone')
+    expect(panel.textContent).toContain('A shared link opens the game on any device')
     expect(screen.queryByTestId('board-screen')).toBeNull()
     fireEvent.click(screen.getByTestId('btn-lobby'))
     expect(screen.getByTestId('setup-screen')).toBeTruthy()

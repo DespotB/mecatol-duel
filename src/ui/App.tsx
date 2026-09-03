@@ -3,6 +3,8 @@ import { GameProvider, useGame } from './store'
 import { latestGameCode, loadGame, openSeats, playerId, readClaim, readClaims, saveGame, writeClaim } from './persist'
 import type { Claim } from './persist'
 import { codeFromRoute, gamePath, navigate, playRedirect, useHashRoute } from './route'
+import { freeSeats, useRemoteGame } from './remote'
+import { transport } from '../net/online'
 import { BoardScreen } from './screens/BoardScreen'
 import { GameOverScreen } from './screens/GameOverScreen'
 import { ModeScreen } from './screens/ModeScreen'
@@ -155,26 +157,57 @@ function GameRoute({ code }: { code: string }) {
   const { session, resume } = useGame()
   const open = session !== null && session.code === code
   const stored = useMemo(() => open ? null : loadGame(code), [open, code])
+  /*
+   * A game this browser does not hold is not necessarily lost: a shared link points at a game on the
+   * server, and the server has everything needed to rebuild it. So the local storage is asked first, and
+   * only a code neither this browser nor the server knows lands on the "not on this device" panel.
+   */
+  const remote = useRemoteGame(code, !open && stored === null)
+  const arrived = remote.kind === 'found' ? remote.session : null
   const [claim, setClaim] = useState<Claim | null>(() => readClaim(code, playerId()))
+  const [taken, setTaken] = useState(false)
   // a different game is a different question, so the claim is re-read whenever the address changes
-  useEffect(() => { setClaim(readClaim(code, playerId())) }, [code])
+  useEffect(() => { setClaim(readClaim(code, playerId())); setTaken(false) }, [code])
   const held = claim !== null
   useEffect(() => {
-    if (held && stored) resume(stored)
-  }, [held, stored, resume])
+    if (!held) return
+    if (stored) { resume(stored); return }
+    // the game came off the wire: it is this browser's now, so it is saved before it is opened
+    if (arrived) { saveGame(arrived); resume(arrived) }
+  }, [held, stored, arrived, resume])
   const answer = useCallback((seats: Seat[]) => {
-    const made: Claim = { seats, playerId: playerId() }
-    writeClaim(code, made)
-    setClaim(made)
-  }, [code])
-  const game = open && session !== null ? session : stored
-  // a game that is on no device here at all: the claim question would have nothing to ask about
-  if (game === null) return <UnknownGameScreen code={code} />
+    const id = playerId()
+    const write = () => {
+      const made: Claim = { seats, playerId: id }
+      writeClaim(code, made)
+      setClaim(made)
+    }
+    // Online, the seat is the server's to give: a second visitor asking for the same seat is told no
+    // rather than both of them believing they hold it. Hot-seat on a game off the wire takes both seats,
+    // which the server refuses unless both are free, and that refusal is the same answer.
+    const wire = transport
+    if (wire !== null && arrived !== null) {
+      void Promise.all(seats.map(seat => wire.claim(code, id, seat)))
+        .then(results => { if (results.every(Boolean)) write(); else setTaken(true) })
+        .catch(() => { setTaken(true) })
+      return
+    }
+    write()
+  }, [code, arrived])
+  const game = open && session !== null ? session : stored ?? arrived
+  if (game === null) {
+    // still asking the server, so nothing is claimed yet either way
+    if (remote.kind === 'loading') return <UnknownGameScreen code={code} looking />
+    return <UnknownGameScreen code={code} error={remote.kind === 'error' ? remote.message : undefined} />
+  }
   if (!held) {
     return (
       <ModeScreen
         code={code} names={[game.state.players[0].name, game.state.players[1].name]}
-        free={openSeats(readClaims(code), playerId())} onClaim={answer}
+        free={remote.kind === 'found' && !taken
+          ? freeSeats(remote.players, playerId())
+          : openSeats(readClaims(code), playerId())}
+        onClaim={answer}
       />
     )
   }
