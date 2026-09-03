@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { applyMove, createGame, deriveSeed, legalMoves } from '../engine'
 import type { GameConfig, GameState, Move, Seat } from '../engine/types'
 import { moveCount, undoable } from './history'
+import { clearSession, loadSession, saveSession } from './persist'
 
 export type { GameConfig } from '../engine/types'
 
@@ -95,6 +96,19 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     setError(null)
     setSession(null)
   }, [])
+
+  // resume the game in progress after a reload; a broken payload is simply ignored
+  useEffect(() => {
+    const saved = loadSession()
+    if (!saved) return
+    roundRef.current = saved.state.round
+    setSession(saved)
+  }, [])
+
+  useEffect(() => {
+    if (session) saveSession(session)
+    else clearSession()
+  }, [session])
 
   // R6: the clock runs only for the seat to act, and only during the action phase
   const running = session !== null && session.state.phase === 'action' && session.state.winner === null && session.handoff === null

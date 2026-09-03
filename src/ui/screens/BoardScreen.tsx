@@ -18,6 +18,8 @@ import { StatusDialog } from '../flows/StatusDialog'
 import { StrategicDialog } from '../flows/StrategicDialog'
 import { CARD_NAME } from '../format'
 import { strategicCards } from '../moveOptionsStrategic'
+import { HandoffOverlay } from '../HandoffOverlay'
+import { LogPanel } from '../LogPanel'
 
 const HINTS: Record<string, string> = {
   tactical: 'Tactical action. Choose a system to activate.',
@@ -31,7 +33,9 @@ const HINTS: Record<string, string> = {
 export function BoardScreen() {
   const { session, legal, apply } = useGame()
   const [mode, setMode] = useState<ActionMode>(null)
-  const [showLog, setShowLog] = useState(false)
+  // `?panel=log` is a manual/visual QA hook (see App.tsx's demo bootstrap) so a headless screenshot
+  // can land on the open log panel without a click.
+  const [showLog, setShowLog] = useState(() => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('panel') === 'log')
   const [card, setCard] = useState<StrategyCardId | null>(null)
   if (!session) return null
   const state = session.state
@@ -42,44 +46,48 @@ export function BoardScreen() {
     : []
   const hint = drafting ? HINTS.strategy : state.phase === 'status' ? HINTS.status : HINTS[mode ?? 'idle']
   return (
-    <div className="app" data-testid="board-screen">
-      <div className="space"><div className="stars" /><div className="neb" /><div className="swirl" /><div className="limb" /><div className="dust" /></div>
-      <TopBar state={state} clockMs={session.clockMs} clockMinutes={session.minutes} handoff={session.handoff} onPick={onPick} />
-      <SidePanel state={state} seat={0} />
-      <SidePanel state={state} seat={1} />
-      <BoardMap
-        state={state}
-        activeSystemId={state.tactical?.systemId ?? null}
-        selectable={selectable}
-        onSelect={systemId => { if (apply({ type: 'startTactical', systemId })) setMode(null) }}
-      />
-      {/* tactical flows (Task 4a) */}
-      <>
-        {state.tactical?.step === 'movement' ? <MovementPanel /> : null}
-        {state.tactical?.step === 'spaceCombat' ? <CombatDialog /> : null}
-        {state.tactical?.step === 'invasion' ? <InvasionPanel /> : null}
-        {state.tactical && (state.tactical.step === 'production' || state.tactical.step === 'done') ? <ProduceDrawer /> : null}
-      </>
-      <ActionBar mode={mode} onMode={setMode} hint={hint} onLog={() => setShowLog(!showLog)} />
-      {/* strategic, component and status flows (Task 4b) */}
-      <div className="flows-4b">
-        {mode === 'strategic' && card === null ? (
-          <div className="dialog cut" data-testid="strategic-picker">
-            <div className="in">
-              <div className="dhead"><span className="tab">Strategic action</span></div>
-              <div className="rowline">
-                {strategicCards(legal).map(id => (
-                  <button key={id} type="button" className="btn" data-testid={`strategic-pick-${id}`} onClick={() => setCard(id)}>{CARD_NAME[id]}</button>
-                ))}
+    <>
+      <div className="app" data-testid="board-screen" inert={session.handoff !== null}>
+        <div className="space"><div className="stars" /><div className="neb" /><div className="swirl" /><div className="limb" /><div className="dust" /></div>
+        <TopBar state={state} clockMs={session.clockMs} clockMinutes={session.minutes} handoff={session.handoff} onPick={onPick} />
+        <SidePanel state={state} seat={0} />
+        <SidePanel state={state} seat={1} />
+        <BoardMap
+          state={state}
+          activeSystemId={state.tactical?.systemId ?? null}
+          selectable={selectable}
+          onSelect={systemId => { if (apply({ type: 'startTactical', systemId })) setMode(null) }}
+        />
+        {/* tactical flows (Task 4a) */}
+        <>
+          {state.tactical?.step === 'movement' ? <MovementPanel /> : null}
+          {state.tactical?.step === 'spaceCombat' ? <CombatDialog /> : null}
+          {state.tactical?.step === 'invasion' ? <InvasionPanel /> : null}
+          {state.tactical && (state.tactical.step === 'production' || state.tactical.step === 'done') ? <ProduceDrawer /> : null}
+        </>
+        <ActionBar mode={mode} onMode={setMode} hint={hint} onLog={() => setShowLog(!showLog)} />
+        {/* strategic, component and status flows (Task 4b) */}
+        <div className="flows-4b">
+          {mode === 'strategic' && card === null ? (
+            <div className="dialog cut" data-testid="strategic-picker">
+              <div className="in">
+                <div className="dhead"><span className="tab">Strategic action</span></div>
+                <div className="rowline">
+                  {strategicCards(legal).map(id => (
+                    <button key={id} type="button" className="btn" data-testid={`strategic-pick-${id}`} onClick={() => setCard(id)}>{CARD_NAME[id]}</button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        ) : null}
-        {mode === 'strategic' && card !== null ? <StrategicDialog card={card} onClose={() => { setCard(null); setMode(null) }} /> : null}
-        {mode === 'component' ? <ComponentPanel onClose={() => setMode(null)} /> : null}
-        {state.pendingSecondary !== null ? <SecondaryPanel /> : null}
-        {state.phase === 'status' ? <StatusDialog /> : null}
+          ) : null}
+          {mode === 'strategic' && card !== null ? <StrategicDialog card={card} onClose={() => { setCard(null); setMode(null) }} /> : null}
+          {mode === 'component' ? <ComponentPanel onClose={() => setMode(null)} /> : null}
+          {state.pendingSecondary !== null ? <SecondaryPanel /> : null}
+          {state.phase === 'status' ? <StatusDialog /> : null}
+        </div>
+        {showLog ? <LogPanel state={state} onClose={() => setShowLog(false)} /> : null}
       </div>
-    </div>
+      <HandoffOverlay />
+    </>
   )
 }
