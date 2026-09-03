@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { toActionPhase } from '../../engine/testUtils'
 import { BoardMap } from './BoardMap'
+import type { Seat } from '../../engine/types'
 
 const state = toActionPhase()
 
@@ -89,5 +90,25 @@ describe('the board', () => {
     render(<BoardMap state={state} />)
     expect(screen.getByTestId('post-west').textContent).toContain('Kasda Exchange')
     expect(screen.getByTestId('post-east').textContent).toContain('Vorhal Freeport')
+  })
+
+  it('shows a played command token per seat with a token on the system, and none on an idle system', () => {
+    const activated = {
+      ...state,
+      systems: {
+        ...state.systems,
+        bereg: { ...state.systems.bereg, activatedBy: [0] as Seat[] },
+        sakulag: { ...state.systems.sakulag, activatedBy: [0, 1] as Seat[] },
+      },
+    }
+    render(<BoardMap state={activated} />)
+    const seat0 = screen.getByTestId('activation-bereg-0')
+    expect(seat0.getAttribute('src')).toContain('l1z1x_command.png')
+    expect(seat0.getAttribute('alt')).toBe(`${state.players[0].name} command token`)
+    expect(screen.getByTestId('activation-sakulag-0').getAttribute('src')).toContain('l1z1x_command.png')
+    expect(screen.getByTestId('activation-sakulag-1').getAttribute('src')).toContain('letnev_command.png')
+    expect(screen.getByTestId('activation-sakulag-1').getAttribute('alt')).toBe(`${state.players[1].name} command token`)
+    expect(screen.queryByTestId('activation-quann-0')).toBeNull()
+    expect(screen.queryByTestId('activation-quann-1')).toBeNull()
   })
 })
