@@ -159,7 +159,8 @@ button{font-family:inherit}
 .tile.active svg.line polygon{stroke:var(--gold-hi);stroke-width:1.6}
 .tile.selectable{cursor:pointer}
 .tile.selectable svg.line polygon{stroke:rgba(232,207,138,.55);stroke-dasharray:6 5}
-.fleet{position:absolute;display:flex;flex-wrap:wrap;align-items:flex-end;gap:4px;width:200px}
+/* scoped to the tile: the setup screen's seat card has a `row fleet` of its own */
+.tile .fleet{position:absolute;display:flex;flex-wrap:wrap;align-items:flex-end;gap:4px;width:200px}
 .row-ground,.row-structures{position:absolute;display:flex;align-items:flex-end;gap:3px}
 .stk{position:relative;display:inline-block;filter:drop-shadow(0 2px 2px rgba(0,0,0,.85))}
 .stk .cnt{position:absolute;right:-9px;bottom:-5px;min-width:16px;height:16px;padding:0 3px;border-radius:8px;background:#0b1020;border:1px solid var(--gold);color:#f1ead8;font:700 10px/14px var(--hud);text-align:center}
