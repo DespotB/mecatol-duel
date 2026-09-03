@@ -100,7 +100,9 @@ button{font-family:inherit}
 .sc.own-0 .card{border-color:var(--blue)}
 .sc.own-1 .card{border-color:var(--red)}
 .sc.played .card::after{content:"";position:absolute;inset:0;background:rgba(0,0,0,.42)}
-.sc .st{font:600 11px/1 var(--hud);letter-spacing:.04em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+/* labels such as "+1 trade good" are wider than the 66px card, so they wrap instead of colliding */
+.sc .st{width:100%;font:600 10px/1.15 var(--hud);letter-spacing:.02em;text-transform:uppercase;color:var(--muted);
+  white-space:normal;text-align:center;overflow-wrap:anywhere}
 .objs{display:flex;flex-direction:column;gap:5px;flex:none}
 .objrow{display:flex;gap:6px;align-items:flex-start}
 .obj{position:relative;width:70px;height:80px;padding:4px 5px;background:#0a1020;border:1px solid rgba(201,162,77,.45);overflow:hidden}
