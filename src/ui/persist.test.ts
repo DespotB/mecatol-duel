@@ -140,3 +140,16 @@ describe('the game code', () => {
 
   })
 })
+
+describe('a game saved by an older version of the rules', () => {
+  it('is dropped instead of loaded, and disappears from the list', () => {
+    saveGame(session('OLDONE'))
+    expect(loadGame('OLDONE')).toBeTruthy()
+    // the shape of version 1: the objectives and the player fields it carried are gone
+    const raw = JSON.parse(window.localStorage.getItem('md:game:OLDONE') ?? '{}') as { state: { version: number } }
+    raw.state.version = 1
+    window.localStorage.setItem('md:game:OLDONE', JSON.stringify(raw))
+    expect(loadGame('OLDONE')).toBeNull()
+    expect(listGames().map(g => g.code)).not.toContain('OLDONE')
+  })
+})

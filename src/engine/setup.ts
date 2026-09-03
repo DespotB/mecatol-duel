@@ -72,7 +72,7 @@ export function createGame(config: GameConfig, seed: number): GameState {
   }
   const other: Seat = config.speaker === 0 ? 1 : 0
   const state: GameState = {
-    version: 1, round: 1, phase: 'strategy', speaker: config.speaker, active: config.speaker,
+    version: 2, round: 1, phase: 'strategy', speaker: config.speaker, active: config.speaker,
     strategyPool: ALL_STRATEGY_CARDS.map(id => ({ id, bonus: 0 })),
     draft: [config.speaker, other, other, config.speaker],
     publicObjectives: [order[0]],

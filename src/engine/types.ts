@@ -63,7 +63,8 @@ export interface CombatState {
 export interface InvasionState { planetId: string | null; landed: number[]; bombarded: string[]; round: number }
 export interface DieRoll { owner: Owner; unit: UnitType; value: number; hit: boolean }
 export interface GameState {
-  version: 1
+  /** Bumped whenever the shape changes so much that a saved game cannot be read any more. */
+  version: 2
   round: number; phase: Phase
   speaker: Seat; active: Seat
   strategyPool: { id: StrategyCardId; bonus: number }[]   // unpicked cards with trade goods
