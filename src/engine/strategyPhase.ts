@@ -1,3 +1,4 @@
+import { reviveInfantry } from './actionPhase'
 import type { GameState, Result, Seat, StrategyCardId } from './types'
 
 export const INITIATIVE: Record<StrategyCardId, number> = { leadership: 1, diplomacy: 2, trade: 5, warfare: 6, technology: 7, imperial: 8 }
@@ -26,7 +27,7 @@ export function pickStrategyCard(state: GameState, card: StrategyCardId): Result
   if (draft.length === 0) {
     strategyPool = strategyPool.map(c => ({ ...c, bonus: c.bonus + 1 }))
     const order = initiativeOrder(next)
-    next = { ...next, strategyPool, phase: 'action', active: order[0], players: [{ ...next.players[0], passed: false }, { ...next.players[1], passed: false }] }
+    next = reviveInfantry({ ...next, strategyPool, phase: 'action', active: order[0], players: [{ ...next.players[0], passed: false }, { ...next.players[1], passed: false }] }, order[0])
   }
   return { ok: true, value: next }
 }
