@@ -1,3 +1,4 @@
+import { BoardMap } from '../board/BoardMap'
 import { useGame } from '../store'
 
 const PHASE_LABEL: Record<string, string> = {
@@ -11,7 +12,12 @@ export function BoardScreen() {
   return (
     <div className="app" data-testid="board-screen">
       <div className="space"><div className="stars" /><div className="neb" /><div className="swirl" /><div className="limb" /><div className="dust" /></div>
-      <div className="r" data-testid="round">Round {state.round} of 6, {PHASE_LABEL[state.phase]}</div>
+      <BoardMap state={state} activeSystemId={state.tactical?.systemId ?? null} />
+      <div className="bottombar">
+        <div className="hintbox">
+          <div className="r" data-testid="round">Round {state.round} of 6, {PHASE_LABEL[state.phase]}</div>
+        </div>
+      </div>
     </div>
   )
 }
