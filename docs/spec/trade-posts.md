@@ -52,7 +52,7 @@ systems.
 | --- | --- | --- | --- |
 | Sarnex Time Machine Wheel | ring habitat | up to 4 | **Time trade:** pay half the time left on your chess clock, rounded down to the second, and take 1 victory point. |
 | Tessik Refinery | industrial platform | up to 2 | **Technology exchange:** return one general technology you own and take another general technology of the same tier in a different colour. Prerequisites are ignored. Unit upgrades and faction technologies are excluded on both sides of the trade. |
-| Orrun Port Authority | layered disc port | up to 2 | **Clearing house:** exhaust your ready planets and take one trade good per resource or influence spent, up to 3 trade goods. Each planet is exhausted once and pays either its resources or its influence, your choice, never both. |
+| Orrun Port Authority | layered disc port | up to 2 | **Clearing house:** exhaust **one** ready planet you control and take one trade good per resource or influence it prints, your choice which of the two, never both. One planet per use, never several. |
 | Kesh Line Freighter | container freighter | up to 2 | **Charter:** return one command token from any pool (tactic, fleet or strategy) and take 4 trade goods. |
 | Vandel Bulk Tanker | bulk tanker | up to 2 | **Layover:** return one command token from any pool and take 3 more minutes on your chess clock. |
 | Dromm Heavy Hauler | open-deck hauler | up to 2 | **Refit:** return ships you have in a system linked to this post and take one ship from your reinforcements whose cost is not higher than the total cost you returned. The new ship is placed in the same system. Any difference in cost is lost. Fighters and infantry cannot be part of a refit. |
