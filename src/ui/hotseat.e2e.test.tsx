@@ -37,7 +37,7 @@ describe('a scripted hot-seat game', () => {
     click('strategy-card-warfare')
     expect(text('round')).toBe('Round 1 of 6, action phase')
     expect(text('strategy-state-leadership')).toBe('Despot, ready')
-    expect(screen.getByTestId('strategy-state-diplomacy').getAttribute('aria-label')).toBe('+1 trade good')
+    expect(text('strategy-state-diplomacy')).toBe('unpicked, 1 trade good on it')
     expect(text('turn-0')).toBe('Your turn')                       // Leadership is initiative 1
 
     // turn 1: R3.2 tactical action with movement and an invasion
@@ -144,8 +144,8 @@ describe('a scripted hot-seat game', () => {
     expect(screen.getByTestId('scored-own_3_techs-1')).toBeTruthy()
     expect(screen.getByTestId('objective-control_4_outside_home')).toBeTruthy()
     expect(text('round')).toBe('Round 2 of 6, strategy phase')
-    expect(text('strategy-state-leadership')).toBe('Unpicked')
-    expect(screen.getByTestId('strategy-state-diplomacy').getAttribute('aria-label')).toBe('+1 trade good')
+    expect(text('strategy-state-leadership')).toBe('unpicked')
+    expect(text('strategy-state-diplomacy')).toBe('unpicked, 1 trade good on it')
 
     // the log carries the whole round
     click('btn-log')
