@@ -58,6 +58,10 @@ export function viewportScale(width: number, height: number): ViewportScale {
   return { k, s }
 }
 
+/** the lobby page's own design frame */
+const PAGE_W = 1440
+const PAGE_H = 900
+
 const FIT_MIN = 0.5
 const FIT_MAX = 2
 
@@ -67,7 +71,7 @@ const FIT_MAX = 2
  * bottom edge, which is what the design was drawn for.
  */
 export function fitScale(width: number, height: number): number {
-  return round3(clamp(FIT_MIN, Math.min(width / DESIGN_W, height / DESIGN_H), FIT_MAX))
+  return round3(clamp(FIT_MIN, Math.min(width / PAGE_W, height / PAGE_H), FIT_MAX))
 }
 
 export function useFitScale(): number {
