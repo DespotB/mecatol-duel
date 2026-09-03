@@ -20,6 +20,21 @@ export const TRACKS: Track[] = [
 export const VOLUME = 0.32
 const KEY = 'md:music'
 
+/**
+ * Starts playback and answers whether the browser took it. Everything here is defensive on purpose: a
+ * browser refuses until the page has been touched, and a test environment has no media stack at all, so
+ * neither a rejected promise nor a thrown "not implemented" may reach the interface.
+ */
+function play(element: HTMLAudioElement): boolean {
+  try {
+    const started = element.play() as Promise<void> | undefined
+    if (started && typeof started.catch === 'function') started.catch(() => undefined)
+    return true
+  } catch {
+    return false
+  }
+}
+
 /** Round robin, so the rotation never stalls on the last track. */
 export function nextTrack(index: number): number {
   return (index + 1) % TRACKS.length
@@ -51,7 +66,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     // still inside the click, which is the moment a browser is willing to start audio
     if (element && element.paused) {
       element.volume = VOLUME
-      void element.play().catch(() => undefined)
+      play(element)
     }
   }, [])
 
@@ -67,12 +82,12 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       element.pause()
       return
     }
-    const start = () => { void element.play().catch(() => undefined) }
-    void element.play().catch(() => {
-      // remembered from an earlier visit: the browser waits for this page to be touched at all
+    const start = () => { play(element) }
+    if (!play(element)) {
+      // the browser waits for this page to be touched at all, so the first gesture starts the music
       window.addEventListener('pointerdown', start, { once: true })
       window.addEventListener('keydown', start, { once: true })
-    })
+    }
     return () => {
       window.removeEventListener('pointerdown', start)
       window.removeEventListener('keydown', start)
