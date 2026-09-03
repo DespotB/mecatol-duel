@@ -72,7 +72,7 @@ export function BoardScreen() {
         className="app" data-testid="board-screen" inert={session.handoff !== null}
         style={{ '--k': k, '--s': s } as CSSProperties}
       >
-        <SpaceBackdrop />
+        <SpaceBackdrop dim />
         <TopBar state={state} clockMs={session.clockMs} clockMinutes={session.minutes} clockRunning={clockRunning} onPick={onPick} />
         <SidePanel state={state} seat={0} />
         <SidePanel state={state} seat={1} />

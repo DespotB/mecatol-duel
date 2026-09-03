@@ -13,8 +13,10 @@ button{font-family:inherit}
 
 /* space */
 /* space background: starfield, nebula veils, two galaxies and the planet limb at the bottom right */
-.space{position:fixed;inset:0;overflow:hidden;background:#000;z-index:0}
-.space .base{position:absolute;inset:0;background:linear-gradient(180deg,#020308 0%,#03060f 40%,#04081a 100%)}
+.space{position:fixed;inset:0;overflow:hidden;background:#05070f;z-index:0}
+.space.dim{background:#000}
+.space .base{position:absolute;inset:0;background:linear-gradient(180deg,#05070f 0%,#060a18 40%,#08102a 100%)}
+.space.dim .base{background:linear-gradient(180deg,#020308 0%,#03060f 40%,#04081a 100%)}
 .space .stars{position:absolute;inset:0;filter:none;opacity:.62;mix-blend-mode:screen;
   background:url(/assets/misc/starfield.png) center 38%/cover no-repeat}
 .space .veil{position:absolute;inset:0;background:
@@ -53,8 +55,9 @@ button{font-family:inherit}
 .space .limb::before{content:"";position:absolute;inset:-10px;border-radius:50%;
   background:radial-gradient(circle at 27% 23%,rgba(130,165,255,.30) 0%,rgba(120,160,255,.08) 30%,transparent 55%);
   -webkit-mask:radial-gradient(circle,transparent 61.5%,#000 62%);mask:radial-gradient(circle,transparent 61.5%,#000 62%)}
-/* the board sits in the middle, so the middle is where the scenery has to give way */
-.space .vig{position:absolute;inset:0;background:radial-gradient(ellipse 74% 64% at 50% 46%,rgba(0,0,0,.62) 0%,rgba(0,0,0,.8) 55%,rgba(0,0,0,.93) 100%)}
+.space .vig{position:absolute;inset:0;background:radial-gradient(ellipse 78% 68% at 50% 44%,transparent 45%,rgba(3,5,12,.72) 100%)}
+/* the board sits in the middle, so behind the board the scenery has to give way */
+.space.dim .vig{background:radial-gradient(ellipse 74% 64% at 50% 46%,rgba(0,0,0,.62) 0%,rgba(0,0,0,.8) 55%,rgba(0,0,0,.93) 100%)}
 
 /* a real planet render for colour, the way the board's planets look, held far back in the mix */
 .space .bigplanet{position:absolute;left:-260px;bottom:-320px;width:820px;height:820px;
