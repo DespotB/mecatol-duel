@@ -4,6 +4,7 @@ import { objectiveCost } from '../data/objectives'
 import { createGame, legalMoves, postDef } from '../engine'
 import type { GameConfig, GameState, Move, Seat } from '../engine/types'
 import { advance } from './advance'
+import { transport } from '../net/online'
 import { timeCost } from './format'
 import { undoable } from './history'
 import {
@@ -79,7 +80,8 @@ export interface GameStore {
    * for an online game. The default is hot-seat because that is the game a browser can finish on its own.
    */
   start(config: GameConfig, seed: number, minutes: number, seats?: Seat[]): void
-  resume(session: Session): void
+  /** `followed` is how many of the server's moves this session already accounts for; 0 for a local game. */
+  resume(session: Session, followed?: number): void
   apply(move: Move): boolean
   undo(): void
   dismissHandoff(): void
@@ -101,6 +103,16 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
   const [claim, setClaim] = useState<Claim | null>(null)
   const roundRef = useRef<number | null>(null)
   const seats = useMemo(() => actingSeats(claim), [claim])
+  /*
+   * How many moves of this game's server log this browser has accounted for, and the one number the whole
+   * sync turns on. It is not `moveCount`: the log on the server holds submitted moves, while the state's
+   * own log also holds the end-turns that followed from them on their own. A move arriving from the wire is
+   * this browser's to apply when its number is the next one; a move whose number is already spent is this
+   * browser's own coming back, and it is dropped.
+   */
+  const submittedRef = useRef(0)
+  // a game with one claimed seat is being played across two browsers; both seats means this device holds it all
+  const online = claim !== null && claim.seats.length === 1
 
   // keyed on the game state alone: the clock ticks ten times a second and must not re-enumerate the moves
   const state = session?.state ?? null
@@ -116,15 +128,26 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     writeClaim(code, mine)
     setClaim(mine)
     setSession({ code, seed, minutes, state: createGame(config, seed), history: [], clockMs: [ms, ms], handoff: null })
+    submittedRef.current = 0
+    // An online game has to exist on the server before the link means anything, and the host takes their
+    // seat in the same call. A server that cannot be reached is reported and the game stays local, which
+    // is a hot-seat game with a wrong label rather than a lost one.
+    if (held.length === 1 && transport !== null) {
+      void transport
+        .create({ code, seed, minutes, config, players: [null, null] }, playerId(), held[0])
+        .catch((e: unknown) => { setError(e instanceof Error ? e.message : 'the game could not be put online') })
+    }
     // the URL names the game from the first move on, so the code and the address cannot drift apart
     navigate(gamePath(code))
   }, [])
 
-  const resume = useCallback((next: Session) => {
+  const resume = useCallback((next: Session, followed = 0) => {
     roundRef.current = next.state.round
     setError(null)
     setClaim(readClaim(next.code, playerId()))
     setSession(next)
+    // a game rebuilt from the wire arrives with its log already followed to the end
+    submittedRef.current = followed
   }, [])
 
   const apply = useCallback((move: Move): boolean => {
@@ -149,8 +172,70 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
       history: keep ? [...session.history, session.state] : [],
       handoff: next.active !== session.state.active && next.winner === null ? next.active : null,
     })
+    /*
+     * Online, the move is now this browser's truth and has to become the game's. The server takes it only
+     * if this player holds the seat and the number is the next one, so a refusal means the other browser
+     * got there first, and the honest answer to that is to say so: the two boards have diverged and the
+     * page has to be reloaded to line up again. It cannot be papered over here, because the move is
+     * already applied locally.
+     */
+    if (online && transport !== null) {
+      const n = submittedRef.current
+      submittedRef.current = n + 1
+      const seat = session.state.active
+      void transport.append(session.code, playerId(), seat, n, move)
+        .then(accepted => {
+          if (!accepted) {
+            submittedRef.current = n
+            setError('That move did not reach the game. Reload to catch up with your opponent.')
+          }
+        })
+        .catch((e: unknown) => {
+          submittedRef.current = n
+          setError(e instanceof Error ? e.message : 'the move did not reach the game')
+        })
+    }
     return true
-  }, [session, claim])
+  }, [session, claim, online])
+
+  /*
+   * The other browser's moves. Every client replays the same log through the same `advance`, so a move
+   * that arrives is applied exactly as the browser that made it applied it, and both boards stay one board.
+   * A move numbered ahead of this browser means something was missed, which a reload settles; the design
+   * deliberately has no merge, only a log.
+   */
+  useEffect(() => {
+    if (!online || transport === null || !session) return
+    const code = session.code
+    return transport.watch(code, incoming => {
+      setSession(prev => {
+        if (!prev || prev.code !== code) return prev
+        // this browser's own move coming back, or one it has already accounted for
+        if (incoming.n < submittedRef.current) return prev
+        if (incoming.n > submittedRef.current) {
+          setError('This game has moved on without you. Reload to catch up.')
+          return prev
+        }
+        const result = advance(prev.state, incoming.move, prev.seed)
+        if (!result.ok) {
+          setError(result.error)
+          return prev
+        }
+        submittedRef.current = incoming.n + 1
+        const next = result.value
+        return {
+          ...prev,
+          state: next,
+          clockMs: clockAfter(prev.state, incoming.move, prev.state.active, prev.clockMs),
+          // an opponent's move never offers this browser an undo: the move is out in the world
+          history: [],
+          handoff: next.active !== prev.state.active && next.winner === null ? next.active : null,
+        }
+      })
+    })
+    // `session.code` is the only part of the session this subscription depends on
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [online, session?.code])
 
   const undo = useCallback(() => {
     // R: undo is a hot-seat courtesy between two people at one screen. Online a move that is out is out,

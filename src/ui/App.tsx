@@ -164,6 +164,7 @@ function GameRoute({ code }: { code: string }) {
    */
   const remote = useRemoteGame(code, !open && stored === null)
   const arrived = remote.kind === 'found' ? remote.session : null
+  const followed = remote.kind === 'found' ? remote.followed : 0
   const [claim, setClaim] = useState<Claim | null>(() => readClaim(code, playerId()))
   const [taken, setTaken] = useState(false)
   // a different game is a different question, so the claim is re-read whenever the address changes
@@ -173,8 +174,8 @@ function GameRoute({ code }: { code: string }) {
     if (!held) return
     if (stored) { resume(stored); return }
     // the game came off the wire: it is this browser's now, so it is saved before it is opened
-    if (arrived) { saveGame(arrived); resume(arrived) }
-  }, [held, stored, arrived, resume])
+    if (arrived) { saveGame(arrived); resume(arrived, followed) }
+  }, [held, stored, arrived, followed, resume])
   const answer = useCallback((seats: Seat[]) => {
     const id = playerId()
     const write = () => {

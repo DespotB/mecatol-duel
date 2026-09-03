@@ -18,7 +18,7 @@ export type Remote =
   | { kind: 'loading' }
   /** the server does not know this code either */
   | { kind: 'absent' }
-  | { kind: 'found'; session: Session; players: [string | null, string | null] }
+  | { kind: 'found'; session: Session; players: [string | null, string | null]; followed: number }
   | { kind: 'error'; message: string }
 
 /** The seats no other player holds on the server, so the ones this browser may still take. */
@@ -45,6 +45,8 @@ export function useRemoteGame(code: string, enabled: boolean): Remote {
         setRemote({
           kind: 'found',
           players: found.game.players,
+          // the log is followed to its end by the replay, so the store starts counting from there
+          followed: found.moves.length,
           session: {
             code: found.game.code, seed: found.game.seed, minutes: found.game.minutes,
             state: state.value, history: [], clockMs: [ms, ms], handoff: null,
