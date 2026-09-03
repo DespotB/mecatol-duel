@@ -22,11 +22,13 @@
 .rules .grp:first-child{margin-top:0;padding-top:0;border-top:0}
 .rules .grp>.lbl{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px;letter-spacing:.12em}
 
-/* where the victory points come from */
+/* where the victory points come from. The li is the flex row (diamond, then the whole line as one item),
+   so the bold lead keeps flowing inside its sentence instead of becoming a column of its own. */
 .rules ul,.rules ol{margin:0;padding:0;list-style:none}
 .rules .pts{display:flex;flex-direction:column;gap:9px;margin:2px 0 0}
 .rules .pts li{display:flex;gap:11px;font:400 15px/1.5 var(--body);color:var(--ink-dim)}
 .rules .pts li::before{content:"";flex:none;width:6px;height:6px;margin-top:9px;background:var(--gold);transform:rotate(45deg)}
+.rules .pts li>span{min-width:0}
 .rules p.after{margin-top:16px}
 
 /* the six public objectives, in the order the engine reveals them */

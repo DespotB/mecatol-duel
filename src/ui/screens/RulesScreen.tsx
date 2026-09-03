@@ -136,10 +136,10 @@ export function RulesScreen() {
         <Section title="Victory points">
           <p>Points come from four places.</p>
           <ul className="pts">
-            <li><b>Public objectives.</b> Six of them, 1 point each, scored once per player in a status phase.</li>
-            <li><b>The Mandate.</b> 1 point, once per player.</li>
-            <li><b>Mecatol Rex.</b> 1 point in every status phase in which you control the planet.</li>
-            <li><b>The Imperial primary.</b> 1 point at once if you control Mecatol Rex when you play it.</li>
+            <li><span><b>Public objectives.</b> Six of them, 1 point each, scored once per player in a status phase.</span></li>
+            <li><span><b>The Mandate.</b> 1 point, once per player.</span></li>
+            <li><span><b>Mecatol Rex.</b> 1 point in every status phase in which you control the planet.</span></li>
+            <li><span><b>The Imperial primary.</b> 1 point at once if you control Mecatol Rex when you play it.</span></li>
           </ul>
           <p className="after">
             The victory check runs at the end of every status phase, and 7 points wins it. If nobody has
