@@ -9,9 +9,14 @@ import { grantTech } from './strategicActions'
 import type { GameState, Result, Seat, Unit } from './types'
 
 const INHERITANCE_COST = 2
-const SHIPYARD_COST = 4
+export const SHIPYARD_COST = 4
 
-/** R3.2: a component action needs your own turn, with no tactical action and no open secondary window. */
+/**
+ * R3.2: a component action needs your own turn, with no tactical action and no open secondary window.
+ * Narrowing: R8 calls trading at a post free rather than an action, so TI4 would allow it in the middle of a
+ * tactical action too. The duel engine only allows it on a clean turn, which keeps the move list unambiguous
+ * and costs the player nothing but the order in which they do the two things.
+ */
 function turnReady(state: GameState): Result<Seat> {
   if (state.phase !== 'action') return { ok: false, error: 'not in the action phase' }
   if (state.tactical) return { ok: false, error: 'finish the tactical action first' }

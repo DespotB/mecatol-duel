@@ -1,6 +1,6 @@
 import { activatableSystems, canPass } from './actionPhase'
 import { canMunitions, retreatTargets } from './combat'
-import { canInheritance, canShipyard, inheritanceTechs, shipyardPlanets, tradePostOptions } from './componentActions'
+import { SHIPYARD_COST, canInheritance, canShipyard, inheritanceTechs, shipyardPlanets, tradePostOptions } from './componentActions'
 import { cheapestPlanets, productionCost, productionLimit } from './economy'
 import { bombardablePlanets, groundCombatPending, landablePlanets } from './invasion'
 import { movableShips } from './movement'
@@ -157,7 +157,7 @@ export function legalMoves(state: GameState): Move[] {
     for (const techId of inheritanceTechs(state, seat)) out.push({ type: 'research', techId, via: 'inheritance' })
   }
   if (canShipyard(state, seat)) {
-    const planets = cheapestPlanets(state, seat, 4) ?? []
+    const planets = cheapestPlanets(state, seat, SHIPYARD_COST) ?? []
     for (const planetId of shipyardPlanets(state, seat)) out.push({ type: 'shipyard', planetId, planets, tradeGoods: 0 })
   }
   for (const post of tradePostOptions(state, seat)) {

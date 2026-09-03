@@ -101,6 +101,8 @@ function leadership(state: GameState, seat: Seat, params: StrategicParams, base:
 /**
  * R6 Diplomacy, errata text: the opponent places a command token, then up to 2 of your planets ready.
  * R3.2: a card must always be playable, so with no eligible system only the readying half resolves.
+ * Simplification: the duel tracks no reinforcement pool of command tokens, so the opponent's token is simply
+ * added to `activatedBy` and never runs out; in TI4 it would come off their supply.
  */
 function diplomacyPrimary(state: GameState, seat: Seat, params: StrategicParams): Result<GameState> {
   const systemId = params.systemId
