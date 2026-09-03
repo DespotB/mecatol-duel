@@ -3,7 +3,7 @@ import { SYSTEMS } from '../data/map'
 import {
   ACTIVATION_OVERLAP, ACTIVATION_SIZE, ACTIVATION_SPOT, GROUND_ROW, PLANET_CENTRE, PLANET_SPOTS, PLATE_SIZE, SIGIL_SIZE,
   SIGIL_SPOT, SPACE_BOX, TILE_H, TILE_W, WORMHOLE_SIZE, WORMHOLE_SPOTS, boxInsideHex, discInsideHex,
-  fleetScale, plateBox, pointInsideHex,
+  fleetCapacity, fleetScale, plateBox, pointInsideHex,
 } from './layout'
 
 /** The drawn hexagon, written out again here so the test checks the numbers, not the source's own helper. */
@@ -102,10 +102,11 @@ describe('the space box of a system', () => {
       if (wh) expect(overlaps(box, { ...wh, width: WORMHOLE_SIZE, height: WORMHOLE_SIZE }), `${def.id} vs wormhole`).toBe(false)
     }
   })
-  it('has room for a fleet on every system', () => {
+  it('shows a crowded fleet whole, down at the 0.6 floor, on every system', () => {
     for (const def of SYSTEMS) {
-      expect(SPACE_BOX[def.id].width, def.id).toBeGreaterThanOrEqual(96)
-      expect(SPACE_BOX[def.id].height, def.id).toBeGreaterThanOrEqual(60)
+      // eight kinds of unit is everything one seat can hold in space at once
+      expect(fleetCapacity(SPACE_BOX[def.id], 0.6), def.id).toBeGreaterThanOrEqual(8)
+      expect(fleetCapacity(SPACE_BOX[def.id], 1), def.id).toBeGreaterThanOrEqual(2)
     }
   })
 })

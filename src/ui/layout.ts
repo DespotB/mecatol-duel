@@ -117,10 +117,11 @@ export const SPACE_BOX: Record<string, { left: number; top: number; width: numbe
   mecatol: { left: 77, top: 27, width: 104, height: 120 },
   // between Bereg's banner (ends y44) and Lirta IV's (starts y152), left of the alpha wormhole at (170,40)
   bereg: { left: 77, top: 69, width: 122, height: 74 },
-  // like Bereg, but the alpha wormhole sits out on the right rim at (194,88), so the box starts higher
-  starpoint: { left: 77, top: 45, width: 114, height: 89 },
-  // under Wren Terra's banner (ends y118) and below the command tokens (end y126)
-  'home-s': { left: 60, top: 128, width: 112, height: 62 },
+  // like Bereg, but the alpha wormhole sits out on the right rim at (194,88), so the box is taller
+  starpoint: { left: 77, top: 47, width: 114, height: 94 },
+  // under Wren Terra's banner (ends y118) and right of the command tokens (end x74): the tallest box the
+  // two printed discs leave, so seat 1's home fleet still draws at full size
+  'home-s': { left: 77, top: 121, width: 94, height: 72 },
 }
 
 /**
@@ -139,12 +140,15 @@ const SCALE_STEPS = [1, 0.9, 0.8, 0.7, 0.6]
  * hexagon or ships clipped away by the box.
  */
 export function fleetScale(stackCount: number, box: { width: number; height: number }): number {
-  for (const scale of SCALE_STEPS) {
-    const cols = Math.floor((box.width + FLEET_GAP) / (STACK_W * scale + FLEET_GAP))
-    const rows = Math.floor((box.height + FLEET_GAP) / (STACK_H * scale + FLEET_GAP))
-    if (cols * rows >= stackCount) return scale
-  }
+  for (const scale of SCALE_STEPS) if (fleetCapacity(box, scale) >= stackCount) return scale
   return SCALE_STEPS[SCALE_STEPS.length - 1]
+}
+
+/** How many unit stacks a box shows at a given zoom, rows and columns of the mean stack cell. */
+export function fleetCapacity(box: { width: number; height: number }, scale: number): number {
+  const cols = Math.floor((box.width + FLEET_GAP) / (STACK_W * scale + FLEET_GAP))
+  const rows = Math.floor((box.height + FLEET_GAP) / (STACK_H * scale + FLEET_GAP))
+  return cols * rows
 }
 
 export const WORMHOLE_SPOTS: Record<string, Point> = {

@@ -254,7 +254,10 @@ button{font-family:inherit}
    ship ever crosses the drawn hexagon, and the inner box carries the `zoom` from `fleetScale()`, so a
    crowded system draws smaller ships instead of spilling out of the tile. */
 .tile .fleet{position:absolute;overflow:hidden;display:flex;align-items:center;justify-content:center;z-index:2}
-.tile .fleet>.in{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:center;gap:4px;overflow:hidden}
+/* the padding is the room a stack's count badge needs: it hangs 9px right and 5px below its sprite, and
+   the box clips anything that leaves it */
+.tile .fleet>.in{box-sizing:border-box;padding:0 10px 6px;display:flex;flex-wrap:wrap;align-items:flex-end;
+  justify-content:center;gap:4px;overflow:hidden}
 /* what stands on a planet is centred on the planet, and drawn over the fleet so a ship never hides it */
 .row-ground,.row-structures{position:absolute;display:flex;align-items:flex-end;gap:3px;
   transform:translate(-50%,-50%);z-index:4}
