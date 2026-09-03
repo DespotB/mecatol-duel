@@ -150,7 +150,9 @@ button{font-family:inherit}
 .pblock.right{flex-direction:row-reverse;text-align:right;margin-left:auto}
 .portrait{position:relative;width:72px;height:72px;flex:none;padding:2px;background:linear-gradient(160deg,var(--gold-hi),var(--gold) 45%,var(--gold-sh))}
 .portrait .face{width:68px;height:68px;background-repeat:no-repeat;background-size:204px 136px;background-position:-8px -38px;background-color:#0b1020}
-.portrait .sym{position:absolute;right:-8px;bottom:-8px;width:28px;height:28px;padding:2px;background:#0b1020;border:1px solid var(--gold)}
+/* the emblem hangs on the outer bottom corner of each portrait, so the two seats mirror each other */
+.portrait .sym{position:absolute;left:-8px;bottom:-8px;width:28px;height:28px;padding:2px;background:#0b1020;border:1px solid var(--gold)}
+.pblock.right .portrait .sym{left:auto;right:-8px}
 .portrait .sym img{width:100%;height:100%;object-fit:contain}
 .pname{font:900 15px/1.15 var(--display);letter-spacing:.02em;white-space:nowrap}
 .pnick{font:600 11px/1 var(--hud);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
