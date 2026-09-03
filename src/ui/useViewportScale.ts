@@ -45,7 +45,7 @@ const S_MAX = 2
  * 100. A browser zoom multiplies on top of this, which is what the player expects it to do.
  */
 export const BOARD_ZOOM = 1.25
-export const LOBBY_ZOOM = 0.8
+export const LOBBY_MAX = 1.25
 
 function clamp(min: number, value: number, max: number): number {
   return Math.min(max, Math.max(min, value))
@@ -69,31 +69,28 @@ export function viewportScale(width: number, height: number): ViewportScale {
 
 /** the lobby page's own design frame */
 const PAGE_W = 1440
-const PAGE_H = 900
 
 const FIT_MIN = 0.5
-const FIT_MAX = 2
 
 /**
- * The lobby is one block in the same 1440x900 frame and renders at its calibrated size: 0.8, which is what
- * the page was drawn to look like. Nothing measures the device pixel ratio and nothing cancels a browser
- * zoom: at 125 percent the browser makes it a quarter bigger, which is exactly what pressing that key means.
- * The only thing the viewport still decides is the floor: a window too small for the frame gets it scaled
- * down rather than cut off.
+ * The lobby is one block in the same 1440x900 frame and fills the width of the window: that is the size it
+ * was drawn for, and it is what the player was reaching for by zooming to about 140 percent. The height is
+ * allowed to run past the fold, because a lobby may scroll and a cramped one may not. Above 1.25 it stops
+ * growing, so a very wide monitor gets margins rather than a poster, and a narrow window scales the frame
+ * down rather than cutting it off. A browser zoom multiplies on top, as the browser does everywhere else.
  */
-export function fitScale(width: number, height: number): number {
-  const fits = Math.min(width / PAGE_W, height / PAGE_H)
-  return round3(clamp(FIT_MIN, Math.min(LOBBY_ZOOM, fits), FIT_MAX))
+export function fitScale(width: number): number {
+  return round3(clamp(FIT_MIN, width / PAGE_W, LOBBY_MAX))
 }
 
 export function useFitScale(): number {
   const [fit, setFit] = useState(
-    () => typeof window === 'undefined' ? LOBBY_ZOOM : fitScale(window.innerWidth, window.innerHeight),
+    () => typeof window === 'undefined' ? 1 : fitScale(window.innerWidth),
   )
   useEffect(() => {
     if (typeof window === 'undefined') return
     const onResize = () => {
-      const next = fitScale(window.innerWidth, window.innerHeight)
+      const next = fitScale(window.innerWidth)
       setFit(prev => prev === next ? prev : next)
     }
     window.addEventListener('resize', onResize)

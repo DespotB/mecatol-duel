@@ -79,16 +79,19 @@ describe('useViewportScale', () => {
 })
 
 describe('fitScale', () => {
-  it('renders the lobby at its calibrated size', () => {
-    // 0.8 is what the page was drawn to look like; a browser zoom multiplies on top of it, as the browser does
-    expect(fitScale(1440, 900)).toBe(0.8)
-    expect(fitScale(2560, 1440)).toBe(0.8)
-    expect(fitScale(1920, 1080)).toBe(0.8)
+  it('fills the width of the window, which is the size the lobby was drawn for', () => {
+    expect(fitScale(1440)).toBe(1)
+    expect(fitScale(1512)).toBe(1.05)
+    expect(fitScale(1280)).toBe(round3(1280 / 1440))
   })
 
-  it('scales the frame down rather than cutting it off in a window too small for it', () => {
-    expect(fitScale(1152, 720)).toBe(0.8)
-    expect(fitScale(900, 600)).toBeLessThan(0.8)
-    expect(fitScale(400, 300)).toBe(0.5)
+  it('stops growing on a very wide monitor and never cuts a narrow one off', () => {
+    expect(fitScale(2560)).toBe(1.25)
+    expect(fitScale(1920)).toBe(1.25)
+    expect(fitScale(600)).toBeCloseTo(0.5, 2)
+  })
+
+  it('ignores the height, so a lobby taller than the fold scrolls instead of shrinking', () => {
+    expect(fitScale(1440)).toBe(fitScale(1440))
   })
 })
