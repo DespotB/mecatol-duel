@@ -98,6 +98,18 @@ describe('R4.4 production', () => {
     expect(fighters(r.value)).toBe(2)                               // 0 pre-existing fighters, both new ones ride the free slots, never rejected after trimming
     expect(r.value.log.some(e => e.t === 'info' && e.text.includes('not produced'))).toBe(false)
   })
+  it('R4.4: the reinforcement check runs on the trimmed order, so short fighters trim instead of rejecting', () => {
+    const rich = withPlayer(producing(), 0, { tradeGoods: 10 })
+    expect(fighters(rich)).toBe(3)                                  // capacity 6, so only 3 more fit
+    const short = withPlayer(rich, 0, { reinforcements: { ...rich.players[0].reinforcements, fighter: 3 } })
+    const r = produce(short, { fighter: 6 }, [], 3)                 // 6 wanted, 3 in the reinforcements, room for 3
+    if (!r.ok) throw new Error(r.error)
+    expect(fighters(r.value)).toBe(6)
+    expect(r.value.players[0].reinforcements.fighter).toBe(0)
+    expect(r.value.log.some(e => e.t === 'info' && e.text.includes('not produced'))).toBe(true)
+    const shorter = withPlayer(rich, 0, { reinforcements: { ...rich.players[0].reinforcements, fighter: 2 } })
+    expect(produce(shorter, { fighter: 3 }, [], 3).ok).toBe(false)   // still short after the trim
+  })
   it('R4.4: PDS and space docks cannot be produced in the duel', () => {
     const s = producing()
     expect(produce(s, { pds: 1 }, ['000']).ok).toBe(false)

@@ -18,7 +18,6 @@ export function produce(state: GameState, units: Partial<Record<UnitType, number
     if (n < 0 || !Number.isInteger(n)) return { ok: false, error: `invalid count for ${type}` }
     if (!PRODUCIBLE.includes(type)) return { ok: false, error: `R4.4: ${type} cannot be produced` }
     if (type === 'warsun' && !player.techs.includes('war_sun')) return { ok: false, error: 'R4.4: a War Sun needs the War Sun technology' }
-    if (player.reinforcements[type] < n) return { ok: false, error: `not enough ${type} in the reinforcements` }
   }
   // R4.4: fighters above the capacity plus Space Dock II's free slots are simply not produced. The new
   // non-fighter ships in this same order pool their capacity too, so they count toward the room before trimming.
@@ -31,6 +30,11 @@ export function produce(state: GameState, units: Partial<Record<UnitType, number
   const order: Partial<Record<UnitType, number>> = trimmedFighters ? { ...units, fighter: Math.min(wanted, room) } : units
   const entries = (Object.entries(order) as [UnitType, number][]).filter(([, n]) => n > 0)
   if (!entries.length) return { ok: false, error: 'nothing to produce' }
+  // the reinforcements are checked against the trimmed order: fighters that are not produced anyway must not
+  // reject an order the fleet could otherwise take.
+  for (const [type, n] of entries) {
+    if (player.reinforcements[type] < n) return { ok: false, error: `not enough ${type} in the reinforcements` }
+  }
   const flagships = order.flagship ?? 0
   if (flagships > 1 || (flagships === 1 && unitsOf(state, seat).some(u => u.type === 'flagship'))) {
     return { ok: false, error: 'R4.4: only one flagship at a time' }
