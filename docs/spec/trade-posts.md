@@ -75,7 +75,10 @@ Notes that follow from the rules already in the engine:
   score without knowing anything about clocks.
 - The time trade is the one place in the game where time buys points. It is deliberately expensive: half of
   everything you have left, once per round, for one point out of the seven you need.
-- A returned command token goes back to the player's reinforcements, it is not placed on the board.
+- A returned command token goes back to the player's reinforcements, it is not placed on the board. A token
+  taken out of the **fleet pool** may be returned even when a fleet on the board needs it: the move is legal
+  and its price is ships, so every system now over the smaller pool loses its cheapest non-fighter ships
+  (game-rules.md section 1, command tokens). The interface says what a pool costs before the player takes it.
 
 ## 4. What the player sees
 
