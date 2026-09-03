@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { GameProvider, useGame } from './store'
-import { latestGameCode, loadGame, openSeats, playerId, readClaim, readClaims, writeClaim } from './persist'
+import { latestGameCode, loadGame, openSeats, playerId, readClaim, readClaims, saveGame, writeClaim } from './persist'
 import type { Claim } from './persist'
 import { codeFromRoute, gamePath, navigate, playRedirect, useHashRoute } from './route'
 import { BoardScreen } from './screens/BoardScreen'
@@ -10,7 +10,7 @@ import { RulesScreen } from './screens/RulesScreen'
 import { SetupScreen } from './screens/SetupScreen'
 import { UnknownGameScreen } from './screens/UnknownGameScreen'
 import type { GameConfig } from './store'
-import type { Move, Seat, StrategyCardId } from '../engine/types'
+import type { GameState, Move, Seat, StrategyCardId } from '../engine/types'
 import { ModelStyleProvider } from './modelStyle'
 import { MusicProvider } from './music'
 
@@ -43,6 +43,23 @@ function useDemoBootstrap() {
           ? { code: DEMO_CODE, seed: 1, minutes: 15, state: cardsUsed(state), history: [], clockMs: [900000, 900000], handoff: 1 }
           : { code: DEMO_CODE, seed: 1, minutes: 15, state, history: [], clockMs: [900000, 900000], handoff: null })
         navigate(gamePath(DEMO_CODE))
+      })
+      return
+    }
+    // `&panel=mode` / `&panel=locked` are the seat-claim QA hooks: the first saves a game this browser
+    // has no claim for and opens it, so the mode question is on screen; the second claims seat 1 of a
+    // game seat 0 is to act in, so the board is on screen with every control of seat 0 locked.
+    if (panel === 'mode' || panel === 'locked') {
+      void import('../engine/testUtils').then(({ toActionPhase }) => {
+        const state = toActionPhase(1, 0)
+        const players = state.players.map((p, seat) => ({ ...p, name: seat === 0 ? 'Despot' : 'Kael' }))
+        const code = panel === 'mode' ? 'MODEQQ' : 'LOCKQQ'
+        saveGame({
+          code, seed: 1, minutes: 15, history: [], clockMs: [781000, 900000], handoff: null,
+          state: { ...state, players: players as GameState['players'] },
+        })
+        if (panel === 'locked') writeClaim(code, { seats: [1], playerId: playerId() })
+        navigate(gamePath(code))
       })
       return
     }
