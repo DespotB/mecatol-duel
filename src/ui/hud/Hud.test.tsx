@@ -78,4 +78,13 @@ describe('the HUD', () => {
     expect(screen.queryByTestId('engine-error')).toBeNull()
     expect(screen.getByTestId('hint')).toBeTruthy()
   })
+
+  it('opens the unit reference card while a force is hovered', () => {
+    renderWithSession(toActionPhase(), <BoardScreen />)
+    expect(screen.queryByTestId('unitcard-0-carrier')).toBeNull()
+    fireEvent.mouseEnter(screen.getByTestId('forces-0-carrier'))
+    expect(screen.getByTestId('unitcard-0-carrier')).toBeTruthy()
+    fireEvent.mouseLeave(screen.getByTestId('forces-0-carrier'))
+    expect(screen.queryByTestId('unitcard-0-carrier')).toBeNull()
+  })
 })

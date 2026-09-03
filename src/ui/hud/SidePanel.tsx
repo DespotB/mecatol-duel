@@ -2,6 +2,7 @@ import { FACTIONS } from '../../data/factions'
 import { techDef } from '../../data/techs'
 import { fleetPoolLimit, readyResources, unitsOf } from '../../engine'
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { BADGE, MISC, spriteUrl, tokenUrl, unitCardUrl } from '../art'
 import { TechIcon } from '../TechIcon'
 import { ownedPlanets, readyInfluence, unitLabel } from '../format'
@@ -97,10 +98,12 @@ export function SidePanel({ state, seat }: { state: GameState; seat: Seat }) {
           </div>
         </div>
       </div>
-      {shown ? (
+      {/* the panel is clipped to its cut-corner shape, so the card is hung on the document instead */}
+      {shown && typeof document !== 'undefined' ? createPortal(
         <div className="unitcard" data-testid={`unitcard-${seat}-${shown}`}>
           <img src={unitCardUrl(shown, player.faction)} alt={unitLabel(shown, player)} />
-        </div>
+        </div>,
+        document.body,
       ) : null}
     </div>
   )

@@ -231,11 +231,9 @@ button{font-family:inherit}
   cursor:help;transition:border-color .12s ease,background .12s ease}
 .fc:hover,.fc:focus-visible{border-color:var(--gold-hi);background:rgba(201,162,77,.14);outline:none}
 /* the unit's own reference card, opened beside the column so nothing on the board is covered */
-.unitcard{position:absolute;top:50%;transform:translateY(-50%);width:238px;z-index:45;
-  border:1px solid var(--gold);background:#000;box-shadow:0 18px 44px rgba(0,0,0,.8);pointer-events:none}
+.unitcard{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:340px;z-index:80;
+  border:1px solid var(--gold);background:#000;box-shadow:0 24px 60px rgba(0,0,0,.85);pointer-events:none}
 .unitcard img{display:block;width:100%}
-.colL .unitcard{left:calc(100% + 12px)}
-.colR .unitcard{right:calc(100% + 12px)}
 .fc.wide{grid-column:1/-1}
 .fc img{flex:none}
 .fc b{font:600 13px/1 var(--hud);color:#f1ead8;flex:none}
