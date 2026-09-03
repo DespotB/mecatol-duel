@@ -8,7 +8,7 @@ import { useEscape } from '../useEscape'
 const POST_NAME = { west: 'Kasda Exchange', east: 'Vorhal Freeport' } as const
 
 export function ComponentPanel({ onClose }: { onClose: () => void }) {
-  const { session, legal, apply } = useGame()
+  const { session, legal, apply, canAct } = useGame()
   const [techId, setTechId] = useState<string | null>(null)
   useEscape(onClose)
   if (!session) return null
@@ -27,13 +27,13 @@ export function ComponentPanel({ onClose }: { onClose: () => void }) {
         </div>
         <div className="rowline">
           {posts.map(({ post, commodities }) => (
-            <button key={post} type="button" className="btn quiet" data-testid={`btn-tradepost-${post}`}
+            <button key={post} type="button" className="btn quiet" data-testid={`btn-tradepost-${post}`} disabled={!canAct}
               onClick={() => apply({ type: 'tradePost', post, commodities })}>
               Sell {commodities} commodities at {POST_NAME[post]}
             </button>
           ))}
           {yards.map(offer => (
-            <button key={offer.planetId} type="button" className="btn quiet" data-testid={`btn-shipyard-${offer.planetId}`}
+            <button key={offer.planetId} type="button" className="btn quiet" data-testid={`btn-shipyard-${offer.planetId}`} disabled={!canAct}
               onClick={() => { if (apply({ type: 'shipyard', planetId: offer.planetId, planets: offer.planets, tradeGoods: offer.tradeGoods })) onClose() }}>
               Emergency shipyard on {planetLabel(state, offer.planetId)}
             </button>
@@ -43,7 +43,7 @@ export function ComponentPanel({ onClose }: { onClose: () => void }) {
           <>
             <div className="rowline">
               <span className="sub">Inheritance Systems: exhaust the card and spend 2 resources to research one technology, prerequisites ignored.</span>
-              <button type="button" className="btn gold" data-testid="btn-inheritance" disabled={techId === null}
+              <button type="button" className="btn gold" data-testid="btn-inheritance" disabled={!canAct || techId === null}
                 onClick={() => { if (techId && apply({ type: 'research', techId, via: 'inheritance' })) onClose() }}>Research</button>
             </div>
             <TechDrawer state={state} seat={state.active} allowed={techs} selected={techId} onSelect={setTechId} />

@@ -19,7 +19,7 @@ export interface StrategicDialogProps {
 }
 
 export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
-  const { session, legal, apply } = useGame()
+  const { session, legal, apply, canAct } = useGame()
   const [planets, setPlanets] = useState<string[]>([])
   const [tradeGoods, setTradeGoods] = useState(0)
   const [systemId, setSystemId] = useState<string | null>(null)
@@ -77,7 +77,7 @@ export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
         <div className="dhead">
           <span className="tab">{CARD_NAME[card]}, primary</span>
           <div className="right">
-            <button type="button" className="btn gold" data-testid="btn-strategic-confirm" disabled={missing || tokensPending}
+            <button type="button" className="btn gold" data-testid="btn-strategic-confirm" disabled={!canAct || missing || tokensPending}
               onClick={() => { if (apply({ type: 'strategic', card, params: params() })) onClose() }}>Play the card</button>
             <button type="button" className="btn quiet" data-testid="btn-strategic-cancel" onClick={onClose}>Cancel</button>
           </div>

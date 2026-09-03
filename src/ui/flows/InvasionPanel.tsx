@@ -22,7 +22,7 @@ export function suggestedSplit(total: number, planets: number, seed: number): nu
 }
 
 export function InvasionPanel() {
-  const { session, legal, apply } = useGame()
+  const { session, legal, apply, canAct } = useGame()
   const [counts, setCounts] = useState<Record<string, number>>({})
   if (!session) return null
   const state = session.state
@@ -40,17 +40,17 @@ export function InvasionPanel() {
           <span className="sub">Bombard, then land your infantry and fight it out.</span>
           <div className="right">
             {legal.some(m => m.type === 'groundCombatRound') ? (
-              <button type="button" className="btn gold" data-testid="btn-ground-round" onClick={() => apply({ type: 'groundCombatRound' })}>
+              <button type="button" className="btn gold" data-testid="btn-ground-round" disabled={!canAct} onClick={() => apply({ type: 'groundCombatRound' })}>
                 Ground combat round
               </button>
             ) : null}
             <button type="button" className="btn quiet" data-testid="btn-end-invasion"
-              disabled={!legal.some(m => m.type === 'endInvasion')} onClick={() => apply({ type: 'endInvasion' })}>Done invading</button>
+              disabled={!canAct || !legal.some(m => m.type === 'endInvasion')} onClick={() => apply({ type: 'endInvasion' })}>Done invading</button>
           </div>
         </div>
         <div className="rowline">
           {bombards.map(planetId => (
-            <button key={planetId} type="button" className="btn quiet" data-testid={`btn-bombard-${planetId}`} onClick={() => apply({ type: 'bombard', planetId })}>
+            <button key={planetId} type="button" className="btn quiet" data-testid={`btn-bombard-${planetId}`} disabled={!canAct} onClick={() => apply({ type: 'bombard', planetId })}>
               Bombard {planetLabel(state, planetId)}
             </button>
           ))}
@@ -62,7 +62,7 @@ export function InvasionPanel() {
               <span className="lbl">{planetLabel(state, planetId)}</span>
               <Stepper id={`land-count-${planetId}`} value={count} min={0} max={infantryIds.length}
                 onChange={n => setCounts({ ...counts, [planetId]: n })} />
-              <button type="button" className="btn gold" data-testid={`btn-land-${planetId}`} disabled={count === 0}
+              <button type="button" className="btn gold" data-testid={`btn-land-${planetId}`} disabled={!canAct || count === 0}
                 onClick={() => { if (apply({ type: 'land', planetId, infantryIds: infantryIds.slice(0, count) })) setCounts({}) }}>
                 {count === 0 ? 'Land none' : `Land ${String(count)} infantry`}
               </button>

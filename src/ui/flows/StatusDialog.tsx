@@ -6,7 +6,7 @@ import { useGame } from '../store'
 import type { Player } from '../../engine/types'
 
 export function StatusDialog() {
-  const { session, apply } = useGame()
+  const { session, apply, canAct } = useGame()
   const [tokens, setTokens] = useState<Player['tokens'] | null>(null)
   if (!session) return null
   const state = session.state
@@ -27,7 +27,7 @@ export function StatusDialog() {
           <span className="tab">Status phase, {player.name}</span>
           <span className="sub">You gain {gained} command tokens.</span>
           <div className="right">
-            <button type="button" className="btn gold" data-testid="btn-status-confirm" disabled={placed !== target}
+            <button type="button" className="btn gold" data-testid="btn-status-confirm" disabled={!canAct || placed !== target}
               onClick={() => { apply({ type: 'status', params: { tokens: sheet } }); setTokens(null) }}>Confirm</button>
           </div>
         </div>

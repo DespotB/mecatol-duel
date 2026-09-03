@@ -1,8 +1,9 @@
 import { act, render } from '@testing-library/react'
 import type { ReactNode } from 'react'
+import { playerId, writeClaim } from '../persist'
 import { GameProvider, useGame } from '../store'
 import type { GameStore, Session } from '../store'
-import type { GameState } from '../../engine/types'
+import type { GameState, Seat } from '../../engine/types'
 
 let current: GameStore | null = null
 
@@ -11,10 +12,19 @@ function Probe() {
   return null
 }
 
-/** Renders `node` inside a provider whose session is the given state; the clock is off unless asked for. */
+/**
+ * Renders `node` inside a provider whose session is the given state; the clock is off unless asked for.
+ * `seats` claims those seats for this browser before the session opens, the way the mode question does;
+ * without it the board plays both seats, which is the hot-seat every older test is written against.
+ */
 export const TEST_CODE = 'TESTAA'
 
-export function renderWithSession(state: GameState, node: ReactNode, options?: { seed?: number; clockMs?: [number, number] }) {
+export function renderWithSession(
+  state: GameState,
+  node: ReactNode,
+  options?: { seed?: number; clockMs?: [number, number]; seats?: Seat[] },
+) {
+  if (options?.seats) writeClaim(TEST_CODE, { seats: options.seats, playerId: playerId() })
   const view = render(<GameProvider ticking={false}><Probe />{node}</GameProvider>)
   act(() => {
     const session: Session = {

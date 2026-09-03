@@ -141,6 +141,8 @@ button{font-family:inherit}
 .hintbox{width:390px;text-align:right}
 .hintbox .h{font:500 13px/1.25 var(--body);color:#d8d2c2}
 .hintbox .h.err{color:#f1a3a3}
+/* whose turn it is, for a browser that cannot act: one line in the bar, never a modal over the board */
+.hintbox .h.wait{color:var(--gold-hi)}
 .hintbox .r{margin-top:4px;font:600 11px/1 var(--hud);letter-spacing:.1em;text-transform:uppercase;color:var(--gold)}
 
 /* player blocks */
