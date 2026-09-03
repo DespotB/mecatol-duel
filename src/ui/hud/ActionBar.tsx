@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { navigate } from '../route'
 import { useGame } from '../store'
 import { useEscape } from '../useEscape'
+import { MusicButton } from '../music'
 
 export type ActionMode = 'tactical' | 'strategic' | 'component' | null
 
@@ -43,6 +44,7 @@ export function ActionBar({ mode, onMode, hint, onLog }: ActionBarProps) {
                   onClick={() => { navigate('#/') }}>Back to the lobby</button>
                 <button type="button" className="btn quiet" data-testid="btn-menu-rules"
                   onClick={() => { navigate('#/rules') }}>Rules</button>
+                <MusicButton className="btn quiet" />
                 <button type="button" className="btn quiet" data-testid="btn-menu-close"
                   onClick={() => { setMenu(false) }}>Close</button>
               </div>
