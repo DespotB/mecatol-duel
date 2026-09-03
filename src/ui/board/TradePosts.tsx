@@ -1,13 +1,9 @@
 import { TRADE_POSTS } from '../../data/map'
 import { POSTS } from '../../data/posts'
 import { systemLabel } from '../format'
+import { postInReach } from '../moveOptions'
 import { MAP_H, MAP_W, POST_ART_H, POST_ART_W, POST_H, POST_POS, POST_W, lanePath, postAnchor } from '../layout'
 import type { GameState, Seat } from '../../engine/types'
-
-/** R8: the sale needs a planet of yours in one of the two systems the post serves. */
-export function postInReach(state: GameState, seat: Seat, post: 'west' | 'east'): boolean {
-  return TRADE_POSTS[post].some(id => state.systems[id].planets.some(p => p.owner === seat))
-}
 
 /**
  * R8: the hyperlanes, one per link, drawn as a layer behind the tiles so each lane runs out of its post and

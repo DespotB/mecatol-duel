@@ -116,7 +116,9 @@ describe('strategic actions', () => {
     const s = withPlanetOwner(cardsUsed(toActionPhase()), 'bereg', 'bereg', 0)
     renderWithSession(s, <BoardScreen />)
     fireEvent.click(screen.getByTestId('btn-component'))
-    expect(screen.queryByTestId('btn-tradepost-west')).toBeNull()
+    // R8: both posts are on the panel now; the one no planet of yours reaches is disabled and says why
+    expect(screen.getByTestId('btn-tradepost-west').hasAttribute('disabled')).toBe(true)
+    expect(screen.getByTestId('sale-reason-west').textContent).toContain('Sakulag or Starpoint')
     fireEvent.click(screen.getByTestId('btn-tradepost-east'))
     expect(screen.getByTestId('economy-0-tradegoods').textContent).toBe('2')
     expect(screen.getByTestId('economy-0-commodities').textContent).toBe('0 of 2')
