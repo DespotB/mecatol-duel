@@ -6,14 +6,13 @@ import { useEffect, useState } from 'react'
  * (which left it floating in empty space as soon as the window grew), every region is docked to a
  * viewport edge and its *contents* are scaled with the CSS `zoom` property.
  *
- * - `k` scales the bars and columns. A zoomed fixed region still resolves `left/right/top/bottom`
- *   against the viewport, so `left:0;right:0` keeps spanning the whole width while the 118px design
- *   height renders as 118*k real pixels.
- * - `s` is the extra zoom for the map inside the stage (the gap between the bars and the columns).
- *   The stage is `1440/k - 500` by `900/k - 202` design pixels wide once `k` is applied, so `s` grows
- *   the 940x698 board until it fills whichever of the two is tighter.
- *
- * At exactly 1440x900 both factors are 1 and the layout is pixel-identical to the authored design.
+ * - `k` scales the bars and columns and is 1 in every window that has room for them: the heads-up display
+ *   keeps the size it was drawn at. A zoomed fixed region still resolves `left/right/top/bottom` against
+ *   the viewport, so `left:0;right:0` keeps spanning the whole width. Only a window too small for the
+ *   chrome plus a minimum stage pushes `k` below 1.
+ * - `s` is the zoom of the map inside the stage (the gap between the bars and the columns), and it is the
+ *   factor that actually answers a resize: the board grows or shrinks until it fills whichever of the two
+ *   axes is tighter, which is what moving the camera away from a map looks like.
  */
 export interface ViewportScale {
   /** zoom for the docked regions (top bar, bottom bar, side columns, stage) */
@@ -22,8 +21,6 @@ export interface ViewportScale {
   s: number
 }
 
-const DESIGN_W = 1440
-const DESIGN_H = 900
 const MAP_W = 940
 const MAP_H = 698
 /** the two 250px gutters the side columns live in */
@@ -32,7 +29,14 @@ const GUTTERS = 500
 const BARS = 202
 
 const K_MIN = 0.55
-const K_MAX = 1.25
+/**
+ * The chrome never grows and never shrinks while there is room for it: zooming out has to move the camera
+ * away from the board, not shrink the heads-up display with it. Only once the stage would fall below the
+ * minimum below does the chrome start giving way, so a small window still shows a usable map.
+ */
+const K_MAX = 1
+const MIN_STAGE_W = 560
+const MIN_STAGE_H = 380
 const S_MIN = 0.5
 const S_MAX = 2
 
@@ -46,7 +50,7 @@ function round3(value: number): number {
 }
 
 export function viewportScale(width: number, height: number): ViewportScale {
-  const k = round3(clamp(K_MIN, Math.min(width / DESIGN_W, height / DESIGN_H), K_MAX))
+  const k = round3(clamp(K_MIN, Math.min(width / (GUTTERS + MIN_STAGE_W), height / (BARS + MIN_STAGE_H)), K_MAX))
   // the stage's own size in design pixels, i.e. after `k` has been applied to the regions around it
   const stageW = width / k - GUTTERS
   const stageH = height / k - BARS
