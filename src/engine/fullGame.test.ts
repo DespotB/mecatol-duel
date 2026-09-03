@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { homeSystemId } from '../data/map'
 import { otherSeat } from './actionPhase'
-import { capacity } from './economy'
+import { checkFleet } from './board'
 import { applyMove, legalMoves, validateMove } from './index'
 import { createGame, unitsOf } from './setup'
 import { DUEL_CONFIG, fillTemplate, shuffle, toActionPhase, toStatusPhase, withCards, withPlanetOwner, withPlayer, withTechs } from './testUtils'
@@ -34,12 +34,11 @@ function invariants(state: GameState, landed: Map<string, Set<Seat>>): void {
         const held = planet.ground.some(u => u.owner === seat) || planet.structures.some(u => u.owner === seat)
         expect(held || landed.get(planet.id)?.has(seat) === true).toBe(true)
       }
-      if (state.tactical?.step === 'spaceCombat' && state.tactical.systemId === sys.id) continue
-      const mine = sys.space.filter(u => u.owner === seat)
-      if (!mine.length) continue
-      const stats = { faction: state.players[seat].faction, techs: state.players[seat].techs }
-      const loose = state.players[seat].techs.includes('fighter_ii') ? 0 : mine.filter(u => u.type === 'fighter').length
-      expect(mine.filter(u => u.type === 'infantry').length + loose).toBeLessThanOrEqual(capacity(sys.space, seat, stats))
+      if (state.tactical?.step === 'spaceCombat' && state.tactical.systemId === sys.id) continue   // cargo is trimmed when combat ends
+      if (!sys.space.some(u => u.owner === seat)) continue
+      // the engine's own capacity and fleet-pool rule (Space Dock II free slots included), so the smoke run
+      // can never drift from checkFleet
+      expect(checkFleet(state, seat, sys.id).ok).toBe(true)
     }
   }
 }
