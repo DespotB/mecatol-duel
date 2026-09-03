@@ -31,7 +31,7 @@ function makePlayer(seat: Seat, cfg: GameConfig['players'][number]): Player {
     techs: [...f.startingTechs], strategyCards: [], passed: false,
     scoredObjectives: [], mandateScored: false, mandateEarnedThisRound: false,
     spentInOneProductionThisRound: 0, tradedThisRound: { west: false, east: false },
-    inheritanceExhausted: false, shipyardUsed: false, reinforcements,
+    inheritanceExhausted: false, shipyardUsed: false, pendingInfantry: 0, reinforcements,
   }
 }
 

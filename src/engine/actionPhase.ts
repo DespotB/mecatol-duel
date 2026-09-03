@@ -1,5 +1,5 @@
-import { SYSTEM_IDS } from '../data/map'
-import type { GameState, Result, Seat } from './types'
+import { SYSTEM_IDS, homeSystemId } from '../data/map'
+import type { GameState, Result, Seat, Unit } from './types'
 
 export function otherSeat(seat: Seat): Seat {
   return seat === 0 ? 1 : 0
@@ -10,10 +10,42 @@ export function canPass(state: GameState, seat: Seat): boolean {
   return state.players[seat].strategyCards.every(c => c.used)
 }
 
-/** The turn goes to the other seat unless that seat has already passed. */
+/**
+ * R4.3 step 4: infantry that rolled their return arrive on the first planet of the home system the seat
+ * controls. Reinforcements limit how many actually come back, and a seat that controls nothing at home
+ * loses them; the counter is cleared either way.
+ */
+export function reviveInfantry(state: GameState, seat: Seat): GameState {
+  const player = state.players[seat]
+  if (player.pendingInfantry < 1) return state
+  const homeId = homeSystemId(seat)
+  const sys = state.systems[homeId]
+  const target = sys.planets.find(p => p.owner === seat)
+  const count = Math.min(player.pendingInfantry, player.reinforcements.infantry)
+  const players = [...state.players] as GameState['players']
+  if (!target || count < 1) {
+    players[seat] = { ...player, pendingInfantry: 0 }
+    return { ...state, players, log: [...state.log, { t: 'info', text: `seat ${seat} loses ${player.pendingInfantry} returning infantry` }] }
+  }
+  let nextId = state.nextUnitId
+  const revived: Unit[] = []
+  for (let i = 0; i < count; i++) revived.push({ id: nextId++, type: 'infantry', owner: seat, damaged: false })
+  players[seat] = { ...player, pendingInfantry: 0, reinforcements: { ...player.reinforcements, infantry: player.reinforcements.infantry - count } }
+  return {
+    ...state, players, nextUnitId: nextId,
+    systems: {
+      ...state.systems,
+      [homeId]: { ...sys, planets: sys.planets.map(p => p.id === target.id ? { ...p, ground: [...p.ground, ...revived] } : p) },
+    },
+    log: [...state.log, { t: 'info', text: `seat ${seat} returns ${count} infantry to ${target.id}` }],
+  }
+}
+
+/** The turn goes to the other seat unless that seat has already passed; either way a turn starts (R4.3 step 4). */
 export function passTurn(state: GameState): GameState {
   const other = otherSeat(state.active)
-  return state.players[other].passed ? state : { ...state, active: other }
+  const next: Seat = state.players[other].passed ? state.active : other
+  return reviveInfantry({ ...state, active: next }, next)
 }
 
 export function activatableSystems(state: GameState, seat: Seat): string[] {
@@ -54,7 +86,7 @@ export function pass(state: GameState): Result<GameState> {
   players[seat] = { ...players[seat], passed: true }
   const other = otherSeat(seat)
   if (players[other].passed) return { ok: true, value: { ...state, players, phase: 'status', active: state.speaker } }
-  return { ok: true, value: { ...state, players, active: other } }
+  return { ok: true, value: reviveInfantry({ ...state, players, active: other }, other) }
 }
 
 export function endTactical(state: GameState): Result<GameState> {
