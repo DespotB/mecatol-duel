@@ -43,7 +43,7 @@ const SUPER_DREADNOUGHT_II = base({ cost: 4, combat: 4, move: 2, capacity: 2, su
 
 export type StatsOwner = { faction: FactionId; techs: string[] } | 'guardian'
 
-export function unitStats(type: UnitType, owner: StatsOwner): UnitStats {
+export function unitStats(type: UnitType, owner: StatsOwner): Readonly<UnitStats> {
   if (owner === 'guardian') return LEVEL_I[type]
   if (type === 'flagship') return FLAGSHIPS[owner.faction]
   if (type === 'dreadnought' && owner.faction === 'l1z1x') {
@@ -54,6 +54,6 @@ export function unitStats(type: UnitType, owner: StatsOwner): UnitStats {
   return LEVEL_I[type]
 }
 
-export const SHIP_TYPES: UnitType[] = ['fighter', 'destroyer', 'cruiser', 'carrier', 'dreadnought', 'warsun', 'flagship']
-export const NON_FIGHTER_SHIPS: UnitType[] = ['destroyer', 'cruiser', 'carrier', 'dreadnought', 'warsun', 'flagship']
+export const SHIP_TYPES: readonly UnitType[] = ['fighter', 'destroyer', 'cruiser', 'carrier', 'dreadnought', 'warsun', 'flagship']
+export const NON_FIGHTER_SHIPS: readonly UnitType[] = ['destroyer', 'cruiser', 'carrier', 'dreadnought', 'warsun', 'flagship']
 export function isShip(type: UnitType): boolean { return SHIP_TYPES.includes(type) }
