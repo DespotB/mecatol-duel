@@ -45,6 +45,15 @@ describe('the tactical action', () => {
     expect(screen.getByTestId('capacity-home-n').textContent).toBe('Capacity 4, carrying 3')
   })
 
+  it('R3.2 step 1: marks the systems no ship can reach before the activation', () => {
+    renderWithSession(toActionPhase(), <BoardScreen />)
+    fireEvent.click(screen.getByTestId('btn-tactical'))
+    expect(screen.getByTestId('noreach-sakulag')).toBeTruthy()     // asteroid field, no Antimass Deflectors
+    expect(screen.getByTestId('noreach-starpoint')).toBeTruthy()   // two systems away
+    expect(screen.queryByTestId('noreach-bereg')).toBeNull()
+    expect(screen.getByTestId('tile-sakulag').className).toContain('outofreach')
+  })
+
   it('R3.2 step 2: names the asteroid field instead of a bare "nothing can reach this system"', () => {
     renderWithSession(toActionPhase(), <BoardScreen />)
     activate('sakulag')

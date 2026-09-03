@@ -4,6 +4,7 @@ import { ActionBar } from '../hud/ActionBar'
 import type { ActionMode } from '../hud/ActionBar'
 import { SidePanel } from '../hud/SidePanel'
 import { TopBar } from '../hud/TopBar'
+import { shipsThatCanReach } from '../../engine'
 import { useGame } from '../store'
 import type { StrategyCardId } from '../../engine/types'
 // tactical flows (Task 4a)
@@ -45,6 +46,9 @@ export function BoardScreen() {
   const selectable = mode === 'tactical'
     ? legal.flatMap(m => m.type === 'startTactical' ? [m.systemId] : [])
     : []
+  // R3.2: activating a system your ships cannot enter is legal but usually a mistake, so the board says so
+  // before the click rather than the movement panel saying it afterwards
+  const outOfReach = selectable.filter(id => shipsThatCanReach(state, state.active, id).length === 0)
   const hint = drafting ? HINTS.strategy : state.phase === 'status' ? HINTS.status : HINTS[mode ?? 'idle']
   return (
     <>
@@ -57,6 +61,7 @@ export function BoardScreen() {
           state={state}
           activeSystemId={state.tactical?.systemId ?? null}
           selectable={selectable}
+          outOfReach={outOfReach}
           onSelect={systemId => { if (apply({ type: 'startTactical', systemId })) setMode(null) }}
         />
         {/* tactical flows (Task 4a) */}

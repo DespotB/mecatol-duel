@@ -57,15 +57,17 @@ export interface TileProps {
   system: System
   active: boolean
   selectable: boolean
+  /** Selectable, but no ship can move in; the outline goes cold and the tile says so. */
+  outOfReach?: boolean
   onSelect?: (systemId: string) => void
 }
 
-export function Tile({ state, system, active, selectable, onSelect }: TileProps) {
+export function Tile({ state, system, active, selectable, outOfReach = false, onSelect }: TileProps) {
   const def = systemDef(system.id)
   const pos = TILE_POS[system.id]
   const anchor = FLEET_ANCHOR[system.id]
   const home = def.home === null ? '' : def.home === 0 ? ' home-0' : ' home-1'
-  const classes = `tile${home}${active ? ' active' : ''}${selectable ? ' selectable' : ''}`
+  const classes = `tile${home}${active ? ' active' : ''}${selectable ? ' selectable' : ''}${selectable && outOfReach ? ' outofreach' : ''}`
   const guardians = system.space.some(u => u.owner === 'guardian')
   // a selectable tile is a control, so it takes focus and answers to Enter and Space like a button
   const activate = selectable && onSelect ? () => onSelect(system.id) : undefined
@@ -75,7 +77,7 @@ export function Tile({ state, system, active, selectable, onSelect }: TileProps)
       style={{ left: pos.left, top: pos.top, width: TILE_W, height: TILE_H }}
       role={activate ? 'button' : undefined}
       tabIndex={activate ? 0 : undefined}
-      aria-label={activate ? `Activate ${system.name}` : undefined}
+      aria-label={activate ? `Activate ${system.name}${outOfReach ? ', no ship in range' : ''}` : undefined}
       onClick={activate}
       onKeyDown={activate
         ? event => {
@@ -102,6 +104,9 @@ export function Tile({ state, system, active, selectable, onSelect }: TileProps)
         <img className="chev" src={MISC.anomaly} alt="asteroid field" data-testid={`anomaly-${system.id}`} style={ANOMALY_SPOT} width={64} />
       ) : null}
       {guardians ? <span className="guard" data-testid="guardian-label">Guardian fleet, worth 8</span> : null}
+      {selectable && outOfReach ? (
+        <span className="noreach" data-testid={`noreach-${system.id}`}>No ship in range</span>
+      ) : null}
     </div>
   )
 }

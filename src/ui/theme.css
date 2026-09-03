@@ -300,3 +300,7 @@ button{font-family:inherit}
 .mvu .s{margin-top:3px;font:500 10px/1.1 var(--hud);color:var(--muted);text-transform:uppercase}
 .warn{margin-top:8px;padding:7px 10px;border:1px solid rgba(226,164,90,.5);background:rgba(70,40,10,.35);
   font:500 12px/1.35 var(--body);color:#f0d9b0}
+.tile.outofreach svg.line polygon{stroke:rgba(150,160,180,.45)}
+.noreach{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);white-space:nowrap;
+  font:600 10px/16px var(--hud);letter-spacing:.06em;text-transform:uppercase;color:#b9c2d6;
+  padding:0 7px;background:rgba(6,9,20,.82);border:1px solid rgba(150,160,180,.35)}
