@@ -9,6 +9,9 @@ import type { GameState, Move, Seat } from './types'
 
 const MAX_MOVES = 3000
 const CLOSERS: readonly Move['type'][] = ['pass', 'status', 'endTactical', 'endMovement', 'endInvasion', 'secondary']
+// the only two kinds legalMoves still leaves as templates (docs/spec/engine-design.md, Contract); every other
+// enumerated move is already concrete, so it must never be rejected by the handler that offered it
+const TEMPLATE_TYPES: readonly Move['type'][] = ['moveShips', 'produce']
 
 function invariants(state: GameState, landed: Map<string, Set<Seat>>): void {
   const units = [...unitsOf(state, 0), ...unitsOf(state, 1), ...unitsOf(state, 'guardian')]
@@ -44,14 +47,15 @@ function invariants(state: GameState, landed: Map<string, Set<Seat>>): void {
 }
 
 /** Plays one complete game with seeded random legal moves and checks the invariants after every move. */
-function playGame(seed: number): { state: GameState; moves: number; attempts: number; rejected: number } {
+function playGame(seed: number): { state: GameState; moves: number; attempts: number; rejectedTemplate: number; rejectedConcrete: number } {
   let bits = (seed * 2654435761) >>> 0
   const rng = () => { bits = (Math.imul(bits, 1664525) + 1013904223) >>> 0; return bits / 4294967296 }
   let state = createGame(DUEL_CONFIG, seed)
   const landed = new Map<string, Set<Seat>>()
   let moves = 0
   let attempts = 0
-  let rejected = 0
+  let rejectedTemplate = 0
+  let rejectedConcrete = 0
   while (state.phase !== 'ended' && moves < MAX_MOVES) {
     const options = legalMoves(state)
     expect(options.length).toBeGreaterThan(0)
@@ -65,8 +69,16 @@ function playGame(seed: number): { state: GameState; moves: number; attempts: nu
       const r = applyMove(state, move, 1000 + moves)
       if (!r.ok) {
         if (r.internal) throw new Error(`internal error on ${move.type}: ${r.error}`)   // a bug, not an illegal move
-        rejected++
+        // every concrete kind is offered by legalMoves already playable, so only a template fill-in may miss
+        if (TEMPLATE_TYPES.includes(move.type)) rejectedTemplate++
+        else rejectedConcrete++
         continue
+      }
+      // a planet that changes hands stops counting as "landed"; a fresh owner must land afresh to hold it
+      for (const sys of Object.values(r.value.systems)) {
+        for (const planet of sys.planets) {
+          if (planet.owner !== state.systems[sys.id].planets.find(p => p.id === planet.id)?.owner) landed.delete(planet.id)
+        }
       }
       if (move.type === 'land') {
         const seat = state.active
@@ -83,7 +95,7 @@ function playGame(seed: number): { state: GameState; moves: number; attempts: nu
     moves++
     invariants(state, landed)
   }
-  return { state, moves, attempts, rejected }
+  return { state, moves, attempts, rejectedTemplate, rejectedConcrete }
 }
 
 describe('legal moves in every phase', () => {
@@ -118,7 +130,7 @@ describe('legal moves in every phase', () => {
     expect(applyMove(s, moves[0], 5).ok).toBe(true)
     expect(validateMove(s, { type: 'status', params: { tokens: { tactic: 3, fleet: 4, strategy: 3 } } }).ok).toBe(true)
   })
-  it('validateMove matches structurally, not by JSON', () => {
+  it('engine-design contract: validateMove matches structurally, not by JSON', () => {
     const s = withCards(toActionPhase(), 0, ['technology'])
     expect(validateMove(s, { type: 'strategic', card: 'technology', params: { techId: 'sarween_tools', planets: [] } }).ok).toBe(true)
     expect(validateMove(s, { type: 'strategic', card: 'imperial' }).ok).toBe(false)
@@ -134,11 +146,14 @@ describe('R3.1 to R3.3 full game', () => {
     let byPoints = 0
     let byRound6 = 0
     for (const seed of [1, 2, 3, 5, 8, 13, 21, 34, 55, 89]) {
-      const { state, moves, attempts, rejected } = playGame(seed)
+      const { state, moves, attempts, rejectedTemplate, rejectedConcrete } = playGame(seed)
       expect(state.phase).toBe('ended')
-      expect(moves).toBeLessThan(MAX_MOVES)
+      // proves the turn-closing bias past MAX_MOVES / 2 never actually has to engage
+      expect(moves).toBeLessThan(MAX_MOVES / 2)
       expect(state.round).toBeLessThanOrEqual(6)
-      expect(rejected).toBeLessThanOrEqual(Math.ceil(attempts * 0.05))
+      // a concrete move is offered already playable, so the handler that offered it may never refuse it
+      expect(rejectedConcrete).toBe(0)
+      expect(rejectedTemplate).toBeLessThanOrEqual(Math.ceil(attempts * 0.05))
       expect(state.log.filter(e => e.t === 'move').length).toBe(moves)
       const winner = state.winner
       expect(winner).not.toBeNull()
