@@ -17,6 +17,10 @@ export function StatusDialog() {
   const gained = tokensGained(state, seat)
   const sheet = tokens ?? template?.tokens ?? { ...player.tokens, tactic: player.tokens.tactic + gained }
   const scoring = scoreable(state, seat)
+  // Mirrors TokenSheet's own target/placed math: the confirm move needs the sheet to land on exactly
+  // `target`, so block the click while it doesn't rather than let distributeTokens reject it after the fact.
+  const target = player.tokens.tactic + player.tokens.fleet + player.tokens.strategy + gained
+  const placed = sheet.tactic + sheet.fleet + sheet.strategy
   return (
     <div className="dialog cut" data-testid="status-dialog">
       <div className="in">
@@ -24,7 +28,7 @@ export function StatusDialog() {
           <span className="tab">Status phase, {player.name}</span>
           <span className="sub">You gain {gained} command tokens.</span>
           <div className="right">
-            <button type="button" className="btn gold" data-testid="btn-status-confirm"
+            <button type="button" className="btn gold" data-testid="btn-status-confirm" disabled={placed !== target}
               onClick={() => { apply({ type: 'status', params: { tokens: sheet } }); setTokens(null) }}>Confirm</button>
           </div>
         </div>
