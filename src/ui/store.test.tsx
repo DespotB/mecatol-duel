@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import * as engine from '../engine'
 import { applyMove, createGame, deriveSeed } from '../engine'
-import { cardsUsed, toActionPhase } from '../engine/testUtils'
+import { cardsUsed, toActionPhase, toStatusPhase } from '../engine/testUtils'
 import { GameProvider, useGame } from './store'
 import type { GameConfig, Session } from './store'
 import type { StrategyCardId } from '../engine/types'
@@ -98,6 +98,33 @@ describe('the hot-seat store', () => {
     expect(result.current.session?.state.players[0].passed).toBe(true)
     expect(result.current.session?.state.active).toBe(1)
     vi.useRealTimers()
+  })
+
+  it('R6: a clock at zero holds while passing is illegal', () => {
+    vi.useFakeTimers()
+    const { result } = renderHook(() => useGame(), { wrapper: wrapper(true) })
+    // two unused strategy cards, so `pass` is not among the legal moves
+    act(() => { result.current.resume(session(toActionPhase(), [0, 60000])) })
+    expect(result.current.legal.some(m => m.type === 'pass')).toBe(false)
+    act(() => { vi.advanceTimersByTime(2000) })
+    expect(result.current.session?.clockMs[0]).toBe(0)
+    expect(result.current.session?.state.players[0].passed).toBe(false)
+    expect(result.current.session?.state.active).toBe(0)
+    vi.useRealTimers()
+  })
+
+  it('R6: a player at zero gets three more minutes at the start of the next round', () => {
+    const { result } = renderHook(() => useGame(), { wrapper: wrapper(false) })
+    act(() => { result.current.resume(session(toStatusPhase(toActionPhase()), [0, 60000])) })
+    expect(result.current.session?.state.round).toBe(1)
+    for (let seat = 0; seat < 2; seat += 1) {
+      const move = result.current.legal.find(m => m.type === 'status')
+      expect(move).toBeTruthy()
+      if (move) act(() => { result.current.apply(move) })
+    }
+    expect(result.current.session?.state.round).toBe(2)
+    expect(result.current.session?.clockMs[0]).toBe(180000)   // the flagged player is topped up
+    expect(result.current.session?.clockMs[1]).toBe(60000)    // the other clock is untouched
   })
 
   it('R6: a clock tick neither re-enumerates the moves nor rewrites the saved game', () => {
