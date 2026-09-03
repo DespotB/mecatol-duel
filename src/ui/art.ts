@@ -57,6 +57,7 @@ export const MISC = {
   alpha: '/assets/misc/emoji_WHalpha.png',
   beta: '/assets/misc/emoji_WHbeta.png',
   objectiveBack: '/assets/cards/cardback_public1.png',
+  strategyBack: '/assets/cards/cardback_public2.png',
   mandateBack: '/assets/cards/cardback_secret.jpg',
 }
 

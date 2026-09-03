@@ -44,29 +44,34 @@ function StrategyStrip({ state, onPick }: { state: GameState; onPick?: (card: St
         const owner = cardOwner(state, card)
         const entry = owner === null ? undefined : state.players[owner].strategyCards.find(c => c.id === card)
         const bonus = pool?.bonus ?? 0
+        const used = entry?.used ?? false
         const label = pool
-          ? bonus > 0 ? `+${bonus} trade good${bonus > 1 ? 's' : ''}` : 'Unpicked'
-          : owner === null ? 'Returned' : `${state.players[owner].name}, ${entry?.used ? 'played' : 'ready'}`
+          ? bonus > 0 ? `unpicked, ${bonus} trade good${bonus > 1 ? 's' : ''} on it` : 'unpicked'
+          : owner === null ? 'returned' : `${state.players[owner].name}, ${used ? 'played' : 'ready'}`
         const pickable = pool !== undefined && onPick !== undefined
         return (
           <button
             key={card} type="button" disabled={!pickable}
-            className={`sc${owner === null ? '' : ` own-${owner}`}${entry?.used ? ' played' : ''}${pickable ? ' pick' : ''}`}
-            data-testid={`strategy-card-${card}`}
+            className={`sc${owner === null ? ' free' : ` own-${owner}`}${used ? ' played' : ''}${pickable ? ' pick' : ''}`}
+            data-testid={`strategy-card-${card}`} title={`${CARD_NAME[card]}, ${label}`}
+            aria-label={`${CARD_NAME[card]}, ${label}`}
             onClick={pickable ? () => onPick(card) : undefined}
           >
-            <span className="card"><img src={strategyCardUrl(card)} alt={CARD_NAME[card]} /></span>
-            {/* the trade goods on an unpicked card are shown as the tokens themselves, fanned like a real
-                stack, rather than as a line of text under the card */}
-            <span className="st" data-testid={`strategy-state-${card}`} aria-label={label} title={label}>
-              {bonus > 0
-                ? (
-                  <span className="tgfan" data-testid={`strategy-bonus-${card}`}>
-                    {Array.from({ length: bonus }, (_, i) => <img key={i} src={MISC.tradeGood} alt="" width={19} height={19} />)}
-                  </span>
-                )
-                : label}
+            {/* a played card is turned face down, exactly as it is on the table */}
+            <span className="card">
+              <img src={used ? MISC.strategyBack : strategyCardUrl(card)} alt={CARD_NAME[card]} />
+              {/* the trade goods ride on the card itself, as the tokens they are */}
+              {bonus > 0 ? (
+                <span className="tgfan" data-testid={`strategy-bonus-${card}`}>
+                  {Array.from({ length: bonus }, (_, i) => <img key={i} src={MISC.tradeGood} alt="" width={20} height={20} />)}
+                </span>
+              ) : null}
+              {owner !== null ? (
+                <img className="held" src={tokenUrl(state.players[owner].faction, 'command')} alt="" width={26} />
+              ) : null}
             </span>
+            <span className="vis" data-testid={`strategy-state-${card}`}>{label}</span>
+            <span className="big" aria-hidden="true"><img src={strategyCardUrl(card)} alt="" /></span>
           </button>
         )
       })}
@@ -75,32 +80,35 @@ function StrategyStrip({ state, onPick }: { state: GameState; onPick?: (card: St
 }
 
 function Objectives({ state }: { state: GameState }) {
+  const scoredBy = (test: (seat: Seat) => boolean) => ([0, 1] as Seat[]).filter(test)
   return (
     <div className="objs">
-      <div><span className="tab">Objectives</span></div>
       <div className="objrow">
         {state.publicObjectives.map(id => {
           const def = PUBLIC_OBJECTIVES.find(o => o.id === id)
           if (!def) return null
           return (
-            <div className="obj" key={id} data-testid={`objective-${id}`} style={{ ['--bg' as string]: `url(${MISC.objectiveBack})` }}>
+            <div className="obj" key={id} data-testid={`objective-${id}`} title={def.text}
+              style={{ ['--bg' as string]: `url(${MISC.objectiveBack})` }}>
               <div className="tier">Round {def.round}</div>
-              <div className="txt">{def.text}</div>
-              {([0, 1] as Seat[]).filter(seat => state.players[seat].scoredObjectives.includes(id)).map(seat => (
+              <div className="txt">{def.short}</div>
+              {scoredBy(seat => state.players[seat].scoredObjectives.includes(id)).map(seat => (
                 <img key={seat} className={`tok s${seat}`} src={tokenUrl(state.players[seat].faction, 'control')} alt="scored"
                   data-testid={`scored-${id}-${seat}`} />
               ))}
+              <span className="full" aria-hidden="true">{def.text}</span>
             </div>
           )
         })}
-        <div className="obj mandate" data-testid="mandate" style={{ ['--bg' as string]: `url(${MISC.mandateBack})` }}>
+        <div className="obj mandate" data-testid="mandate" title={MANDATE.text}
+          style={{ ['--bg' as string]: `url(${MISC.mandateBack})` }}>
           <div className="tier">Mandate</div>
-          <div className="txt">First Strike</div>
-          {([0, 1] as Seat[]).filter(seat => state.players[seat].mandateScored).map(seat => (
+          <div className="txt">{MANDATE.short}</div>
+          {scoredBy(seat => state.players[seat].mandateScored).map(seat => (
             <img key={seat} className={`tok s${seat}`} src={tokenUrl(state.players[seat].faction, 'control')} alt="scored" />
           ))}
+          <span className="full" aria-hidden="true">{MANDATE.text}</span>
         </div>
-        <div className="mtext">{MANDATE.text}</div>
       </div>
     </div>
   )
