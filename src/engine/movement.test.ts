@@ -1,6 +1,7 @@
 // src/engine/movement.test.ts
 import { describe, expect, it } from 'vitest'
 import { applyMove } from './index'
+import { movementObstacle, shipsThatCanReach } from './movement'
 import { deepFreeze, groundIds, hitsIn, shipId, toActionPhase, withPlanetOwner, withTechs, withUnits } from './testUtils'
 import type { GameState, Seat } from './types'
 
@@ -152,5 +153,32 @@ describe('R3.2 movement', () => {
     expect(after.value.systems['home-n'].space.filter(u => u.owner === 1)).toHaveLength(0)
     expect(after.value.players[1].reinforcements.carrier).toBe(before.carrier + 1)
     expect(after.value.players[1].reinforcements.infantry).toBe(before.infantry + 2)
+  })
+})
+
+describe('R3.2 reachability, so the interface can say why nothing moves', () => {
+  it('reports which ships could reach a system that is not activated yet', () => {
+    const s = toActionPhase()
+    expect(shipsThatCanReach(s, 0, 'mecatol').length).toBeGreaterThan(0)
+    expect(shipsThatCanReach(s, 0, 'starpoint')).toHaveLength(0)   // two systems away, every starting ship moves 1
+  })
+  it('names the asteroid field as the obstacle while Antimass Deflectors are missing', () => {
+    const s = toActionPhase()
+    expect(movementObstacle(s, 0, 'sakulag')).toBe('asteroid')
+    expect(movementObstacle(withTechs(s, 0, ['antimass_deflectors']), 0, 'sakulag')).toBeNull()
+  })
+  it('names the range as the obstacle for a system two steps away', () => {
+    expect(movementObstacle(toActionPhase(), 0, 'starpoint')).toBe('range')
+  })
+  it('names the enemy fleet that blocks the only path', () => {
+    const s = withUnits(withTechs(toActionPhase(), 0, ['gravity_drive']), 'mecatol', 1, ['cruiser'])
+    expect(movementObstacle(s, 0, 'home-s')).toBe('blocked')
+  })
+  it('reports no obstacle for a system the ships can reach', () => {
+    expect(movementObstacle(toActionPhase(), 0, 'bereg')).toBeNull()
+  })
+  it('reports that there are no ships left to move when they all sit in the target', () => {
+    const s = toActionPhase()
+    expect(movementObstacle(s, 0, 'home-n')).toBe('none')
   })
 })
