@@ -5,6 +5,7 @@ import { bombard, endInvasion, groundCombatRound, land } from './invasion'
 import { endMovement, moveShips } from './movement'
 import { produce } from './production'
 import { secondary, strategic } from './strategicActions'
+import { status } from './statusPhase'
 import { pickStrategyCard } from './strategyPhase'
 import type { GameState, Move, Result } from './types'
 
@@ -33,6 +34,7 @@ export function applyMove(state: GameState, move: Move, seed: number): Result<Ga
       case 'research': return research(logged, move.techId)
       case 'shipyard': return shipyard(logged, move.planetId, move.planets, move.tradeGoods)
       case 'tradePost': return tradePost(logged, move.post, move.commodities)
+      case 'status': return status(logged, move.params, seed)
       default: return { ok: false, error: `not implemented: ${move.type}` }
     }
   } catch (e) {
