@@ -40,7 +40,7 @@ Two-player distillation of Twilight Imperium 4th edition (base game rules, no Pr
 Snake draft: speaker picks one card, the other player picks two, the speaker picks the last. The two remaining cards each get one trade good placed on them; the next player to pick such a card gains its trade goods. Initiative order for the action phase is by the lowest card number each player holds.
 
 ### 3.2 Action phase
-Players alternate turns in initiative order. On a turn the active player performs exactly one of: tactical action, strategic action, component action, pass. After passing, a player takes no more turns this round; the other player continues until they also pass. A player may not pass while they still hold an unused strategy card (they must play it first). A player who has passed may still resolve the secondary ability of a strategy card the opponent plays, because answering a card is not a turn (TI4 rule). A player who has passed may not trade at a trade post, because trading needs a turn of their own (section 8).
+Players alternate turns in initiative order. On a turn the active player performs exactly one of: tactical action, strategic action, component action, pass. An action ends the action, not the turn: the player keeps the turn until they end it, so free moves such as a trade post sale can still be made afterwards. After passing, a player takes no more turns this round; the other player continues until they also pass. A player may not pass while they still hold an unused strategy card (they must play it first). A player who has passed may still resolve the secondary ability of a strategy card the opponent plays, because answering a card is not a turn (TI4 rule). A player who has passed may not trade at a trade post, because trading needs a turn of their own (section 8).
 
 Tactical action (a system that already contains one of your command tokens cannot be activated, your home system included):
 1. Activation: spend one tactic token into the system.
@@ -49,7 +49,7 @@ Tactical action (a system that already contains one of your command tokens canno
 4. Invasion: bombardment, then landing infantry on planets, ground combat, control (section 4.3).
 5. Production if the player has a space dock in the active system (section 4.4).
 
-Strategic action: play the primary ability of one of your unused strategy cards; the opponent may then use the secondary by spending one strategy token. The card is then used for the round.
+Strategic action: play the primary ability of one of your unused strategy cards; the opponent may then use the secondary by spending one strategy token. The card is then used for the round. The action is finished once the opponent has answered or declined, and the turn returns to the card holder with their action spent.
 
 Component actions available in v1: Inheritance Systems (L1Z1X), Emergency shipyard (section 6), trade at a trade post (section 8, free during your turn, not an action).
 
@@ -101,4 +101,4 @@ Research via Technology strategy card (primary: one technology; secondary: one t
 - Victory: the first player to reach 7 VP at a victory check wins. If both reach 7 in the same status phase, or after the round 6 status phase nobody has 7: higher VP wins; ties go to the Mecatol Rex controller, then to the player with more planets, then to the speaker's opponent.
 
 ## 8. Trade posts
-Two neutral posts outside the map: west (linked to systems `sakulag` and `starpoint`) and east (linked to `bereg` and `quann`). During your own turn in the action phase, at most once per round per post, you may sell up to 2 commodities for 1 trade good each at a post, if you control at least one planet in one of its linked systems. Trade posts are not systems: no movement, no activation, no combat. Commodities replenish through the Trade card. Engine narrowing: trading is only offered on a clean turn of your own, that is with no tactical action running and no open secondary window, and never after you have passed.
+Two neutral posts outside the map: west (linked to systems `sakulag` and `starpoint`) and east (linked to `bereg` and `quann`). During your own turn in the action phase, at most once per round per post, you may sell up to 2 commodities for 1 trade good each at a post, if you control at least one planet in one of its linked systems. Trade posts are not systems: no movement, no activation, no combat. Commodities replenish through the Trade card. Engine narrowing: trading is offered on your own turn, before or after your action, but never while a tactical action, a combat or a secondary window is open, and never after you have passed.
