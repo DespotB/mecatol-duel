@@ -62,15 +62,30 @@ button{font-family:inherit}
 .badge.res{color:#f6e3a1}
 .badge.inf{color:#fff}
 
-/* layout */
-.app{position:relative;width:1440px;height:900px;margin:0 auto}
-.topbar{position:absolute;left:0;top:0;width:1440px;height:118px;display:flex;align-items:center;padding:0 12px;gap:16px;
+/* layout
+   Every region is docked to a viewport edge and scales its contents with `zoom`, so the bars stay at the
+   top and the bottom and the columns at the sides however the window is sized or the browser zoomed.
+   The design coordinates stay 1440x900: `--k` (see useViewportScale.ts) is the zoom of the docked
+   regions and `--s` the extra zoom of the map inside the stage; at 1440x900 both are 1 and the rendered
+   layout is the authored one. A zoomed fixed box still resolves left/right/top/bottom against the
+   viewport, so `left:0;right:0` keeps spanning the full width while `height:118px` renders as 118*k. */
+.app{position:fixed;inset:0}
+.topbar{position:fixed;left:0;right:0;top:0;height:118px;zoom:var(--k);display:flex;align-items:center;padding:0 12px;gap:16px;
   background:linear-gradient(180deg,rgba(6,10,24,.92),rgba(6,10,24,.72));border-bottom:1px solid var(--hair);z-index:3}
-.bottombar{position:absolute;left:0;top:816px;width:1440px;height:84px;display:flex;align-items:center;padding:0 20px;gap:16px;
+.bottombar{position:fixed;left:0;right:0;bottom:0;height:84px;zoom:var(--k);display:flex;align-items:center;padding:0 20px;gap:16px;
   background:linear-gradient(180deg,rgba(6,10,24,.72),rgba(6,10,24,.94));border-top:1px solid var(--hair);z-index:3}
-.colL{position:absolute;left:8px;top:126px;width:234px;height:684px;z-index:2}
-.colR{position:absolute;left:1198px;top:126px;width:234px;height:684px;z-index:2}
-.map{position:absolute;left:250px;top:118px;width:940px;height:698px;z-index:1}
+/* bottom:90px keeps the authored 684px column height at the 1440x900 design size */
+.colL,.colR{position:fixed;top:126px;bottom:90px;width:234px;zoom:var(--k);z-index:2}
+.colL{left:8px}
+.colR{right:8px}
+/* a short viewport scrolls the panel instead of clipping it */
+.colL>.in,.colR>.in{overflow:auto}
+/* the centre stage: the board plus everything that overlays it, docked between the bars and columns */
+.stage{position:fixed;left:250px;right:250px;top:118px;bottom:84px;zoom:var(--k);
+  display:flex;align-items:center;justify-content:center;overflow:hidden;z-index:1}
+/* a grouping wrapper only; its dialogs position themselves against the stage */
+.stage>.flows-4b{display:contents}
+.map{position:relative;width:940px;height:698px;zoom:var(--s);z-index:1}
 .actions{display:flex;gap:10px;margin:0 auto}
 .hintbox{width:390px;text-align:right}
 .hintbox .h{font:500 13px/1.25 var(--body);color:#d8d2c2}
