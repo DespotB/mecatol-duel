@@ -34,12 +34,20 @@ describe('R3.2 strategic actions', () => {
     expect(applyMove(played, { type: 'strategic', card: 'warfare' }, 0).ok).toBe(false)
     const done = value(answer(played, 'trade', false))
     expect(done.pendingSecondary).toBeNull()
-    expect(done.active).toBe(1)                                   // the answering seat now takes its own turn
+    // R3.2: the window closes back onto the card holder, whose action is spent but whose turn is not over
+    expect(done.active).toBe(0)
+    expect(done.turnDone).toBe(true)
+    expect(value(applyMove(done, { type: 'endTurn' }, 0)).active).toBe(1)   // now the answering seat takes its turn
   })
-  it('R3.2: a passed opponent still answers, and the turn goes back to the card holder', () => {
+  it('R3.2: a passed opponent still answers, and the card holder keeps the turn it never lost', () => {
     const s = withPlayer(holder('trade'), 1, { passed: true, strategyCards: [] })
     const done = value(answer(value(play(s, 'trade')), 'trade', false))
     expect(done.active).toBe(0)
+    expect(done.turnDone).toBe(true)
+    // the opponent has passed for the round, so ending the turn simply starts a fresh one for seat 0
+    const next = value(applyMove(done, { type: 'endTurn' }, 0))
+    expect(next.active).toBe(0)
+    expect(next.turnDone).toBe(false)
   })
   it('R3.2: only the holder plays a card, only once, and only the opponent answers', () => {
     const s = holder('trade')
@@ -47,8 +55,9 @@ describe('R3.2 strategic actions', () => {
     const played = value(play(s, 'trade'))
     expect(answer({ ...played, active: 0 }, 'trade', true).ok).toBe(false)
     const done = value(answer(played, 'trade', false))
-    expect(play({ ...done, active: 0 }, 'trade').ok).toBe(false)  // already used
-    expect(answer(done, 'trade', false).ok).toBe(false)           // window closed
+    // `turnDone` cleared, so this tests the "already used" rejection and not the spent-action one
+    expect(play({ ...done, turnDone: false }, 'trade').ok).toBe(false)   // already used
+    expect(answer(done, 'trade', false).ok).toBe(false)                  // window closed
   })
   it('R6 Leadership primary: 3 command tokens plus 1 for every 3 influence spent', () => {
     let s = holder('leadership')
@@ -86,8 +95,9 @@ describe('R3.2 strategic actions', () => {
     expect(played.systems['home-n'].activatedBy).toEqual([1])
     expect(played.systems['home-n'].planets[0].exhausted).toBe(false)
     const done = value(answer(played, 'diplomacy', false))
-    expect(applyMove(done, { type: 'startTactical', systemId: 'home-n' }, 0).ok).toBe(false)   // seat 1 is blocked there
-    expect(applyMove(done, { type: 'startTactical', systemId: 'quann' }, 0).ok).toBe(true)
+    const handed = value(applyMove(done, { type: 'endTurn' }, 0))                               // seat 1's turn
+    expect(applyMove(handed, { type: 'startTactical', systemId: 'home-n' }, 0).ok).toBe(false)  // seat 1 is blocked there
+    expect(applyMove(handed, { type: 'startTactical', systemId: 'quann' }, 0).ok).toBe(true)
   })
   it('R6 Diplomacy: not Mecatol Rex, only a system with a planet you control, at most 2 planets', () => {
     const s = withExhausted(holder('diplomacy'), ['000'])

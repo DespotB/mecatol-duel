@@ -198,11 +198,11 @@ describe('legal moves in every phase', () => {
   })
 })
 
-// Seeds 111, 140 and 185 are appended (outside the Fibonacci run) because the original ten reach neither a
-// bombard, nor a groundCombatRound, nor an accepted Trade secondary. Every rule change that adds a move to
-// the flow reshuffles these deterministic playthroughs, so the tail is retuned whenever that happens; it is
-// coverage ballast, nothing about the seeds themselves matters.
-const SEEDS: readonly number[] = [1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 111, 140, 185]
+// Seed 156 is appended (outside the Fibonacci run) because the original ten reach neither a bombard nor a
+// groundCombatRound; 156 is the smallest seed past 89 that reaches both. Every rule change that adds a move
+// to the flow reshuffles these deterministic playthroughs, so this tail is retuned whenever that happens; it
+// is coverage ballast, nothing about the seed itself matters.
+const SEEDS: readonly number[] = [1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 156]
 const RUNS = new Map<number, GameRun>()
 
 /** The smoke games are shared by the tests below, so each seed is actually played only once. */

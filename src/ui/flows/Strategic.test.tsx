@@ -30,6 +30,9 @@ describe('strategic actions', () => {
     expect(screen.getByTestId('secondary-panel')).toBeTruthy()
     fireEvent.click(screen.getByTestId('btn-secondary-decline'))
     expect(screen.queryByTestId('secondary-panel')).toBeNull()
+    // R3.2: the strategic action is over, so the turn comes back to the card holder, spent, to be ended
+    expect(screen.getByTestId('turn-0').textContent).toBe('Your turn')
+    fireEvent.click(screen.getByTestId('btn-end-turn'))
     expect(screen.getByTestId('turn-1').textContent).toBe('Your turn')
   })
 

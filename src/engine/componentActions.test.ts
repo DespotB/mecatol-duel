@@ -23,14 +23,18 @@ function withoutDocks(state: GameState, seat: 0 | 1): GameState {
 }
 
 describe('R6/R8 component actions', () => {
-  it('R6: Inheritance Systems exhausts, pays 2 resources, ignores prerequisites and ends the turn', () => {
+  it('R6: Inheritance Systems exhausts, pays 2 resources, ignores prerequisites and spends the action', () => {
     const s = withTechs(toActionPhase(), 0, ['inheritance_systems'])
     const done = value(inherit(s, 'war_sun'))                       // red 3 and yellow 1 are missing
     expect(done.players[0].techs).toContain('war_sun')
     expect(done.players[0].inheritanceExhausted).toBe(true)
     expect(done.systems['home-n'].planets[0].exhausted).toBe(true)  // [0.0.0] is the only ready planet
-    expect(done.active).toBe(1)
-    expect(inherit({ ...done, active: 0 }, 'sarween_tools').ok).toBe(false)   // the card stays exhausted this round
+    // R3.2: the component action spends the action, the seat keeps the turn until it ends it
+    expect(done.active).toBe(0)
+    expect(done.turnDone).toBe(true)
+    expect(value(applyMove(done, { type: 'endTurn' }, 0)).active).toBe(1)
+    // the card stays exhausted for the round, so a fresh turn of seat 0 still cannot use it again
+    expect(inherit({ ...done, turnDone: false }, 'sarween_tools').ok).toBe(false)
   })
   it('R6: without the technology, without resources or with a known technology the action is illegal', () => {
     expect(inherit(toActionPhase(), 'war_sun').ok).toBe(false)      // seat 0 does not own the card
@@ -48,7 +52,10 @@ describe('R6/R8 component actions', () => {
     expect(done.systems['home-n'].planets[0].structures.some(u => u.type === 'spacedock' && u.owner === 0)).toBe(true)
     expect(done.players[0]).toMatchObject({ shipyardUsed: true, tokens: { tactic: 3, fleet: 3, strategy: 1 } })
     expect(done.systems['home-n'].planets[0].exhausted).toBe(true)
-    expect(done.active).toBe(1)
+    // R3.2: the action is spent, the turn is not; `endTurn` is what hands it over
+    expect(done.active).toBe(0)
+    expect(done.turnDone).toBe(true)
+    expect(value(applyMove(done, { type: 'endTurn' }, 0)).active).toBe(1)
     expect(canShipyard(done, 0)).toBe(false)
     expect(build(withPlayer(s, 0, { tokens: { tactic: 3, fleet: 3, strategy: 0 } }), '000', ['000']).ok).toBe(false)
     expect(build(s, 'arc-prime', ['000']).ok).toBe(false)           // not controlled

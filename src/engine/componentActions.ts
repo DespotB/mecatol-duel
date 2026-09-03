@@ -1,6 +1,6 @@
 import { TRADE_POSTS } from '../data/map'
 import { TECHS } from '../data/techs'
-import { ACTION_SPENT, passTurn } from './actionPhase'
+import { ACTION_SPENT } from './actionPhase'
 import { cheapestPlanets, payCost } from './economy'
 import { controlledPlanets } from './objectives'
 import { canResearch } from './research'
@@ -62,7 +62,8 @@ export function research(state: GameState, techId: string): Result<GameState> {
   if (!granted.ok) return granted
   const players = [...granted.value.players] as GameState['players']
   players[seat] = { ...players[seat], inheritanceExhausted: true }
-  return { ok: true, value: passTurn({ ...granted.value, players }) }
+  // R3.2: the action is spent, the turn is not; `endTurn` hands it over
+  return { ok: true, value: { ...granted.value, players, turnDone: true } }
 }
 
 export function canShipyard(state: GameState, seat: Seat): boolean {
@@ -102,16 +103,17 @@ export function shipyard(state: GameState, planetId: string, planets: string[], 
     reinforcements: { ...me.reinforcements, spacedock: me.reinforcements.spacedock - 1 },
   }
   const sys = paid.value.systems[sysId]
+  // R3.2: the action is spent, the turn is not; `endTurn` hands it over
   return {
     ok: true,
-    value: passTurn({
-      ...paid.value, players, nextUnitId: paid.value.nextUnitId + 1,
+    value: {
+      ...paid.value, players, nextUnitId: paid.value.nextUnitId + 1, turnDone: true,
       systems: {
         ...paid.value.systems,
         [sysId]: { ...sys, planets: sys.planets.map(p => p.id === planetId ? { ...p, structures: [...p.structures, dock] } : p) },
       },
       log: [...paid.value.log, { t: 'info', text: `seat ${seat} builds an emergency space dock on ${planetId}` }],
-    }),
+    },
   }
 }
 

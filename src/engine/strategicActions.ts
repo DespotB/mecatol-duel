@@ -1,6 +1,6 @@
 import { FACTIONS } from '../data/factions'
 import { MECATOL_ID, SYSTEM_IDS, homeSystemId } from '../data/map'
-import { otherSeat, passTurn } from './actionPhase'
+import { ACTION_SPENT, otherSeat } from './actionPhase'
 import { checkFleet } from './board'
 import { distributeTokens, exhaustPlanets, payCost } from './economy'
 import { addVp, controlsMecatol, fulfils, scoreObjective } from './objectives'
@@ -243,6 +243,7 @@ export function strategic(state: GameState, card: StrategyCardId, params: Strate
   if (state.phase !== 'action') return { ok: false, error: 'not in the action phase' }
   if (state.tactical) return { ok: false, error: 'finish the tactical action first' }
   if (state.pendingSecondary) return { ok: false, error: 'R3.2: the opponent still has to answer the last strategy card' }
+  if (state.turnDone) return { ok: false, error: ACTION_SPENT }
   const seat = state.active
   if (state.players[seat].passed) return { ok: false, error: 'this player has passed' }
   const entry = state.players[seat].strategyCards.find(c => c.id === card)
@@ -269,6 +270,7 @@ export function secondary(state: GameState, card: StrategyCardId, accept: boolea
     if (!used.ok) return used
     next = used.value
   }
-  // R3.2: the turn passes on from the card holder, so the answering seat keeps it unless it has passed.
-  return { ok: true, value: passTurn({ ...next, pendingSecondary: null, active: owner }) }
+  // R3.2: the window closes back onto the card holder, whose strategic action is now finished. The action is
+  // spent, the turn is not: they keep it (free moves included) until they end it, which is what hands it on.
+  return { ok: true, value: { ...next, pendingSecondary: null, active: owner, turnDone: true } }
 }

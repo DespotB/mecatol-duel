@@ -63,7 +63,8 @@ describe('a scripted hot-seat game', () => {
     handoff()
     expect(text('turn-1')).toBe('Your turn')
 
-    // turn 2: R5 Technology primary, the opponent declines the secondary
+    // turn 2: R5 Technology primary, the opponent declines the secondary. R3.2: answering closes the window
+    // back onto the card holder, whose action is spent but whose turn only ends when they say so.
     click('btn-strategic')
     click('strategic-pick-technology')
     fireEvent.click(screen.getByTestId('tech-card-sarween_tools'))
@@ -73,6 +74,10 @@ describe('a scripted hot-seat game', () => {
     click('btn-secondary-decline')
     expect(screen.queryByTestId('secondary-panel')).toBeNull()
     expect(text('tech-1-sarween_tools')).toBe('Sarween Tools')
+    handoff()
+    expect(text('turn-1')).toBe('Your turn')
+    click('btn-end-turn')
+    handoff()
     expect(text('turn-0')).toBe('Your turn')
 
     // turn 3: R6 Leadership primary
@@ -83,6 +88,9 @@ describe('a scripted hot-seat game', () => {
     expect(text('tokens-0-tactic')).toBe('5')
     handoff()
     click('btn-secondary-decline')
+    handoff()
+    click('btn-end-turn')
+    handoff()
     expect(text('turn-1')).toBe('Your turn')
 
     // turn 4: R6 Trade primary; the responder is already replenished, so only declining is offered
@@ -93,6 +101,9 @@ describe('a scripted hot-seat game', () => {
     handoff()
     expect(screen.getByTestId('btn-secondary-accept').hasAttribute('disabled')).toBe(true)
     click('btn-secondary-decline')
+    handoff()
+    click('btn-end-turn')
+    handoff()
     expect(text('turn-0')).toBe('Your turn')
 
     // turn 5: R6 Warfare primary, and an accepted secondary that produces one infantry
@@ -110,6 +121,9 @@ describe('a scripted hot-seat game', () => {
     click('btn-secondary-accept')
     expect(text('forces-1-infantry')).toBe('5 Infantry I')
     expect(text('tokens-1-strategy')).toBe('1')
+    handoff()
+    click('btn-end-turn')
+    handoff()
     expect(text('turn-1')).toBe('Your turn')
 
     // turn 6: R3.2 passing is legal once both cards are used
