@@ -162,6 +162,12 @@ describe('R4.1 space combat', () => {
     expect(after.tactical?.combat?.lastRolls.length).toBe(3)
     expect(JSON.stringify(fight(s).systems.bereg.space)).toBe(JSON.stringify(after.systems.bereg.space))
   })
+  it('the move entry is logged before the dice rolls it produced', () => {
+    const s = combat('bereg', ['cruiser', 'cruiser'], ['carrier'], 1)
+    const added = fight(s).log.slice(s.log.length).map(e => e.t)
+    expect(added[0]).toBe('move')
+    expect(added).toContain('roll')
+  })
   it('R4.1 step 3: in a nebula the defender hits one lower', () => {
     const inNebula = fight(combat('quann', ['cruiser'], ['cruiser'], 1))
     const defence = inNebula.log.flatMap(e => e.t === 'roll' && e.owner === 1 ? e.rolls : [])

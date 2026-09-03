@@ -8,26 +8,26 @@ import type { GameState, Move, Result } from './types'
 
 export function applyMove(state: GameState, move: Move, seed: number): Result<GameState> {
   if (state.winner !== null) return { ok: false, error: 'game over' }
+  // the move is logged before it is dispatched, so it always precedes the dice rolls it produced; a rejected
+  // move returns the error and the caller keeps its untouched state, log entry included
+  const logged: GameState = { ...state, log: [...state.log, { t: 'move', seat: state.active, move }] }
   try {
-    let result: Result<GameState>
     switch (move.type) {
-      case 'pickStrategyCard': result = pickStrategyCard(state, move.card); break
-      case 'startTactical': result = startTactical(state, move.systemId); break
-      case 'pass': result = pass(state); break
-      case 'endTactical': result = endTactical(state); break
-      case 'moveShips': result = moveShips(state, move.moves); break
-      case 'endMovement': result = endMovement(state, seed); break
-      case 'combatRound': result = combatRound(state, move.munitions, seed); break
-      case 'retreat': result = retreat(state, move.to); break
-      case 'bombard': result = bombard(state, move.planetId, seed); break
-      case 'land': result = land(state, move.planetId, move.infantryIds, seed); break
-      case 'groundCombatRound': result = groundCombatRound(state, seed); break
-      case 'endInvasion': result = endInvasion(state); break
-      case 'produce': result = produce(state, move.units, move.planets, move.tradeGoods); break
-      default: result = { ok: false, error: `not implemented: ${move.type}` }
+      case 'pickStrategyCard': return pickStrategyCard(logged, move.card)
+      case 'startTactical': return startTactical(logged, move.systemId)
+      case 'pass': return pass(logged)
+      case 'endTactical': return endTactical(logged)
+      case 'moveShips': return moveShips(logged, move.moves)
+      case 'endMovement': return endMovement(logged, seed)
+      case 'combatRound': return combatRound(logged, move.munitions, seed)
+      case 'retreat': return retreat(logged, move.to)
+      case 'bombard': return bombard(logged, move.planetId, seed)
+      case 'land': return land(logged, move.planetId, move.infantryIds, seed)
+      case 'groundCombatRound': return groundCombatRound(logged, seed)
+      case 'endInvasion': return endInvasion(logged)
+      case 'produce': return produce(logged, move.units, move.planets, move.tradeGoods)
+      default: return { ok: false, error: `not implemented: ${move.type}` }
     }
-    if (!result.ok) return result
-    return { ok: true, value: { ...result.value, log: [...result.value.log, { t: 'move', seat: state.active, move }] } }
   } catch (e) {
     // an exception is an engine bug, not a rules rejection; `internal` keeps the two apart for callers
     return { ok: false, error: e instanceof Error ? e.message : String(e), internal: true }
