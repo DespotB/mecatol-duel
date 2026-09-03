@@ -13,7 +13,7 @@ Two-player distillation of Twilight Imperium 4th edition (base game rules, no Pr
 | NW | `sakulag` | empty | Sakulag 2/1 | beta wormhole |
 | C | `mecatol` | 18 | Mecatol Rex 1/6 | guardian fleet |
 | SE | `quann` | empty | Quann 2/1 | beta wormhole |
-| SW | `starpoint` | composed | Starpoint 3/1, Centauri 1/3 | alpha wormhole |
+| SW | `starpoint` | composed | Starpoint 3/1, Centauri 2/3 | alpha wormhole |
 | S | `home-s` | 10 Arc Prime | Arc Prime 4/0, Wren Terra 2/1 | Letnev home |
 
 - Adjacency: hex neighbours (centre touches all six; ring tiles touch their two ring neighbours and the centre), plus wormholes: alpha links `bereg` and `starpoint`, beta links `sakulag` and `quann`.

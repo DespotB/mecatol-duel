@@ -8,7 +8,7 @@ describe('R1 map Bereg Standoff', () => {
     expect(systemDef('home-n').planets).toEqual([{ id: '000', name: '[0.0.0]', resources: 5, influence: 0 }])
     expect(systemDef('home-s').planets.map(p => [p.name, p.resources, p.influence])).toEqual([['Arc Prime', 4, 0], ['Wren Terra', 2, 1]])
     expect(systemDef('bereg').planets.map(p => [p.name, p.resources, p.influence])).toEqual([['Bereg', 3, 1], ['Lirta IV', 2, 3]])
-    expect(systemDef('starpoint').planets.map(p => [p.name, p.resources, p.influence])).toEqual([['Starpoint', 3, 1], ['Centauri', 1, 3]])
+    expect(systemDef('starpoint').planets.map(p => [p.name, p.resources, p.influence])).toEqual([['Starpoint', 3, 1], ['Centauri', 2, 3]])
     expect(systemDef('sakulag').planets[0]).toMatchObject({ resources: 2, influence: 1 })
     expect(systemDef('quann').planets[0]).toMatchObject({ resources: 2, influence: 1 })
     expect(systemDef('mecatol').planets[0]).toMatchObject({ name: 'Mecatol Rex', resources: 1, influence: 6 })
