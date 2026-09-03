@@ -44,7 +44,7 @@ describe('a scripted hot-seat game', () => {
     click('btn-tactical')
     click('tile-bereg')
     expect(text('tokens-0-tactic')).toBe('2')
-    fireEvent.click(screen.getByLabelText('Carrier I from [0.0.0]'))
+    fireEvent.click(screen.getByTestId('ship-home-n-carrier-plus'))
     for (let i = 0; i < 3; i++) click('cargo-home-n-fighter-plus')
     click('cargo-home-n-infantry-plus')
     click('btn-move-ships')

@@ -285,3 +285,18 @@ button{font-family:inherit}
 
 .setup-foot{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:20px;margin-top:34px}
 .clockfield{display:flex;align-items:center;gap:10px}
+
+/* movement panel: the same models as on the board, a count under each, cargo kept apart */
+.mvorigin{margin-top:10px;border-top:1px solid rgba(201,162,77,.22);padding-top:8px}
+.mvhead{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
+.mvhead .sub{font:500 12px/1 var(--body);color:var(--muted)}
+.mvunits{display:flex;gap:8px;flex-wrap:wrap}
+.mvu{width:118px;border:1px solid var(--hair);background:rgba(4,8,20,.8);padding:6px}
+.mvu.on{border-color:var(--gold);background:rgba(201,162,77,.10)}
+.mvu.cargo{border-style:dashed}
+.mvu .ico{display:flex;align-items:center;justify-content:center;height:40px}
+.mvu .ico img{filter:drop-shadow(0 2px 2px rgba(0,0,0,.85))}
+.mvu .n{margin-top:4px;font:600 11px/1.1 var(--hud);text-transform:uppercase;color:#f1ead8}
+.mvu .s{margin-top:3px;font:500 10px/1.1 var(--hud);color:var(--muted);text-transform:uppercase}
+.warn{margin-top:8px;padding:7px 10px;border:1px solid rgba(226,164,90,.5);background:rgba(70,40,10,.35);
+  font:500 12px/1.35 var(--body);color:#f0d9b0}
