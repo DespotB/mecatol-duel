@@ -17,7 +17,7 @@ import { SecondaryPanel } from '../flows/SecondaryPanel'
 import { StatusDialog } from '../flows/StatusDialog'
 import { StrategicDialog } from '../flows/StrategicDialog'
 import { CARD_NAME } from '../format'
-import { strategicCards } from '../moveOptionsStrategic'
+import { strategicCards } from '../moveOptions'
 
 const HINTS: Record<string, string> = {
   tactical: 'Tactical action. Choose a system to activate.',

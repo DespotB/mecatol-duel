@@ -46,13 +46,9 @@ export function strategicVariants(legal: Move[], card: StrategyCardId): Strategi
 }
 
 export function secondaryOffer(legal: Move[]): { accept: StrategicParams | null; card: StrategyCardId | null } {
-  let card: StrategyCardId | null = null
-  let accept: StrategicParams | null = null
-  for (const move of legal) {
-    if (move.type !== 'secondary') continue
-    card = move.card
-    if (move.accept) accept = move.params ?? {}
-  }
+  const secondaries = legal.filter((m): m is Extract<Move, { type: 'secondary' }> => m.type === 'secondary')
+  const card = secondaries[0]?.card ?? null
+  const accept = secondaries.find(m => m.accept)?.params ?? null
   return { accept, card }
 }
 

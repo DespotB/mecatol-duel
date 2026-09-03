@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { cardOwner, secondaryTokenCost } from '../../engine'
 import { CARD_NAME, ownedPlanets, unitLabel } from '../format'
-import { secondaryOffer } from '../moveOptionsStrategic'
+import { secondaryOffer } from '../moveOptions'
 import { PayRow } from './PayRowStrategic'
 import { TechDrawer } from './TechDrawer'
 import { TokenSheet } from './TokenSheet'

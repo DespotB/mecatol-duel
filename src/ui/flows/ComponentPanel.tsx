@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { planetLabel } from '../format'
-import { inheritanceTechIds, shipyardOffers, tradePostOffers } from '../moveOptionsStrategic'
+import { inheritanceTechIds, shipyardOffers, tradePostOffers } from '../moveOptions'
 import { TechDrawer } from './TechDrawer'
 import { useGame } from '../store'
 

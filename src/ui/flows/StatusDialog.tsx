@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { PUBLIC_OBJECTIVES } from '../../data/objectives'
 import { scoreable, tokensGained } from '../../engine'
-import { statusTemplate } from '../moveOptionsStrategic'
+import { statusTemplate } from '../moveOptions'
 import { TokenSheet } from './TokenSheet'
 import { useGame } from '../store'
 import type { Player } from '../../engine/types'

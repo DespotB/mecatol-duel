@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { PUBLIC_OBJECTIVES } from '../../data/objectives'
 import { CARD_NAME, ownedPlanets, planetLabel, systemLabel } from '../format'
-import { strategicVariants } from '../moveOptionsStrategic'
+import { strategicVariants } from '../moveOptions'
 import { PayRow } from './PayRowStrategic'
 import { TechDrawer } from './TechDrawer'
 import { TokenSheet } from './TokenSheet'
