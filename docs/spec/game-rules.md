@@ -10,14 +10,14 @@ Two-player distillation of Twilight Imperium 4th edition (base game rules, no Pr
 | --- | --- | --- | --- | --- |
 | N | `home-n` | 06 [0.0.0] | [0.0.0] 5/0 | L1Z1X home |
 | NE | `bereg` | 35 | Bereg 3/1, Lirta IV 2/3 | alpha wormhole |
-| NW | `sakulag` | 44 asteroid field | Sakulag 2/1 | beta wormhole, asteroid field |
+| NW | `sakulag` | empty | Sakulag 2/1 | beta wormhole |
 | C | `mecatol` | 18 | Mecatol Rex 1/6 | guardian fleet |
-| SE | `quann` | 42 nebula | Quann 2/1 | beta wormhole, nebula |
+| SE | `quann` | empty | Quann 2/1 | beta wormhole |
 | SW | `starpoint` | composed | Starpoint 3/1, Centauri 1/3 | alpha wormhole |
 | S | `home-s` | 10 Arc Prime | Arc Prime 4/0, Wren Terra 2/1 | Letnev home |
 
 - Adjacency: hex neighbours (centre touches all six; ring tiles touch their two ring neighbours and the centre), plus wormholes: alpha links `bereg` and `starpoint`, beta links `sakulag` and `quann`.
-- Anomalies: asteroid field (`sakulag`): ships may move into or through it only if the player owns Antimass Deflectors. Nebula (`quann`): a ship that moves into the nebula must end its movement there; a ship starting its move in a nebula has move value 1; the defender gets +1 to combat rolls in a space combat there.
+- Anomalies: none. The duel map carries no asteroid field and no nebula, so every system is entered and crossed the same way and the only thing that stops a ship short of its destination is a fleet in the way. Antimass Deflectors therefore has no effect on this map, which is a balance question still open for the Barony starting technologies.
 - Units: infantry, fighter, destroyer, cruiser, carrier, dreadnought (L1Z1X: super-dreadnought), war sun, flagship, PDS (L1Z1X starting unit only), space dock. Stats from `data/reference/factions.json` (`units`) and `techs.json` (`unit_upgrades`, `faction_extras`).
 - Strategy cards: Leadership 1, Diplomacy 2, Trade 5, Warfare 6, Technology 7, Imperial 8. Texts from `factions.json` (`strategy_cards`), with the duel changes in section 6.
 - Command tokens: three pools (tactic, fleet, strategy). Start 3 / 3 / 2. Fleet pool limits non-fighter ships per system (Letnev Armada: +2).
@@ -44,7 +44,7 @@ Players alternate turns in initiative order. On a turn the active player perform
 
 Tactical action (a system that already contains one of your command tokens cannot be activated, your home system included):
 1. Activation: spend one tactic token into the system.
-2. Movement: move ships from other systems into the active system. A ship may move only if its move value covers the path length; it may not move through a system containing enemy ships (guardian ships count as enemy); wormholes make their two systems adjacent; anomaly rules of section 1. Gravity Drive: one ship gets +1 move this activation. Ships with capacity carry fighters and infantry from the system they start in; capacity may not be exceeded at the end of movement. Fighter II: fighters may move without being transported, and fighters in excess of capacity count against the fleet pool instead of being destroyed (TI4 rule). A ship in a system that contains the player's own command token from an earlier activation may not move (it was already used, TI4 rule: ships in systems with the player's token cannot move out).
+2. Movement: move ships from other systems into the active system. A ship may move only if its move value covers the path length; it may not move through a system containing enemy ships (guardian ships count as enemy); wormholes make their two systems adjacent. Gravity Drive: one ship gets +1 move this activation. Ships with capacity carry fighters and infantry from the system they start in; capacity may not be exceeded at the end of movement. Fighter II: fighters may move without being transported, and fighters in excess of capacity count against the fleet pool instead of being destroyed (TI4 rule). A ship in a system that contains the player's own command token from an earlier activation may not move (it was already used, TI4 rule: ships in systems with the player's token cannot move out).
 3. Space combat if enemy or guardian ships are present (section 4).
 4. Invasion: bombardment, then landing infantry on planets, ground combat, control (section 4.3).
 5. Production if the player has a space dock in the active system (section 4.4).
@@ -66,7 +66,7 @@ Component actions available in v1: Inheritance Systems (L1Z1X), Emergency shipya
 ### 4.1 Space combat (in the active system)
 1. Space cannon offense: PDS in the system (only the L1Z1X starting PDS exists) fire once at the attacker before combat: 1 die per PDS, hit on 6+ (Graviton Laser System: hits cannot be assigned to fighters).
 2. Anti-fighter barrage: each destroyer rolls its barrage dice (I: 2 dice at 9, II: 3 dice at 6); hits destroy enemy fighters only.
-3. Combat rounds: every ship rolls its combat dice, a hit is a roll of combat value or higher. Plasma Scoring: one unit with bombardment or space cannon rolls one extra die (used in the relevant step). Nebula: defender +1. Munitions Reserves (Letnev): at the start of each round the Letnev player may pay 2 trade goods to reroll any of their dice this round.
+3. Combat rounds: every ship rolls its combat dice, a hit is a roll of combat value or higher. Plasma Scoring: one unit with bombardment or space cannon rolls one extra die (used in the relevant step). Munitions Reserves (Letnev): at the start of each round the Letnev player may pay 2 trade goods to reroll any of their dice this round.
 4. Hit assignment is automatic in v1: first cancel hits with sustain damage on undamaged dreadnoughts, war suns and flagships (Non-Euclidean Shielding: 2 hits per sustain; Duranium Armor: repair one damaged unit after each round), then destroy fighters, destroyers, cruisers, carriers, damaged dreadnoughts, flagship, war sun in that order. [0.0.1] and L1Z1X dreadnoughts: their hits must be assigned to non-fighter ships if any exist.
 5. Retreat: before each round after the first, the attacker may announce a retreat to an adjacent system that contains their units or command token and no enemy ships; the retreat happens after that round.
 6. Combat ends when one side has no ships. Guardian ships never retreat. Assault Cannon: after space cannon offense and before anti-fighter barrage, if the player has 3 or more non-fighter ships, the opponent destroys one non-fighter ship. Order of the pre-combat steps: space cannon offense, Assault Cannon, anti-fighter barrage. Hits that cannot be assigned under a restriction (Graviton Laser System) are lost.

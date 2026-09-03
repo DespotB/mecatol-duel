@@ -6,12 +6,12 @@ export const CARD_NUMBER: Record<StrategyCardId, number> = {
 
 /**
  * R1: every system is composed, never a printed tile with planets baked in. The tile file is the background
- * alone (an empty starfield, or the anomaly art where the system is one), and every planet is drawn on top
- * from its own render, so the whole map reads in one style and one nameplate design.
+ * alone, an empty starfield, and every planet is drawn on top from its own render, so the whole map reads
+ * in one style and one nameplate design.
  */
 const TILE_FILE: Record<string, string> = {
-  'home-n': '00_blue.png', bereg: '00_blue.png', sakulag: '44_Asteroids.png', mecatol: '00_blue.png',
-  quann: '42_Nebula.png', starpoint: '00_blue.png', 'home-s': '00_blue.png',
+  'home-n': '00_blue.png', bereg: '00_blue.png', sakulag: '00_blue.png', mecatol: '00_blue.png',
+  quann: '00_blue.png', starpoint: '00_blue.png', 'home-s': '00_blue.png',
 }
 
 const PLANET_FILE: Record<string, string> = {
@@ -56,7 +56,6 @@ export const MISC = {
   speaker: '/assets/misc/emoji_SpeakerToken.png',
   alpha: '/assets/misc/emoji_WHalpha.png',
   beta: '/assets/misc/emoji_WHbeta.png',
-  anomaly: '/assets/tiles/tile_anomaly_chevron.png',
   objectiveBack: '/assets/cards/cardback_public1.png',
   mandateBack: '/assets/cards/cardback_secret.jpg',
 }

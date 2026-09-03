@@ -13,9 +13,7 @@ describe('R1 map Bereg Standoff', () => {
     expect(systemDef('quann').planets[0]).toMatchObject({ resources: 2, influence: 1 })
     expect(systemDef('mecatol').planets[0]).toMatchObject({ name: 'Mecatol Rex', resources: 1, influence: 6 })
   })
-  it('marks anomalies, wormholes and homes', () => {
-    expect(systemDef('sakulag').anomaly).toBe('asteroid')
-    expect(systemDef('quann').anomaly).toBe('nebula')
+  it('marks wormholes and homes', () => {
     expect(systemDef('bereg').wormhole).toBe('alpha')
     expect(systemDef('starpoint').wormhole).toBe('alpha')
     expect(systemDef('sakulag').wormhole).toBe('beta')

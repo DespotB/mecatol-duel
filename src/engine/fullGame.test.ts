@@ -202,7 +202,7 @@ describe('legal moves in every phase', () => {
 // bombard or a groundCombatRound once Space Dock I grants its free fighter slots too: the fix shifts the
 // deterministic playthroughs enough that the coverage test below needs two more seeds to still see every
 // move kind at least once.
-const SEEDS: readonly number[] = [1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 90, 94]
+const SEEDS: readonly number[] = [1, 2, 3, 5, 8, 13, 21, 29, 34, 55, 89, 90, 94]
 const RUNS = new Map<number, GameRun>()
 
 /** The eleven smoke games are shared by the tests below, so each seed is actually played only once. */

@@ -81,8 +81,6 @@ export const WORMHOLE_SPOTS: Record<string, Point> = {
   starpoint: { left: 194, top: 88 },
 }
 
-export const ANOMALY_SPOT: Point = { left: 84, top: 8 }
-
 /**
  * Played command tokens (System.activatedBy), top-right corner. The top-left corner looks free at a
  * glance but the fleet anchor sits right in it on three tiles (home-n, sakulag, starpoint: FLEET_ANCHOR

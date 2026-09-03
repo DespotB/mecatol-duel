@@ -15,7 +15,6 @@ describe('the board', () => {
     }
     // R1: the tile file is the background alone, the planets are drawn on top from their own renders
     expect(screen.getByTestId('hex-mecatol').getAttribute('src')).toContain('00_blue.png')
-    expect(screen.getByTestId('hex-sakulag').getAttribute('src')).toContain('44_Asteroids.png')
     expect(screen.getByTestId('planet-art-mecatol-rex').getAttribute('src')).toContain('planet_Mecatol.png')
   })
 
@@ -58,7 +57,6 @@ describe('the board', () => {
     expect(screen.getByTestId('sigil-home-s').getAttribute('src')).toContain('letnev.png')
     expect(screen.getByTestId('wormhole-bereg').getAttribute('src')).toContain('WHalpha')
     expect(screen.getByTestId('wormhole-quann').getAttribute('src')).toContain('WHbeta')
-    expect(screen.getByTestId('anomaly-sakulag')).toBeTruthy()
   })
 
   it('only calls back for a system the caller marked selectable', () => {
