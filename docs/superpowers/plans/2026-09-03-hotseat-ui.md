@@ -562,19 +562,28 @@ function current(): string {
   return window.location.hash || '#/'
 }
 
+// `hashchange` is queued rather than dispatched inline, so `navigate` also notifies the mounted hooks
+// directly; a route change is then visible in the same tick, in the browser and in the tests alike.
+const listeners = new Set<() => void>()
+
 export function useHashRoute(): string {
   const [route, setRoute] = useState(current)
   useEffect(() => {
     const onChange = () => setRoute(current())
     window.addEventListener('hashchange', onChange)
+    listeners.add(onChange)
     onChange()
-    return () => window.removeEventListener('hashchange', onChange)
+    return () => {
+      window.removeEventListener('hashchange', onChange)
+      listeners.delete(onChange)
+    }
   }, [])
   return route
 }
 
 export function navigate(hash: string): void {
   window.location.hash = hash
+  for (const listener of [...listeners]) listener()
 }
 
 /** `#/?seed=7` fixes the game seed, which is what the tests use; without it the caller's fallback wins. */
@@ -2207,3 +2216,1928 @@ Expected: PASS, 6 new tests.
 git add src/ui/format.ts src/ui/hud src/ui/screens/BoardScreen.tsx
 git commit -m "feat(ui): top bar, player panels and an action bar driven by legalMoves"
 ```
+
+---
+
+### Task 4a: Tactical flows, activation to production
+
+**Files:**
+- Create: `src/ui/moveOptions.ts`
+- Create: `src/ui/flows/Stepper.tsx`, `src/ui/flows/PayRow.tsx`
+- Create: `src/ui/flows/MovementPanel.tsx`, `src/ui/flows/CombatDialog.tsx`, `src/ui/flows/InvasionPanel.tsx`, `src/ui/flows/ProduceDrawer.tsx`
+- Modify: `src/ui/history.ts` (add `lastRolls`), `src/ui/screens/BoardScreen.tsx`
+- Test: `src/ui/flows/Tactical.test.tsx`
+
+**Interfaces:**
+- `src/ui/moveOptions.ts` reads the enumerated moves and nothing else:
+  ```ts
+  export function hasMove(legal: Move[], type: Move['type']): boolean
+  export function activatable(legal: Move[]): string[]
+  export function retreatTargetsOf(legal: Move[]): string[]
+  export function bombardTargets(legal: Move[]): string[]
+  export function landTargets(legal: Move[]): { planetId: string; infantryIds: number[] }[]
+  export function munitionsOptions(legal: Move[]): { attacker: boolean; defender: boolean }
+  export function strategicCards(legal: Move[]): StrategyCardId[]
+  export function strategicVariants(legal: Move[], card: StrategyCardId): StrategicParams[]
+  export function secondaryOffer(legal: Move[]): { accept: StrategicParams | null; card: StrategyCardId | null }
+  export function inheritanceTechIds(legal: Move[]): string[]
+  export function shipyardOffers(legal: Move[]): { planetId: string; planets: string[]; tradeGoods: number }[]
+  export function tradePostOffers(legal: Move[]): { post: 'west' | 'east'; commodities: number }[]
+  export function statusTemplate(legal: Move[]): StatusParams | null
+  ```
+- Cargo is chosen per origin system, not per ship: the panel collects "how many fighters and infantry leave [0.0.0]" and fills the selected ships of that origin up to their printed capacity in order. That keeps the control readable and the resulting `moveShips` legal, and the engine still has the last word.
+
+- [ ] **Step 1: Write the failing tactical test**
+
+```tsx
+// src/ui/flows/Tactical.test.tsx
+// @vitest-environment jsdom
+import { fireEvent, screen } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
+import { toActionPhase, withPlayer, withTactical, withUnits } from '../../engine/testUtils'
+import { BoardScreen } from '../screens/BoardScreen'
+import { renderWithSession } from '../test/harness'
+
+function activate(systemId: string) {
+  fireEvent.click(screen.getByTestId('btn-tactical'))
+  fireEvent.click(screen.getByTestId(`tile-${systemId}`))
+}
+
+describe('the tactical action', () => {
+  it('R3.2 step 1: activation spends a tactic token and opens the movement step', () => {
+    renderWithSession(toActionPhase(), <BoardScreen />)
+    activate('bereg')
+    expect(screen.getByTestId('tokens-0-tactic').textContent).toBe('2')
+    expect(screen.getByTestId('tile-bereg').className).toContain('active')
+    expect(screen.getByTestId('movement-panel')).toBeTruthy()
+  })
+
+  it('R3.2 step 2: moves a carrier with fighters and infantry into the active system', () => {
+    renderWithSession(toActionPhase(), <BoardScreen />)
+    activate('bereg')
+    fireEvent.click(screen.getByLabelText('Carrier I from [0.0.0]'))
+    for (let i = 0; i < 3; i++) fireEvent.click(screen.getByTestId('cargo-home-n-fighter-plus'))
+    fireEvent.click(screen.getByTestId('cargo-home-n-infantry-plus'))
+    expect(screen.getByTestId('cargo-home-n-fighter').textContent).toBe('3')
+    expect(screen.getByTestId('cargo-home-n-infantry-plus').hasAttribute('disabled')).toBe(true)  // capacity 4 is full
+    fireEvent.click(screen.getByTestId('btn-move-ships'))
+    expect(screen.getByTestId('stack-bereg-0-carrier')).toBeTruthy()
+    expect(screen.getByTestId('stack-bereg-0-fighter').textContent).toBe('3')
+    expect(screen.queryByTestId('stack-home-n-0-fighter')).toBeNull()
+  })
+
+  it('R4.3: lands infantry on an empty planet and takes control of it', () => {
+    renderWithSession(toActionPhase(), <BoardScreen />)
+    activate('bereg')
+    fireEvent.click(screen.getByLabelText('Carrier I from [0.0.0]'))
+    fireEvent.click(screen.getByTestId('cargo-home-n-infantry-plus'))
+    fireEvent.click(screen.getByTestId('btn-move-ships'))
+    fireEvent.click(screen.getByTestId('btn-end-movement'))
+    expect(screen.getByTestId('invasion-panel')).toBeTruthy()
+    expect(screen.getByTestId('land-count-bereg').textContent).toBe('1')
+    fireEvent.click(screen.getByTestId('btn-land-bereg'))
+    expect(screen.getByTestId('control-bereg')).toBeTruthy()
+    expect(screen.getByTestId('planet-0-bereg')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('btn-end-invasion'))
+    expect(screen.getByTestId('btn-end-tactical')).toBeTruthy()
+  })
+
+  it('R4.4: produces at the space dock, pays with a planet and exhausts it', () => {
+    renderWithSession(toActionPhase(), <BoardScreen />)
+    activate('home-n')
+    fireEvent.click(screen.getByTestId('btn-end-movement'))
+    fireEvent.click(screen.getByTestId('btn-end-invasion'))
+    expect(screen.getByTestId('produce-drawer')).toBeTruthy()
+    expect(screen.getByTestId('produce-limit').textContent).toBe('7')
+    fireEvent.click(screen.getByTestId('step-infantry-plus'))
+    fireEvent.click(screen.getByTestId('step-infantry-plus'))
+    expect(screen.getByTestId('step-infantry').textContent).toBe('2')
+    expect(screen.getByTestId('produce-cost').textContent).toBe('1')
+    expect(screen.getByTestId('btn-produce').hasAttribute('disabled')).toBe(true)   // nothing paid yet
+    fireEvent.click(screen.getByTestId('pay-000'))
+    fireEvent.click(screen.getByTestId('btn-produce'))
+    expect(screen.getByTestId('forces-0-infantry').textContent).toBe('7 Infantry I')
+    expect(screen.getByTestId('planet-0-000').className).toContain('exh')
+  })
+
+  it('R4.1: the combat dialog fights rounds and offers Munitions Reserves from round 1', () => {
+    let s = withUnits(toActionPhase(), 'bereg', 0, ['cruiser'])
+    s = withUnits(s, 'bereg', 1, ['cruiser'])
+    s = withPlayer(s, 1, { tradeGoods: 2 })
+    s = withTactical(s, {
+      systemId: 'bereg', step: 'spaceCombat',
+      combat: { round: 0, attacker: 0, defender: 1, retreating: null, retreatTo: null, lastRolls: [] },
+    })
+    renderWithSession(s, <BoardScreen />)
+    expect(screen.getByTestId('combat-round').textContent).toBe('Round 0')
+    expect(screen.queryByTestId('munitions-defender')).toBeNull()
+    fireEvent.click(screen.getByTestId('btn-combat-round'))
+    expect(screen.getByTestId('combat-round').textContent).toBe('Round 1')
+    expect(screen.getByTestId('munitions-defender')).toBeTruthy()
+    expect(screen.queryByTestId('munitions-attacker')).toBeNull()               // L1Z1X has no Munitions Reserves
+  })
+
+  it('R4.3: bombardment is offered against a defended planet', () => {
+    let s = withUnits(toActionPhase(), 'bereg', 0, ['dreadnought'])
+    s = withUnits(s, 'bereg', 1, ['infantry'], 'bereg')
+    s = withTactical(s, { systemId: 'bereg', step: 'invasion', invasion: { planetId: null, landed: [], bombarded: [], round: 0 } })
+    renderWithSession(s, <BoardScreen />)
+    expect(screen.getByTestId('btn-bombard-bereg')).toBeTruthy()
+    expect(screen.queryByTestId('btn-land-bereg')).toBeNull()                   // no infantry in space
+  })
+})
+```
+
+- [ ] **Step 2: Run the test to verify it fails, then commit it**
+
+Run: `npm test -- src/ui/flows`
+Expected: FAIL, the flow components do not exist.
+
+```bash
+git add src/ui/flows/Tactical.test.tsx
+git commit -m "test(ui): tactical action flows from activation to production"
+```
+
+- [ ] **Step 3: Read the enumerated moves**
+
+```ts
+// src/ui/moveOptions.ts
+import type { Move, StatusParams, StrategicParams, StrategyCardId } from '../engine/types'
+
+export function hasMove(legal: Move[], type: Move['type']): boolean {
+  return legal.some(m => m.type === type)
+}
+
+export function activatable(legal: Move[]): string[] {
+  return legal.flatMap(m => m.type === 'startTactical' ? [m.systemId] : [])
+}
+
+export function retreatTargetsOf(legal: Move[]): string[] {
+  return legal.flatMap(m => m.type === 'retreat' ? [m.to] : [])
+}
+
+export function bombardTargets(legal: Move[]): string[] {
+  return legal.flatMap(m => m.type === 'bombard' ? [m.planetId] : [])
+}
+
+export function landTargets(legal: Move[]): { planetId: string; infantryIds: number[] }[] {
+  return legal.flatMap(m => m.type === 'land' ? [{ planetId: m.planetId, infantryIds: m.infantryIds }] : [])
+}
+
+/** R4.1 step 6: the enumerator offers one variant per side, so the checkboxes follow it exactly. */
+export function munitionsOptions(legal: Move[]): { attacker: boolean; defender: boolean } {
+  let attacker = false
+  let defender = false
+  for (const move of legal) {
+    if (move.type !== 'combatRound' || !move.munitions) continue
+    if (move.munitions.attacker) attacker = true
+    if (move.munitions.defender) defender = true
+  }
+  return { attacker, defender }
+}
+
+export function strategicCards(legal: Move[]): StrategyCardId[] {
+  const cards: StrategyCardId[] = []
+  for (const move of legal) {
+    if (move.type === 'strategic' && !cards.includes(move.card)) cards.push(move.card)
+  }
+  return cards
+}
+
+/** Every parameter set the enumerator offers for one card; the dialog edits one of them. */
+export function strategicVariants(legal: Move[], card: StrategyCardId): StrategicParams[] {
+  return legal.flatMap(m => m.type === 'strategic' && m.card === card ? [m.params ?? {}] : [])
+}
+
+export function secondaryOffer(legal: Move[]): { accept: StrategicParams | null; card: StrategyCardId | null } {
+  let card: StrategyCardId | null = null
+  let accept: StrategicParams | null = null
+  for (const move of legal) {
+    if (move.type !== 'secondary') continue
+    card = move.card
+    if (move.accept) accept = move.params ?? {}
+  }
+  return { accept, card }
+}
+
+export function inheritanceTechIds(legal: Move[]): string[] {
+  return legal.flatMap(m => m.type === 'research' ? [m.techId] : [])
+}
+
+export function shipyardOffers(legal: Move[]): { planetId: string; planets: string[]; tradeGoods: number }[] {
+  return legal.flatMap(m => m.type === 'shipyard' ? [{ planetId: m.planetId, planets: m.planets, tradeGoods: m.tradeGoods }] : [])
+}
+
+export function tradePostOffers(legal: Move[]): { post: 'west' | 'east'; commodities: number }[] {
+  return legal.flatMap(m => m.type === 'tradePost' ? [{ post: m.post, commodities: m.commodities }] : [])
+}
+
+export function statusTemplate(legal: Move[]): StatusParams | null {
+  for (const move of legal) if (move.type === 'status') return move.params
+  return null
+}
+```
+
+Add to `src/ui/history.ts`:
+
+```ts
+import type { LogEntry } from '../engine/types'
+
+/** The dice of the last move: the trailing run of roll entries in the log. */
+export function lastRolls(state: GameState): Extract<LogEntry, { t: 'roll' }>[] {
+  const out: Extract<LogEntry, { t: 'roll' }>[] = []
+  for (let i = state.log.length - 1; i >= 0; i--) {
+    const entry = state.log[i]
+    if (entry.t === 'roll') out.unshift(entry)
+    else if (entry.t === 'move') break
+  }
+  return out
+}
+```
+
+```bash
+git add src/ui/moveOptions.ts src/ui/history.ts
+git commit -m "feat(ui): readers for the enumerated moves and the dice of the last move"
+```
+
+- [ ] **Step 4: Implement the shared stepper and payment row**
+
+```tsx
+// src/ui/flows/Stepper.tsx
+export interface StepperProps {
+  id: string
+  value: number
+  min?: number
+  max: number
+  onChange: (value: number) => void
+}
+
+export function Stepper({ id, value, min = 0, max, onChange }: StepperProps) {
+  return (
+    <div className="step">
+      <button type="button" data-testid={`${id}-minus`} disabled={value <= min} onClick={() => onChange(value - 1)}>-</button>
+      <b data-testid={id}>{value}</b>
+      <button type="button" data-testid={`${id}-plus`} disabled={value >= max} onClick={() => onChange(value + 1)}>+</button>
+    </div>
+  )
+}
+```
+
+```tsx
+// src/ui/flows/PayRow.tsx
+import { MISC } from '../art'
+import { ownedPlanets } from '../format'
+import { Stepper } from './Stepper'
+import type { GameState, Seat } from '../../engine/types'
+
+export interface PayRowProps {
+  state: GameState
+  seat: Seat
+  unit?: 'resources' | 'influence'
+  needed: number
+  planets: string[]
+  onPlanets: (planets: string[]) => void
+  tradeGoods: number
+  onTradeGoods: (n: number) => void
+}
+
+/** R4.4 and R5: exhaust ready planets and spend trade goods; overpay is lost, which the line spells out. */
+export function PayRow({ state, seat, unit = 'resources', needed, planets, onPlanets, tradeGoods, onTradeGoods }: PayRowProps) {
+  const owned = ownedPlanets(state, seat)
+  const value = (planetId: string) => {
+    const planet = owned.find(p => p.id === planetId)
+    if (!planet) return 0
+    return unit === 'resources' ? planet.resources : planet.influence
+  }
+  const paid = planets.reduce((sum, id) => sum + value(id), 0) + tradeGoods
+  return (
+    <div className="payrow" data-testid="payrow">
+      <span className="lbl">Pay with</span>
+      {owned.map(planet => (
+        <button
+          key={planet.id} type="button" disabled={planet.exhausted}
+          className={`pay${planets.includes(planet.id) ? ' on' : ''}`} data-testid={`pay-${planet.id}`}
+          onClick={() => onPlanets(planets.includes(planet.id) ? planets.filter(id => id !== planet.id) : [...planets, planet.id])}
+        >
+          {planet.name} {unit === 'resources' ? planet.resources : planet.influence}
+        </button>
+      ))}
+      <span className="pay">
+        <img src={MISC.tradeGood} alt="" width={16} height={16} />
+        <Stepper id="pay-tradegoods" value={tradeGoods} max={state.players[seat].tradeGoods} onChange={onTradeGoods} />
+      </span>
+      <span className="sub" data-testid="pay-total">{paid} of {needed}</span>
+    </div>
+  )
+}
+```
+
+- [ ] **Step 5: Implement the movement panel**
+
+```tsx
+// src/ui/flows/MovementPanel.tsx
+import { useState } from 'react'
+import { unitStats } from '../../data/units'
+import { movableShips } from '../../engine'
+import { systemLabel, unitLabel } from '../format'
+import { Stepper } from './Stepper'
+import { useGame } from '../store'
+import type { GameState, Seat, Unit } from '../../engine/types'
+
+interface Cargo { fighter: number; infantry: number }
+
+function shipsAt(state: GameState, from: string, ids: number[]): Unit[] {
+  return state.systems[from].space.filter(u => ids.includes(u.id))
+}
+
+function availableCargo(state: GameState, seat: Seat, from: string): { fighter: Unit[]; infantry: Unit[] } {
+  const sys = state.systems[from]
+  return {
+    fighter: sys.space.filter(u => u.owner === seat && u.type === 'fighter'),
+    infantry: [
+      ...sys.space.filter(u => u.owner === seat && u.type === 'infantry'),
+      ...sys.planets.flatMap(p => p.ground.filter(u => u.owner === seat)),
+    ],
+  }
+}
+
+export function MovementPanel() {
+  const { session, legal, apply } = useGame()
+  const [picked, setPicked] = useState<number[]>([])
+  const [cargo, setCargo] = useState<Record<string, Cargo>>({})
+  if (!session) return null
+  const state = session.state
+  const seat = state.active
+  const player = state.players[seat]
+  const stats = { faction: player.faction, techs: player.techs }
+  const options = movableShips(state, seat)
+  const origins = [...new Set(options.map(o => o.from))]
+  const capacityOf = (from: string) => shipsAt(state, from, picked).reduce((sum, u) => sum + unitStats(u.type, stats).capacity, 0)
+  const cargoOf = (from: string) => cargo[from] ?? { fighter: 0, infantry: 0 }
+
+  function toggle(unitId: number) {
+    setPicked(picked.includes(unitId) ? picked.filter(id => id !== unitId) : [...picked, unitId])
+  }
+
+  function submit() {
+    const used = new Set<number>()
+    const moves = origins.flatMap(from => {
+      const here = shipsAt(state, from, picked)
+      const want = cargoOf(from)
+      const pool = availableCargo(state, seat, from)
+      const queue = [
+        ...pool.fighter.slice(0, want.fighter).map(u => u.id),
+        ...pool.infantry.slice(0, want.infantry).map(u => u.id),
+      ]
+      return here.map(ship => {
+        const room = unitStats(ship.type, stats).capacity
+        const carrying: number[] = []
+        while (carrying.length < room && queue.length > 0) {
+          const id = queue.shift()
+          if (id !== undefined && !used.has(id)) {
+            used.add(id)
+            carrying.push(id)
+          }
+        }
+        return { unitId: ship.id, from, carrying }
+      })
+    })
+    if (moves.length === 0) return
+    if (apply({ type: 'moveShips', moves })) {
+      setPicked([])
+      setCargo({})
+    }
+  }
+
+  return (
+    <div className="drawer bottom cut" data-testid="movement-panel">
+      <div className="in">
+        <div className="dhead">
+          <span className="tab">Movement into {systemLabel(state.tactical?.systemId ?? '')}</span>
+          <span className="sub">Pick the ships that move, then how much they carry.</span>
+          <div className="right">
+            <button type="button" className="btn gold" data-testid="btn-move-ships" disabled={picked.length === 0} onClick={submit}>Move ships</button>
+            <button type="button" className="btn quiet" data-testid="btn-end-movement"
+              disabled={!legal.some(m => m.type === 'endMovement')} onClick={() => apply({ type: 'endMovement' })}>Done moving</button>
+          </div>
+        </div>
+        {origins.length === 0 ? <div className="sub">No ships can reach this system.</div> : null}
+        {origins.map(from => {
+          const pool = availableCargo(state, seat, from)
+          const want = cargoOf(from)
+          const room = capacityOf(from)
+          return (
+            <div className="rowline" key={from} data-testid={`origin-${from}`}>
+              <span className="lbl">{systemLabel(from)}</span>
+              {options.filter(o => o.from === from).map(option => {
+                const ship = state.systems[from].space.find(u => u.id === option.unitId)
+                if (!ship) return null
+                const label = `${unitLabel(ship.type, player)} from ${systemLabel(from)}`
+                return (
+                  <label key={option.unitId} className="pay">
+                    <input type="checkbox" aria-label={label} checked={picked.includes(option.unitId)} onChange={() => toggle(option.unitId)} />
+                    {unitLabel(ship.type, player)}
+                  </label>
+                )
+              })}
+              <span className="lbl">Fighters</span>
+              <Stepper id={`cargo-${from}-fighter`} value={want.fighter}
+                max={Math.min(pool.fighter.length, room - want.infantry)}
+                onChange={n => setCargo({ ...cargo, [from]: { ...want, fighter: n } })} />
+              <span className="lbl">Infantry</span>
+              <Stepper id={`cargo-${from}-infantry`} value={want.infantry}
+                max={Math.min(pool.infantry.length, room - want.fighter)}
+                onChange={n => setCargo({ ...cargo, [from]: { ...want, infantry: n } })} />
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+```
+
+- [ ] **Step 6: Implement the combat dialog and the invasion panel**
+
+```tsx
+// src/ui/flows/CombatDialog.tsx
+import { useState } from 'react'
+import { lastRolls } from '../history'
+import { munitionsOptions, retreatTargetsOf } from '../moveOptions'
+import { systemLabel } from '../format'
+import { useGame } from '../store'
+import type { Owner } from '../../engine/types'
+
+export function CombatDialog() {
+  const { session, legal, apply } = useGame()
+  const [attacker, setAttacker] = useState(false)
+  const [defender, setDefender] = useState(false)
+  if (!session) return null
+  const state = session.state
+  const combat = state.tactical?.combat
+  if (!combat) return null
+  const allowed = munitionsOptions(legal)
+  const retreats = retreatTargetsOf(legal)
+  const name = (owner: Owner) => owner === 'guardian' ? 'Guardian fleet' : state.players[owner].name
+  const munitions = (attacker && allowed.attacker) || (defender && allowed.defender)
+    ? { attacker: attacker && allowed.attacker, defender: defender && allowed.defender }
+    : undefined
+  return (
+    <div className="dialog cut" data-testid="combat-dialog">
+      <div className="in">
+        <div className="dhead">
+          <span className="tab">Space combat in {systemLabel(state.tactical?.systemId ?? '')}</span>
+          <span className="sub" data-testid="combat-round">Round {combat.round}</span>
+          <div className="right">
+            <button type="button" className="btn gold" data-testid="btn-combat-round"
+              disabled={!legal.some(m => m.type === 'combatRound')}
+              onClick={() => { apply({ type: 'combatRound', munitions }); setAttacker(false); setDefender(false) }}>
+              {combat.round === 0 ? 'Open fire' : `Fight round ${combat.round}`}
+            </button>
+          </div>
+        </div>
+        <div className="rowline">
+          <span className="lbl">{name(combat.attacker)} attacks {name(combat.defender)}</span>
+          {allowed.attacker ? (
+            <label className="pay">
+              <input type="checkbox" data-testid="munitions-attacker" checked={attacker} onChange={e => setAttacker(e.target.checked)} />
+              Munitions Reserves, attacker
+            </label>
+          ) : null}
+          {allowed.defender ? (
+            <label className="pay">
+              <input type="checkbox" data-testid="munitions-defender" checked={defender} onChange={e => setDefender(e.target.checked)} />
+              Munitions Reserves, defender
+            </label>
+          ) : null}
+        </div>
+        {lastRolls(state).map((entry, i) => (
+          <div className="logline roll" key={i} data-testid={`combat-rolls-${i}`}>
+            {name(entry.owner)}: {entry.rolls.map(r => `${r.value}${r.hit ? ' hit' : ''}`).join(', ') || 'no dice'} ({entry.context})
+          </div>
+        ))}
+        {combat.retreating !== null ? (
+          <div className="rowline" data-testid="retreat-announced">Retreat announced to {systemLabel(combat.retreatTo ?? '')}</div>
+        ) : (
+          <div className="rowline">
+            {retreats.map(to => (
+              <button key={to} type="button" className="btn quiet" data-testid={`btn-retreat-${to}`} onClick={() => apply({ type: 'retreat', to })}>
+                Retreat to {systemLabel(to)}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+```
+
+```tsx
+// src/ui/flows/InvasionPanel.tsx
+import { useState } from 'react'
+import { bombardTargets, landTargets } from '../moveOptions'
+import { planetLabel } from '../format'
+import { Stepper } from './Stepper'
+import { useGame } from '../store'
+
+export function InvasionPanel() {
+  const { session, legal, apply } = useGame()
+  const [counts, setCounts] = useState<Record<string, number>>({})
+  if (!session) return null
+  const state = session.state
+  const landings = landTargets(legal)
+  const bombards = bombardTargets(legal)
+  const countOf = (planetId: string, max: number) => counts[planetId] ?? max
+  return (
+    <div className="drawer bottom cut" data-testid="invasion-panel">
+      <div className="in">
+        <div className="dhead">
+          <span className="tab">Invasion</span>
+          <span className="sub">Bombard, then land your infantry and fight it out.</span>
+          <div className="right">
+            {legal.some(m => m.type === 'groundCombatRound') ? (
+              <button type="button" className="btn gold" data-testid="btn-ground-round" onClick={() => apply({ type: 'groundCombatRound' })}>
+                Ground combat round
+              </button>
+            ) : null}
+            <button type="button" className="btn quiet" data-testid="btn-end-invasion"
+              disabled={!legal.some(m => m.type === 'endInvasion')} onClick={() => apply({ type: 'endInvasion' })}>Done invading</button>
+          </div>
+        </div>
+        <div className="rowline">
+          {bombards.map(planetId => (
+            <button key={planetId} type="button" className="btn quiet" data-testid={`btn-bombard-${planetId}`} onClick={() => apply({ type: 'bombard', planetId })}>
+              Bombard {planetLabel(state, planetId)}
+            </button>
+          ))}
+        </div>
+        {landings.map(({ planetId, infantryIds }) => {
+          const count = countOf(planetId, infantryIds.length)
+          return (
+            <div className="rowline" key={planetId}>
+              <span className="lbl">{planetLabel(state, planetId)}</span>
+              <Stepper id={`land-count-${planetId}`} value={count} min={1} max={infantryIds.length}
+                onChange={n => setCounts({ ...counts, [planetId]: n })} />
+              <button type="button" className="btn gold" data-testid={`btn-land-${planetId}`}
+                onClick={() => apply({ type: 'land', planetId, infantryIds: infantryIds.slice(0, count) })}>
+                Land {count} infantry
+              </button>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+```
+
+- [ ] **Step 7: Implement the production drawer**
+
+```tsx
+// src/ui/flows/ProduceDrawer.tsx
+import { useState } from 'react'
+import { unitStats } from '../../data/units'
+import { PRODUCIBLE, productionCost, productionLimit } from '../../engine'
+import { unitCardUrl } from '../art'
+import { systemLabel, unitLabel } from '../format'
+import { PayRow } from './PayRow'
+import { Stepper } from './Stepper'
+import { useGame } from '../store'
+import type { UnitType } from '../../engine/types'
+
+const DISPLAY_ORDER: UnitType[] = ['dreadnought', 'carrier', 'cruiser', 'destroyer', 'fighter', 'infantry', 'warsun', 'flagship']
+
+export function ProduceDrawer() {
+  const { session, legal, apply } = useGame()
+  const [units, setUnits] = useState<Partial<Record<UnitType, number>>>({})
+  const [planets, setPlanets] = useState<string[]>([])
+  const [tradeGoods, setTradeGoods] = useState(0)
+  if (!session) return null
+  const state = session.state
+  const seat = state.active
+  const player = state.players[seat]
+  const stats = { faction: player.faction, techs: player.techs }
+  const systemId = state.tactical?.systemId ?? ''
+  const limit = productionLimit(state, seat, systemId)
+  const total = DISPLAY_ORDER.reduce((sum, type) => sum + (units[type] ?? 0), 0)
+  const cost = productionCost(units, stats, player.techs.includes('sarween_tools'))
+  const paid = planets.reduce((sum, id) => {
+    const planet = Object.values(state.systems).flatMap(s => s.planets).find(p => p.id === id)
+    return sum + (planet ? planet.resources : 0)
+  }, 0) + tradeGoods
+  const order = DISPLAY_ORDER.filter(type => PRODUCIBLE.includes(type))
+  return (
+    <div className="drawer bottom cut" data-testid="produce-drawer">
+      <div className="in">
+        <div className="dhead">
+          <span className="tab">Production at {systemLabel(systemId)}</span>
+          <span className="sub">
+            Production <b data-testid="produce-limit">{limit}</b>, used <b>{total}</b>, cost <b data-testid="produce-cost">{cost}</b>
+          </span>
+          <div className="right">
+            <button type="button" className="btn gold" data-testid="btn-produce"
+              disabled={total === 0 || total > limit || paid < cost}
+              onClick={() => { if (apply({ type: 'produce', units, planets, tradeGoods })) { setUnits({}); setPlanets([]); setTradeGoods(0) } }}>
+              Confirm production
+            </button>
+            <button type="button" className="btn quiet" data-testid="btn-end-tactical"
+              disabled={!legal.some(m => m.type === 'endTactical')} onClick={() => apply({ type: 'endTactical' })}>End turn</button>
+          </div>
+        </div>
+        <div className="ucards">
+          {order.map(type => {
+            const printed = unitStats(type, stats)
+            const count = units[type] ?? 0
+            const room = Math.min(limit - total + count, player.reinforcements[type])
+            return (
+              <div className={`uc${room === 0 ? ' off' : ''}`} key={type}>
+                <img src={unitCardUrl(type, player.faction)} alt="" />
+                <div className="n">{unitLabel(type, player)}</div>
+                <div className="s">Cost {printed.producedPerCost > 1 ? `${printed.cost} for ${printed.producedPerCost}` : printed.cost}</div>
+                <Stepper id={`step-${type}`} value={count} max={Math.max(count, room)}
+                  onChange={n => setUnits({ ...units, [type]: n })} />
+              </div>
+            )
+          })}
+        </div>
+        <PayRow state={state} seat={seat} needed={cost} planets={planets} onPlanets={setPlanets}
+          tradeGoods={tradeGoods} onTradeGoods={setTradeGoods} />
+      </div>
+    </div>
+  )
+}
+```
+
+- [ ] **Step 8: Wire the steps into the board screen**
+
+Replace the body of `src/ui/screens/BoardScreen.tsx` between `<BoardMap .../>` and `<ActionBar .../>` with the step panels, adding the imports:
+
+```tsx
+import { CombatDialog } from '../flows/CombatDialog'
+import { InvasionPanel } from '../flows/InvasionPanel'
+import { MovementPanel } from '../flows/MovementPanel'
+import { ProduceDrawer } from '../flows/ProduceDrawer'
+```
+
+```tsx
+      {state.tactical?.step === 'movement' ? <MovementPanel /> : null}
+      {state.tactical?.step === 'spaceCombat' ? <CombatDialog /> : null}
+      {state.tactical?.step === 'invasion' ? <InvasionPanel /> : null}
+      {state.tactical && (state.tactical.step === 'production' || state.tactical.step === 'done') ? <ProduceDrawer /> : null}
+```
+
+The `done` step reuses the production drawer because it holds the "End turn" button; with the step at `done` every stepper is capped at zero by `productionLimit`, so the only live control is that button.
+
+- [ ] **Step 9: Run the tests, type-check, lint and commit**
+
+Run: `npm test && npx tsc -p tsconfig.app.json --noEmit && npm run lint`
+Expected: PASS, 6 new tests.
+
+```bash
+git add src/ui/flows src/ui/screens/BoardScreen.tsx
+git commit -m "feat(ui): movement, combat, invasion and production flows"
+```
+
+---
+
+### Task 4b: Strategic actions, the secondary window, component actions and the status phase
+
+**Files:**
+- Create: `src/ui/flows/TokenSheet.tsx`, `src/ui/flows/TechDrawer.tsx`, `src/ui/flows/StrategicDialog.tsx`, `src/ui/flows/SecondaryPanel.tsx`, `src/ui/flows/ComponentPanel.tsx`, `src/ui/flows/StatusDialog.tsx`
+- Modify: `src/ui/screens/BoardScreen.tsx`, `src/ui/screens/GameOverScreen.tsx`
+- Test: `src/ui/flows/Strategic.test.tsx`
+
+**Interfaces:**
+- `TokenSheet`: `{ current: Player['tokens']; gained: number; redistribute: boolean; value: Player['tokens']; onChange(next): void }`. It edits the **resulting** command sheet, which is what `StrategicParams.tokens` and `StatusParams.tokens` mean, and it enforces what `economy.distributeTokens` would: the three pools sum to `current + gained`, and without `redistribute` no pool may shrink.
+- `TechDrawer`: `{ state; seat; allowed: string[]; selected: string | null; onSelect(techId): void }`. `allowed` always comes from the enumerated moves, so the engine decides what is researchable and the drawer only paints it. Layout follows the mockup's `?panel=tech`: four colour columns in tier order plus a fifth column for unit upgrades and faction technologies.
+- Each dialog submits exactly one move kind and closes itself through the `onClose` the board screen passes in.
+
+- [ ] **Step 1: Write the failing test**
+
+```tsx
+// src/ui/flows/Strategic.test.tsx
+// @vitest-environment jsdom
+import { fireEvent, screen } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
+import { cardsUsed, toActionPhase, toStatusPhase, withCards, withPlanetOwner, withTechs } from '../../engine/testUtils'
+import { BoardScreen } from '../screens/BoardScreen'
+import { renderWithSession } from '../test/harness'
+
+function playCard(card: string) {
+  fireEvent.click(screen.getByTestId('btn-strategic'))
+  fireEvent.click(screen.getByTestId(`strategic-pick-${card}`))
+}
+
+describe('strategic actions', () => {
+  it('R3.2: only ready cards of the active seat are offered', () => {
+    const s = withCards(withCards(toActionPhase(), 0, ['leadership']), 1, ['imperial'])
+    renderWithSession(s, <BoardScreen />)
+    fireEvent.click(screen.getByTestId('btn-strategic'))
+    expect(screen.getByTestId('strategic-pick-leadership')).toBeTruthy()
+    expect(screen.queryByTestId('strategic-pick-imperial')).toBeNull()
+  })
+
+  it('R6 Leadership: the primary gives three command tokens and opens the secondary window', () => {
+    const s = withCards(withCards(toActionPhase(), 0, ['leadership']), 1, [])
+    renderWithSession(s, <BoardScreen />)
+    playCard('leadership')
+    expect(screen.getByTestId('token-tactic').textContent).toBe('6')
+    fireEvent.click(screen.getByTestId('btn-strategic-confirm'))
+    expect(screen.getByTestId('tokens-0-tactic').textContent).toBe('6')
+    expect(screen.getByTestId('secondary-panel')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('btn-secondary-decline'))
+    expect(screen.queryByTestId('secondary-panel')).toBeNull()
+    expect(screen.getByTestId('turn-1').textContent).toBe('Your turn')
+  })
+
+  it('R5: the Technology primary researches the technology chosen in the drawer', () => {
+    const s = withCards(withCards(toActionPhase(), 0, ['technology']), 1, [])
+    renderWithSession(s, <BoardScreen />)
+    playCard('technology')
+    expect(screen.getByTestId('tech-card-plasma_scoring').className).toContain('owned')
+    expect(screen.getByTestId('tech-card-assault_cannon').hasAttribute('disabled')).toBe(true)
+    fireEvent.click(screen.getByTestId('tech-card-sarween_tools'))
+    fireEvent.click(screen.getByTestId('btn-strategic-confirm'))
+    expect(screen.getByTestId('tech-0-sarween_tools').textContent).toBe('Sarween Tools')
+  })
+
+  it('R7: the Imperial primary scores a fulfilled public objective', () => {
+    let s = withCards(withCards(toActionPhase(), 0, ['imperial']), 1, [])
+    s = withTechs(s, 0, ['sarween_tools'])
+    renderWithSession(s, <BoardScreen />)
+    playCard('imperial')
+    fireEvent.click(screen.getByTestId('objective-pick-own_3_techs'))
+    fireEvent.click(screen.getByTestId('btn-strategic-confirm'))
+    expect(screen.getByTestId('vp-0').textContent).toBe('1 of 7')
+    expect(screen.getByTestId('scored-own_3_techs-0')).toBeTruthy()
+  })
+
+  it('R8: a trade post sells two commodities for two trade goods without ending the turn', () => {
+    const s = withPlanetOwner(cardsUsed(toActionPhase()), 'bereg', 'bereg', 0)
+    renderWithSession(s, <BoardScreen />)
+    fireEvent.click(screen.getByTestId('btn-component'))
+    expect(screen.queryByTestId('btn-tradepost-west')).toBeNull()
+    fireEvent.click(screen.getByTestId('btn-tradepost-east'))
+    expect(screen.getByTestId('economy-0-tradegoods').textContent).toBe('2')
+    expect(screen.getByTestId('economy-0-commodities').textContent).toBe('0 of 2')
+    expect(screen.getByTestId('turn-0').textContent).toBe('Your turn')
+  })
+
+  it('R3.3: the status dialog distributes the new command tokens, speaker first', () => {
+    renderWithSession(toStatusPhase(toActionPhase()), <BoardScreen />)
+    expect(screen.getByTestId('status-dialog').textContent).toContain('2 command tokens')
+    expect(screen.getByTestId('token-tactic').textContent).toBe('5')
+    fireEvent.click(screen.getByTestId('token-tactic-minus'))
+    fireEvent.click(screen.getByTestId('token-fleet-plus'))
+    fireEvent.click(screen.getByTestId('btn-status-confirm'))
+    expect(screen.getByTestId('tokens-0-tactic').textContent).toBe('4')
+    expect(screen.getByTestId('tokens-0-fleet').textContent).toBe('4')
+    expect(screen.getByTestId('turn-1').textContent).toBe('Your turn')
+  })
+})
+```
+
+- [ ] **Step 2: Run the test to verify it fails, then commit it**
+
+Run: `npm test -- src/ui/flows/Strategic`
+Expected: FAIL, the dialogs do not exist.
+
+```bash
+git add src/ui/flows/Strategic.test.tsx
+git commit -m "test(ui): strategic primaries, the secondary window, trade posts and the status phase"
+```
+
+- [ ] **Step 3: Implement the token sheet and the technology drawer**
+
+```tsx
+// src/ui/flows/TokenSheet.tsx
+import type { Player } from '../../engine/types'
+
+const POOLS = ['tactic', 'fleet', 'strategy'] as const
+
+export interface TokenSheetProps {
+  current: Player['tokens']
+  gained: number
+  redistribute?: boolean
+  value: Player['tokens']
+  onChange: (next: Player['tokens']) => void
+}
+
+/** Edits the resulting command sheet, exactly as economy.distributeTokens reads it. */
+export function TokenSheet({ current, gained, redistribute = false, value, onChange }: TokenSheetProps) {
+  const target = current.tactic + current.fleet + current.strategy + gained
+  const placed = value.tactic + value.fleet + value.strategy
+  return (
+    <div className="rowline" data-testid="token-sheet">
+      <span className="lbl">Command tokens, {gained} new</span>
+      {POOLS.map(pool => (
+        <span className="pay" key={pool}>
+          {pool}
+          <button type="button" data-testid={`token-${pool}-minus`}
+            disabled={value[pool] <= (redistribute ? 0 : current[pool])}
+            onClick={() => onChange({ ...value, [pool]: value[pool] - 1 })}>-</button>
+          <b data-testid={`token-${pool}`}>{value[pool]}</b>
+          <button type="button" data-testid={`token-${pool}-plus`}
+            disabled={placed >= target}
+            onClick={() => onChange({ ...value, [pool]: value[pool] + 1 })}>+</button>
+        </span>
+      ))}
+      <span className="sub" data-testid="token-total">{placed} of {target}</span>
+    </div>
+  )
+}
+```
+
+```tsx
+// src/ui/flows/TechDrawer.tsx
+import { TECHS } from '../../data/techs'
+import { techArtUrl } from '../art'
+import type { GameState, Seat, TechColor } from '../../engine/types'
+
+const COLOURS: TechColor[] = ['blue', 'red', 'green', 'yellow']
+const COLUMN_NAME: Record<TechColor, string> = { blue: 'Propulsion', red: 'Warfare', green: 'Biotic', yellow: 'Cybernetic' }
+
+function tier(prereq: Partial<Record<TechColor, number>>): number {
+  return Object.values(prereq).reduce((sum, n) => sum + (n ?? 0), 0)
+}
+
+export interface TechDrawerProps {
+  state: GameState
+  seat: Seat
+  allowed: string[]
+  selected: string | null
+  onSelect: (techId: string) => void
+}
+
+/** R5 and R8 of the mockup: four colour columns in tier order plus unit upgrades and faction technologies. */
+export function TechDrawer({ state, seat, allowed, selected, onSelect }: TechDrawerProps) {
+  const owned = state.players[seat].techs
+  const columns = COLOURS.map(colour => ({
+    colour,
+    techs: TECHS.filter(t => t.kind === 'general' && t.colour === colour).sort((a, b) => tier(a.prereq) - tier(b.prereq)),
+  }))
+  const extras = TECHS.filter(t => t.kind !== 'general' && (t.faction === undefined || t.faction === state.players[seat].faction))
+  const card = (techId: string, name: string) => {
+    const isOwned = owned.includes(techId)
+    const open = allowed.includes(techId)
+    const state2 = isOwned ? 'owned' : selected === techId ? 'sel' : open ? 'now' : 'dim'
+    return (
+      <button key={techId} type="button" className={`tc ${state2}`} data-testid={`tech-card-${techId}`}
+        disabled={!open} onClick={() => onSelect(techId)}>
+        <img className="art" src={techArtUrl(techId)} alt="" />
+        <span className="cap">{name}{isOwned ? ', owned' : open ? '' : ', needs prerequisites'}</span>
+      </button>
+    )
+  }
+  return (
+    <div className="tcols" data-testid="tech-drawer">
+      {columns.map(column => (
+        <div className="tcol" key={column.colour}>
+          <h4><span className={`tdot ${column.colour}`} />{COLUMN_NAME[column.colour]}</h4>
+          {column.techs.map(t => card(t.id, t.name))}
+        </div>
+      ))}
+      <div className="tcol units">
+        <h4>Unit upgrades and faction</h4>
+        {extras.map(t => card(t.id, t.name))}
+      </div>
+    </div>
+  )
+}
+```
+
+- [ ] **Step 4: Implement the strategic dialog**
+
+```tsx
+// src/ui/flows/StrategicDialog.tsx
+import { useState } from 'react'
+import { PUBLIC_OBJECTIVES } from '../../data/objectives'
+import { CARD_NAME, ownedPlanets, planetLabel, systemLabel } from '../format'
+import { strategicVariants } from '../moveOptions'
+import { PayRow } from './PayRow'
+import { TechDrawer } from './TechDrawer'
+import { TokenSheet } from './TokenSheet'
+import { useGame } from '../store'
+import type { Player, StrategicParams, StrategyCardId } from '../../engine/types'
+
+export interface StrategicDialogProps {
+  card: StrategyCardId
+  onClose: () => void
+}
+
+export function StrategicDialog({ card, onClose }: StrategicDialogProps) {
+  const { session, legal, apply } = useGame()
+  const [planets, setPlanets] = useState<string[]>([])
+  const [tradeGoods, setTradeGoods] = useState(0)
+  const [systemId, setSystemId] = useState<string | null>(null)
+  const [techId, setTechId] = useState<string | null>(null)
+  const [objectiveId, setObjectiveId] = useState<string | null>(null)
+  const [share, setShare] = useState(false)
+  const [tokens, setTokens] = useState<Player['tokens'] | null>(null)
+  if (!session) return null
+  const state = session.state
+  const seat = state.active
+  const player = state.players[seat]
+  const variants = strategicVariants(legal, card)
+  const systems = [...new Set(variants.flatMap(v => v.systemId ? [v.systemId] : []))]
+  const techOptions = variants.flatMap(v => v.techId ? [v.techId] : [])
+  const objectives = variants.flatMap(v => v.objectiveId ? [v.objectiveId] : [])
+  const influence = planets.reduce((sum, id) => {
+    const planet = ownedPlanets(state, seat).find(p => p.id === id)
+    return sum + (planet ? planet.influence : 0)
+  }, 0) + tradeGoods
+  const gained = card === 'leadership' ? 3 + Math.floor(influence / 3) : card === 'warfare' ? (systemId ? 1 : 0) : 0
+  const sheet = tokens ?? { ...player.tokens, tactic: player.tokens.tactic + gained }
+
+  function params(): StrategicParams {
+    switch (card) {
+      case 'leadership': return { planets, tradeGoods, tokens: sheet }
+      case 'diplomacy': return systemId ? { systemId, planets } : { planets }
+      case 'trade': return share ? { shareWithOpponent: true } : {}
+      case 'warfare': return systemId ? { systemId, tokens: sheet } : { tokens: sheet }
+      case 'technology': return techId ? { techId } : {}
+      case 'imperial': return objectiveId ? { objectiveId } : {}
+    }
+  }
+
+  return (
+    <div className={card === 'technology' ? 'drawer full cut' : 'dialog cut'} data-testid="strategic-dialog">
+      <div className="in">
+        <div className="dhead">
+          <span className="tab">{CARD_NAME[card]}, primary</span>
+          <div className="right">
+            <button type="button" className="btn gold" data-testid="btn-strategic-confirm"
+              onClick={() => { if (apply({ type: 'strategic', card, params: params() })) onClose() }}>Play the card</button>
+            <button type="button" className="btn quiet" data-testid="btn-strategic-cancel" onClick={onClose}>Cancel</button>
+          </div>
+        </div>
+
+        {card === 'leadership' ? (
+          <>
+            <div className="sub">Three command tokens, and one more for every 3 influence you spend.</div>
+            <PayRow state={state} seat={seat} unit="influence" needed={0} planets={planets} onPlanets={ids => { setPlanets(ids); setTokens(null) }}
+              tradeGoods={tradeGoods} onTradeGoods={n => { setTradeGoods(n); setTokens(null) }} />
+            <TokenSheet current={player.tokens} gained={gained} value={sheet} onChange={setTokens} />
+          </>
+        ) : null}
+
+        {card === 'diplomacy' ? (
+          <>
+            <div className="sub">Your opponent places a command token in the chosen system. Then ready up to two of your planets.</div>
+            <div className="rowline">
+              {systems.map(id => (
+                <button key={id} type="button" className={`pay${systemId === id ? ' on' : ''}`} data-testid={`system-pick-${id}`} onClick={() => setSystemId(id)}>
+                  {systemLabel(id)}
+                </button>
+              ))}
+            </div>
+            <div className="rowline">
+              {ownedPlanets(state, seat).filter(p => p.exhausted).map(planet => (
+                <button key={planet.id} type="button" className={`pay${planets.includes(planet.id) ? ' on' : ''}`}
+                  data-testid={`ready-${planet.id}`} disabled={!planets.includes(planet.id) && planets.length >= 2}
+                  onClick={() => setPlanets(planets.includes(planet.id) ? planets.filter(id => id !== planet.id) : [...planets, planet.id])}>
+                  Ready {planet.name}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : null}
+
+        {card === 'trade' ? (
+          <div className="rowline">
+            <span className="sub">Three trade goods and your commodities back.</span>
+            <label className="pay">
+              <input type="checkbox" data-testid="share-toggle" checked={share} onChange={e => setShare(e.target.checked)} />
+              Let {state.players[seat === 0 ? 1 : 0].name} replenish too
+            </label>
+          </div>
+        ) : null}
+
+        {card === 'warfare' ? (
+          <>
+            <div className="sub">Take one command token off the board, gain one, then rearrange your sheet.</div>
+            <div className="rowline">
+              {systems.map(id => (
+                <button key={id} type="button" className={`pay${systemId === id ? ' on' : ''}`} data-testid={`system-pick-${id}`}
+                  onClick={() => { setSystemId(id); setTokens(null) }}>
+                  Token from {systemLabel(id)}
+                </button>
+              ))}
+            </div>
+            <TokenSheet current={player.tokens} gained={gained} redistribute value={sheet} onChange={setTokens} />
+          </>
+        ) : null}
+
+        {card === 'technology' ? (
+          <>
+            <div className="sub">Research one technology.</div>
+            <TechDrawer state={state} seat={seat} allowed={techOptions} selected={techId} onSelect={setTechId} />
+          </>
+        ) : null}
+
+        {card === 'imperial' ? (
+          <>
+            <div className="sub">Score one fulfilled public objective, plus a victory point if you hold Mecatol Rex.</div>
+            <div className="rowline">
+              {objectives.map(id => (
+                <button key={id} type="button" className={`pay${objectiveId === id ? ' on' : ''}`} data-testid={`objective-pick-${id}`} onClick={() => setObjectiveId(id)}>
+                  {PUBLIC_OBJECTIVES.find(o => o.id === id)?.text ?? id}
+                </button>
+              ))}
+              {objectives.length === 0 ? <span className="sub">No objective is fulfilled right now.</span> : null}
+            </div>
+          </>
+        ) : null}
+
+        {card === 'diplomacy' && systems.length === 0 ? <div className="sub">You control no planet outside {planetLabel(state, 'mecatol-rex')}.</div> : null}
+      </div>
+    </div>
+  )
+}
+```
+
+- [ ] **Step 5: Implement the secondary window, the component panel and the status dialog**
+
+```tsx
+// src/ui/flows/SecondaryPanel.tsx
+import { useState } from 'react'
+import { cardOwner, secondaryTokenCost } from '../../engine'
+import { CARD_NAME, ownedPlanets, unitLabel } from '../format'
+import { secondaryOffer } from '../moveOptions'
+import { PayRow } from './PayRow'
+import { TechDrawer } from './TechDrawer'
+import { TokenSheet } from './TokenSheet'
+import { useGame } from '../store'
+import type { Player, StrategicParams, UnitType } from '../../engine/types'
+
+export function SecondaryPanel() {
+  const { session, legal, apply } = useGame()
+  const [planets, setPlanets] = useState<string[] | null>(null)
+  const [tradeGoods, setTradeGoods] = useState(0)
+  const [techId, setTechId] = useState<string | null>(null)
+  const [tokens, setTokens] = useState<Player['tokens'] | null>(null)
+  if (!session) return null
+  const state = session.state
+  const card = state.pendingSecondary
+  if (card === null) return null
+  const seat = state.active
+  const player = state.players[seat]
+  const owner = cardOwner(state, card)
+  const offer = secondaryOffer(legal)
+  const template: StrategicParams = offer.accept ?? {}
+  const pay = planets ?? template.planets ?? []
+  const influence = pay.reduce((sum, id) => {
+    const planet = ownedPlanets(state, seat).find(p => p.id === id)
+    return sum + (planet ? planet.influence : 0)
+  }, 0) + tradeGoods
+  const gained = card === 'leadership' ? Math.floor(influence / 3) : 0
+  const sheet = tokens ?? { ...player.tokens, tactic: player.tokens.tactic + gained }
+  const techOptions = legal.flatMap(m => m.type === 'secondary' && m.accept && m.params?.techId ? [m.params.techId] : [])
+
+  function params(): StrategicParams {
+    switch (card) {
+      case 'leadership': return { planets: pay, tradeGoods, tokens: sheet }
+      case 'diplomacy': return { planets: pay }
+      case 'technology': return { techId: techId ?? template.techId, planets: pay, tradeGoods }
+      case 'warfare': return { units: template.units, planets: pay, tradeGoods }
+      default: return {}
+    }
+  }
+
+  const needed = card === 'technology' ? 4 : 0
+  const units = template.units ?? {}
+  return (
+    <div className="dialog cut" data-testid="secondary-panel">
+      <div className="in">
+        <div className="dhead">
+          <span className="tab">{CARD_NAME[card]}, secondary</span>
+          <span className="sub">
+            {owner === null ? 'Your opponent' : state.players[owner].name} played {CARD_NAME[card]}.
+            It costs you {secondaryTokenCost(card)} strategy token.
+          </span>
+          <div className="right">
+            <button type="button" className="btn gold" data-testid="btn-secondary-accept" disabled={offer.accept === null}
+              onClick={() => apply({ type: 'secondary', card, accept: true, params: params() })}>Use the secondary</button>
+            <button type="button" className="btn quiet" data-testid="btn-secondary-decline"
+              onClick={() => apply({ type: 'secondary', card, accept: false })}>Decline</button>
+          </div>
+        </div>
+        {card === 'leadership' ? (
+          <>
+            <PayRow state={state} seat={seat} unit="influence" needed={0} planets={pay} onPlanets={ids => { setPlanets(ids); setTokens(null) }}
+              tradeGoods={tradeGoods} onTradeGoods={n => { setTradeGoods(n); setTokens(null) }} />
+            <TokenSheet current={player.tokens} gained={gained} value={sheet} onChange={setTokens} />
+          </>
+        ) : null}
+        {card === 'diplomacy' ? (
+          <div className="rowline">
+            {ownedPlanets(state, seat).filter(p => p.exhausted).map(planet => (
+              <button key={planet.id} type="button" className={`pay${pay.includes(planet.id) ? ' on' : ''}`} data-testid={`ready-${planet.id}`}
+                disabled={!pay.includes(planet.id) && pay.length >= 2}
+                onClick={() => setPlanets(pay.includes(planet.id) ? pay.filter(id => id !== planet.id) : [...pay, planet.id])}>
+                Ready {planet.name}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {card === 'technology' ? (
+          <>
+            <PayRow state={state} seat={seat} needed={needed} planets={pay} onPlanets={setPlanets} tradeGoods={tradeGoods} onTradeGoods={setTradeGoods} />
+            <TechDrawer state={state} seat={seat} allowed={techOptions} selected={techId ?? template.techId ?? null} onSelect={setTechId} />
+          </>
+        ) : null}
+        {card === 'warfare' ? (
+          <>
+            <div className="sub" data-testid="secondary-units">
+              Produce {(Object.entries(units) as [UnitType, number][]).map(([type, n]) => `${n} ${unitLabel(type, player)}`).join(', ')} at your home system.
+            </div>
+            <PayRow state={state} seat={seat} needed={1} planets={pay} onPlanets={setPlanets} tradeGoods={tradeGoods} onTradeGoods={setTradeGoods} />
+          </>
+        ) : null}
+        {card === 'trade' ? <div className="sub">Replenish your commodities.</div> : null}
+        {card === 'imperial' ? <div className="sub">Gain two trade goods.</div> : null}
+      </div>
+    </div>
+  )
+}
+```
+
+```tsx
+// src/ui/flows/ComponentPanel.tsx
+import { useState } from 'react'
+import { planetLabel } from '../format'
+import { inheritanceTechIds, shipyardOffers, tradePostOffers } from '../moveOptions'
+import { TechDrawer } from './TechDrawer'
+import { useGame } from '../store'
+
+const POST_NAME = { west: 'Kasda Exchange', east: 'Vorhal Freeport' } as const
+
+export function ComponentPanel({ onClose }: { onClose: () => void }) {
+  const { session, legal, apply } = useGame()
+  const [techId, setTechId] = useState<string | null>(null)
+  if (!session) return null
+  const state = session.state
+  const techs = inheritanceTechIds(legal)
+  const yards = shipyardOffers(legal)
+  const posts = tradePostOffers(legal)
+  return (
+    <div className="dialog cut" data-testid="component-panel">
+      <div className="in">
+        <div className="dhead">
+          <span className="tab">Component actions</span>
+          <div className="right">
+            <button type="button" className="btn quiet" data-testid="btn-component-cancel" onClick={onClose}>Close</button>
+          </div>
+        </div>
+        <div className="rowline">
+          {posts.map(({ post, commodities }) => (
+            <button key={post} type="button" className="btn quiet" data-testid={`btn-tradepost-${post}`}
+              onClick={() => apply({ type: 'tradePost', post, commodities })}>
+              Sell {commodities} commodities at {POST_NAME[post]}
+            </button>
+          ))}
+          {yards.map(offer => (
+            <button key={offer.planetId} type="button" className="btn quiet" data-testid={`btn-shipyard-${offer.planetId}`}
+              onClick={() => { if (apply({ type: 'shipyard', planetId: offer.planetId, planets: offer.planets, tradeGoods: offer.tradeGoods })) onClose() }}>
+              Emergency shipyard on {planetLabel(state, offer.planetId)}
+            </button>
+          ))}
+        </div>
+        {techs.length > 0 ? (
+          <>
+            <div className="rowline">
+              <span className="sub">Inheritance Systems: exhaust the card and spend 2 resources to research one technology, prerequisites ignored.</span>
+              <button type="button" className="btn gold" data-testid="btn-inheritance" disabled={techId === null}
+                onClick={() => { if (techId && apply({ type: 'research', techId, via: 'inheritance' })) onClose() }}>Research</button>
+            </div>
+            <TechDrawer state={state} seat={state.active} allowed={techs} selected={techId} onSelect={setTechId} />
+          </>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+```
+
+```tsx
+// src/ui/flows/StatusDialog.tsx
+import { useState } from 'react'
+import { PUBLIC_OBJECTIVES } from '../../data/objectives'
+import { scoreable, tokensGained } from '../../engine'
+import { statusTemplate } from '../moveOptions'
+import { TokenSheet } from './TokenSheet'
+import { useGame } from '../store'
+import type { Player } from '../../engine/types'
+
+export function StatusDialog() {
+  const { session, legal, apply } = useGame()
+  const [tokens, setTokens] = useState<Player['tokens'] | null>(null)
+  if (!session) return null
+  const state = session.state
+  const seat = state.active
+  const player = state.players[seat]
+  const template = statusTemplate(legal)
+  const gained = tokensGained(state, seat)
+  const sheet = tokens ?? template?.tokens ?? { ...player.tokens, tactic: player.tokens.tactic + gained }
+  const scoring = scoreable(state, seat)
+  return (
+    <div className="dialog cut" data-testid="status-dialog">
+      <div className="in">
+        <div className="dhead">
+          <span className="tab">Status phase, {player.name}</span>
+          <span className="sub">You gain {gained} command tokens.</span>
+          <div className="right">
+            <button type="button" className="btn gold" data-testid="btn-status-confirm"
+              onClick={() => { apply({ type: 'status', params: { tokens: sheet } }); setTokens(null) }}>Confirm</button>
+          </div>
+        </div>
+        <div className="rowline" data-testid="status-scoring">
+          <span className="lbl">Scoring</span>
+          {scoring.length === 0 ? <span className="sub">Nothing to score.</span> : null}
+          {scoring.map(id => (
+            <span className="chip gold" key={id}>{PUBLIC_OBJECTIVES.find(o => o.id === id)?.text ?? 'Mandate, First Strike'}</span>
+          ))}
+        </div>
+        <TokenSheet current={player.tokens} gained={gained} value={sheet} onChange={setTokens} />
+      </div>
+    </div>
+  )
+}
+```
+
+- [ ] **Step 6: Wire the dialogs into the board screen**
+
+Add to `src/ui/screens/BoardScreen.tsx` a `card` state and the panels; the strategic picker lists the cards the enumerator offers:
+
+```tsx
+  const [card, setCard] = useState<StrategyCardId | null>(null)
+```
+
+```tsx
+      {mode === 'strategic' && card === null ? (
+        <div className="dialog cut" data-testid="strategic-picker">
+          <div className="in">
+            <div className="dhead"><span className="tab">Strategic action</span></div>
+            <div className="rowline">
+              {strategicCards(legal).map(id => (
+                <button key={id} type="button" className="btn" data-testid={`strategic-pick-${id}`} onClick={() => setCard(id)}>{CARD_NAME[id]}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {mode === 'strategic' && card !== null ? <StrategicDialog card={card} onClose={() => { setCard(null); setMode(null) }} /> : null}
+      {mode === 'component' ? <ComponentPanel onClose={() => setMode(null)} /> : null}
+      {state.pendingSecondary !== null ? <SecondaryPanel /> : null}
+      {state.phase === 'status' ? <StatusDialog /> : null}
+```
+
+- [ ] **Step 7: Show what was scored on the game-over screen**
+
+Add to `src/ui/screens/GameOverScreen.tsx`, below the score line:
+
+```tsx
+      <div className="seats">
+        {([0, 1] as Seat[]).map(seat => (
+          <div className="cut seat" key={seat}>
+            <div className="in">
+              <div className="lbl">{state.players[seat].name}</div>
+              <div data-testid={`scored-list-${seat}`}>
+                {state.players[seat].scoredObjectives.map(id => PUBLIC_OBJECTIVES.find(o => o.id === id)?.text ?? id).join(', ') || 'No public objective scored'}
+              </div>
+              {state.players[seat].mandateScored ? <div>Mandate, First Strike</div> : null}
+            </div>
+          </div>
+        ))}
+      </div>
+```
+
+with the imports `import { PUBLIC_OBJECTIVES } from '../../data/objectives'` and `import type { Seat } from '../../engine/types'`.
+
+- [ ] **Step 8: Run the tests, type-check, lint and commit**
+
+Run: `npm test && npx tsc -p tsconfig.app.json --noEmit && npm run lint`
+Expected: PASS, 6 new tests.
+
+```bash
+git add src/ui/flows src/ui/screens
+git commit -m "feat(ui): strategy card dialogs, the secondary window, component actions and the status phase"
+```
+
+---
+
+### Task 5: Pass the device, the game log and localStorage persistence
+
+**Files:**
+- Create: `src/ui/persist.ts`, `src/ui/HandoffOverlay.tsx`, `src/ui/LogPanel.tsx`, `src/ui/logText.ts`
+- Modify: `src/ui/store.tsx` (load on mount, save on change), `src/ui/screens/BoardScreen.tsx`, `src/ui/screens/GameOverScreen.tsx`, `src/ui/screens/SetupScreen.tsx` (resume button)
+- Test: `src/ui/persist.test.ts`, `src/ui/Handoff.test.tsx`
+
+**Interfaces:**
+- `src/ui/persist.ts`
+  ```ts
+  export const STORAGE_KEY = 'md:local'
+  export function saveSession(session: Session): void
+  export function loadSession(): Session | null
+  export function clearSession(): void
+  ```
+  The payload is `{ version: 1, seed, minutes, clockMs, state, history }`. `loadSession` returns `null` for anything it does not recognise (missing key, broken JSON, wrong payload version, wrong `state.version`), so a stale or foreign entry can never crash the app.
+- `src/ui/logText.ts`
+  ```ts
+  export function describeMove(state: GameState, seat: Seat | null, move: Move): string
+  export function describeEntry(state: GameState, entry: LogEntry): { text: string; kind: 'move' | 'roll' | 'info' }
+  ```
+  `describeMove` has one branch per `Move` kind, so the exhaustiveness check in the switch is the guarantee that no move kind is unreadable in the log.
+
+- [ ] **Step 1: Write the failing tests**
+
+```ts
+// src/ui/persist.test.ts
+// @vitest-environment jsdom
+import { describe, expect, it } from 'vitest'
+import { toActionPhase } from '../engine/testUtils'
+import { STORAGE_KEY, clearSession, loadSession, saveSession } from './persist'
+import type { Session } from './store'
+
+const session: Session = {
+  seed: 7, minutes: 15, state: toActionPhase(), history: [], clockMs: [123456, 654321], handoff: null,
+}
+
+describe('hot-seat persistence', () => {
+  it('round-trips seed, clocks, state and history', () => {
+    saveSession(session)
+    const loaded = loadSession()
+    expect(loaded?.seed).toBe(7)
+    expect(loaded?.clockMs).toEqual([123456, 654321])
+    expect(loaded?.state.phase).toBe('action')
+    expect(loaded?.state.systems['home-n'].space).toHaveLength(5)
+    expect(loaded?.handoff).toBeNull()
+  })
+  it('ignores an empty, broken or foreign payload', () => {
+    expect(loadSession()).toBeNull()
+    window.localStorage.setItem(STORAGE_KEY, 'not json')
+    expect(loadSession()).toBeNull()
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 99, state: {} }))
+    expect(loadSession()).toBeNull()
+    saveSession(session)
+    clearSession()
+    expect(loadSession()).toBeNull()
+  })
+})
+```
+
+```tsx
+// src/ui/Handoff.test.tsx
+// @vitest-environment jsdom
+import { fireEvent, screen } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
+import { cardsUsed, toActionPhase } from '../engine/testUtils'
+import { BoardScreen } from './screens/BoardScreen'
+import { renderWithSession } from './test/harness'
+
+describe('hot-seat courtesies', () => {
+  it('asks to pass the device when the seat to act changes', () => {
+    renderWithSession(cardsUsed(toActionPhase()), <BoardScreen />)
+    expect(screen.queryByTestId('handoff')).toBeNull()
+    fireEvent.click(screen.getByTestId('btn-pass'))
+    expect(screen.getByTestId('handoff').textContent).toContain('Pass the device to B')
+    fireEvent.click(screen.getByTestId('handoff-continue'))
+    expect(screen.queryByTestId('handoff')).toBeNull()
+  })
+
+  it('renders the log with moves, dice and engine notes', () => {
+    renderWithSession(toActionPhase(), <BoardScreen />)
+    fireEvent.click(screen.getByTestId('btn-log'))
+    const log = screen.getByTestId('log-panel')
+    expect(log.textContent).toContain('A takes Warfare')
+    expect(log.textContent).toContain('B takes Leadership')
+    fireEvent.click(screen.getByTestId('btn-log'))
+    expect(screen.queryByTestId('log-panel')).toBeNull()
+  })
+
+  it('writes the session to localStorage after every move', () => {
+    const { store } = renderWithSession(cardsUsed(toActionPhase()), <BoardScreen />)
+    fireEvent.click(screen.getByTestId('btn-pass'))
+    const raw = window.localStorage.getItem('md:local')
+    expect(raw).not.toBeNull()
+    expect(raw).toContain('"seed":7')
+    expect(store().session?.state.players[0].passed).toBe(true)
+  })
+})
+```
+
+- [ ] **Step 2: Run the tests to verify they fail, then commit them**
+
+Run: `npm test -- src/ui/persist src/ui/Handoff`
+Expected: FAIL, `src/ui/persist.ts` does not exist.
+
+```bash
+git add src/ui/persist.test.ts src/ui/Handoff.test.tsx
+git commit -m "test(ui): pass the device, the game log and localStorage persistence"
+```
+
+- [ ] **Step 3: Implement persistence**
+
+```ts
+// src/ui/persist.ts
+import type { GameState } from '../engine/types'
+import type { Session } from './store'
+
+export const STORAGE_KEY = 'md:local'
+
+interface Payload {
+  version: 1
+  seed: number
+  minutes: number
+  clockMs: [number, number]
+  state: GameState
+  history: GameState[]
+}
+
+function isPayload(value: unknown): value is Payload {
+  if (typeof value !== 'object' || value === null) return false
+  const p = value as Partial<Payload>
+  return p.version === 1 && typeof p.seed === 'number' && typeof p.minutes === 'number'
+    && Array.isArray(p.clockMs) && p.clockMs.length === 2
+    && Array.isArray(p.history)
+    && typeof p.state === 'object' && p.state !== null && p.state.version === 1
+}
+
+export function saveSession(session: Session): void {
+  const payload: Payload = {
+    version: 1, seed: session.seed, minutes: session.minutes,
+    clockMs: session.clockMs, state: session.state, history: session.history,
+  }
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
+  } catch {
+    // a full or blocked storage must never break the game in progress
+  }
+}
+
+export function loadSession(): Session | null {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY)
+    if (raw === null) return null
+    const parsed: unknown = JSON.parse(raw)
+    if (!isPayload(parsed)) return null
+    return {
+      seed: parsed.seed, minutes: parsed.minutes, state: parsed.state,
+      history: parsed.history, clockMs: parsed.clockMs, handoff: null,
+    }
+  } catch {
+    return null
+  }
+}
+
+export function clearSession(): void {
+  try {
+    window.localStorage.removeItem(STORAGE_KEY)
+  } catch {
+    // nothing to do
+  }
+}
+```
+
+Add to `src/ui/store.tsx`, inside `GameProvider` next to the other effects, with `import { clearSession, loadSession, saveSession } from './persist'`:
+
+```tsx
+  // resume the game in progress after a reload; a broken payload is simply ignored
+  useEffect(() => {
+    const saved = loadSession()
+    if (!saved) return
+    roundRef.current = saved.state.round
+    setSession(saved)
+  }, [])
+
+  useEffect(() => {
+    if (session) saveSession(session)
+    else clearSession()
+  }, [session])
+```
+
+- [ ] **Step 4: Implement the log text**
+
+```ts
+// src/ui/logText.ts
+import { CARD_NAME, planetLabel, systemLabel, techLabel } from './format'
+import type { GameState, LogEntry, Move, Owner, Seat, UnitType } from '../engine/types'
+
+function who(state: GameState, seat: Seat | null): string {
+  return seat === null ? 'The game' : state.players[seat].name
+}
+
+function ownerName(state: GameState, owner: Owner): string {
+  return owner === 'guardian' ? 'The guardian fleet' : state.players[owner].name
+}
+
+function unitSummary(units: Partial<Record<UnitType, number>>): string {
+  const parts = (Object.entries(units) as [UnitType, number][]).filter(([, n]) => n > 0).map(([type, n]) => `${n} ${type}`)
+  return parts.length > 0 ? parts.join(', ') : 'nothing'
+}
+
+export function describeMove(state: GameState, seat: Seat | null, move: Move): string {
+  const name = who(state, seat)
+  switch (move.type) {
+    case 'pickStrategyCard': return `${name} takes ${CARD_NAME[move.card]}`
+    case 'startTactical': return `${name} activates ${systemLabel(move.systemId)}`
+    case 'moveShips': return `${name} moves ${move.moves.length} ships in`
+    case 'endMovement': return `${name} finishes moving`
+    case 'combatRound': {
+      const sides = [move.munitions?.attacker ? 'attacker' : null, move.munitions?.defender ? 'defender' : null].filter(s => s !== null)
+      return sides.length > 0 ? `${name} fights a combat round, Munitions Reserves for the ${sides.join(' and ')}` : `${name} fights a combat round`
+    }
+    case 'retreat': return `${name} announces a retreat to ${systemLabel(move.to)}`
+    case 'bombard': return `${name} bombards ${planetLabel(state, move.planetId)}`
+    case 'land': return `${name} lands ${move.infantryIds.length} infantry on ${planetLabel(state, move.planetId)}`
+    case 'groundCombatRound': return `${name} fights a ground combat round`
+    case 'endInvasion': return `${name} ends the invasion`
+    case 'produce': return `${name} produces ${unitSummary(move.units)}`
+    case 'endTactical': return `${name} ends the tactical action`
+    case 'strategic': return `${name} plays ${CARD_NAME[move.card]}`
+    case 'secondary': return `${name} ${move.accept ? 'uses' : 'declines'} the ${CARD_NAME[move.card]} secondary`
+    case 'research': return `${name} researches ${techLabel(move.techId)} with Inheritance Systems`
+    case 'shipyard': return `${name} builds an emergency shipyard on ${planetLabel(state, move.planetId)}`
+    case 'tradePost': return `${name} sells ${move.commodities} commodities at the ${move.post} trade post`
+    case 'pass': return `${name} passes`
+    case 'status': return `${name} distributes command tokens`
+  }
+}
+
+export function describeEntry(state: GameState, entry: LogEntry): { text: string; kind: 'move' | 'roll' | 'info' } {
+  if (entry.t === 'move') return { text: describeMove(state, entry.seat, entry.move), kind: 'move' }
+  if (entry.t === 'roll') {
+    const hits = entry.rolls.filter(r => r.hit).length
+    const dice = entry.rolls.map(r => r.value).join(', ')
+    return { text: `${ownerName(state, entry.owner)} rolls ${dice || 'no dice'} for ${entry.context}, ${hits} hits`, kind: 'roll' }
+  }
+  // engine notes name the seat; the log shows the player instead
+  const text = entry.text
+    .replace(/seat 0/g, state.players[0].name)
+    .replace(/seat 1/g, state.players[1].name)
+  return { text, kind: 'info' }
+}
+```
+
+- [ ] **Step 5: Implement the overlay and the log panel**
+
+```tsx
+// src/ui/HandoffOverlay.tsx
+import { useGame } from './store'
+
+/** lobby-architecture 2.8: the hot-seat courtesy between two people sharing one screen. */
+export function HandoffOverlay() {
+  const { session, dismissHandoff } = useGame()
+  if (!session || session.handoff === null) return null
+  const player = session.state.players[session.handoff]
+  return (
+    <div className="overlay" data-testid="handoff">
+      <h2 className="title goldtext">Pass the device to {player.name}</h2>
+      <p className="tagline">{player.name} is next to act</p>
+      <button type="button" className="btn gold" data-testid="handoff-continue" onClick={dismissHandoff}>
+        I am {player.name}
+      </button>
+    </div>
+  )
+}
+```
+
+```tsx
+// src/ui/LogPanel.tsx
+import { describeEntry } from './logText'
+import type { GameState } from '../engine/types'
+
+export function LogPanel({ state, onClose }: { state: GameState; onClose?: () => void }) {
+  return (
+    <div className="logpanel cut" data-testid="log-panel">
+      <div className="in">
+        <div className="dhead">
+          <span className="tab">Game log</span>
+          {onClose ? <div className="right"><button type="button" className="btn quiet" data-testid="btn-log-close" onClick={onClose}>Close</button></div> : null}
+        </div>
+        {state.log.map((entry, i) => {
+          const line = describeEntry(state, entry)
+          return <div className={`logline ${line.kind}`} key={i} data-testid={`log-entry-${i}`}>{line.text}</div>
+        })}
+      </div>
+    </div>
+  )
+}
+```
+
+- [ ] **Step 6: Put them on the screens**
+
+In `src/ui/screens/BoardScreen.tsx` add the imports and render both, the overlay last so it covers everything:
+
+```tsx
+import { HandoffOverlay } from '../HandoffOverlay'
+import { LogPanel } from '../LogPanel'
+```
+
+```tsx
+      {showLog ? <LogPanel state={state} onClose={() => setShowLog(false)} /> : null}
+      <HandoffOverlay />
+```
+
+In `src/ui/screens/GameOverScreen.tsx` add `<LogPanel state={state} />` below the scored lists, and in `src/ui/screens/SetupScreen.tsx` offer to resume:
+
+```tsx
+  const { start, session } = useGame()
+```
+
+```tsx
+        {session ? (
+          <button type="button" className="btn quiet" data-testid="btn-resume" onClick={() => navigate('#/play')}>Resume the saved game</button>
+        ) : null}
+```
+
+- [ ] **Step 7: Run the tests, type-check, lint and commit**
+
+Run: `npm test && npx tsc -p tsconfig.app.json --noEmit && npm run lint`
+Expected: PASS, 5 new tests.
+
+```bash
+git add src/ui/persist.ts src/ui/logText.ts src/ui/HandoffOverlay.tsx src/ui/LogPanel.tsx src/ui/store.tsx src/ui/screens
+git commit -m "feat(ui): pass the device interstitial, game log and a resumable local game"
+```
+
+---
+
+### Task 6: One scripted hot-seat game through the finished UI
+
+**Files:**
+- Test: `src/ui/hotseat.e2e.test.tsx`
+
+**Interfaces:** none. This task adds no implementation code; if it fails, the fix belongs in the task that owns the component.
+
+**What the script plays** (game seed 7, so every step is reproducible; no dice are rolled until the guardian fleet is rerolled at the very end, which the test does not assert):
+
+| Turn | Seat | Action |
+| --- | --- | --- |
+| draft | 0, 1, 1, 0 | Leadership, Trade, Technology, Warfare |
+| 1 | 0 | tactical action on Bereg: carrier plus three fighters and one infantry move in, the infantry lands and takes Bereg |
+| 2 | 1 | Technology primary, researches Sarween Tools; seat 0 declines the secondary |
+| 3 | 0 | Leadership primary, three command tokens; seat 1 declines the secondary |
+| 4 | 1 | Trade primary; seat 0 may only decline, it is already at full commodities |
+| 5 | 0 | Warfare primary, takes the token back off Bereg; seat 1 accepts the secondary and produces one infantry |
+| 6 | 1 | passes, both cards are used |
+| 7 | 0 | tactical action on the home system, produces two infantry at the space dock |
+| 8 | 0 | passes, the status phase begins |
+| status | 0 then 1 | both distribute their two command tokens; seat 1 scores "Own 3 technologies" |
+
+Round 1 cannot show movement and production inside a single activation: every ship of a seat starts in the only system that holds its space dock, so the first activation is the one that moves and the second is the one that produces. That is a property of the map, not of the UI.
+
+- [ ] **Step 1: Write the end-to-end test**
+
+```tsx
+// src/ui/hotseat.e2e.test.tsx
+// @vitest-environment jsdom
+import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
+import App from './App'
+
+function click(testId: string): void {
+  fireEvent.click(screen.getByTestId(testId))
+}
+function text(testId: string): string {
+  return screen.getByTestId(testId).textContent ?? ''
+}
+/** The hot-seat interstitial appears whenever the seat to act changes; clicking through it is part of playing. */
+function handoff(): void {
+  const button = screen.queryByTestId('handoff-continue')
+  if (button) fireEvent.click(button)
+}
+
+describe('a scripted hot-seat game', () => {
+  it('R3.1 to R3.3: plays a full first round through the rendered UI', () => {
+    window.location.hash = '#/?seed=7'
+    render(<App ticking={false} />)
+
+    // setup
+    fireEvent.change(screen.getByTestId('seat-name-0'), { target: { value: 'Despot' } })
+    fireEvent.change(screen.getByTestId('seat-name-1'), { target: { value: 'Kael' } })
+    click('btn-start')
+    expect(text('round')).toBe('Round 1 of 6, strategy phase')
+    expect(text('clock-0')).toBe('15:00')
+
+    // R3.1 snake draft: speaker, other, other, speaker
+    click('strategy-card-leadership')
+    handoff()
+    click('strategy-card-trade')
+    click('strategy-card-technology')
+    handoff()
+    click('strategy-card-warfare')
+    expect(text('round')).toBe('Round 1 of 6, action phase')
+    expect(text('strategy-state-leadership')).toBe('Despot, ready')
+    expect(text('strategy-state-diplomacy')).toBe('+1 trade good')
+    expect(text('turn-0')).toBe('Your turn')                       // Leadership is initiative 1
+
+    // turn 1: R3.2 tactical action with movement and an invasion
+    click('btn-tactical')
+    click('tile-bereg')
+    expect(text('tokens-0-tactic')).toBe('2')
+    fireEvent.click(screen.getByLabelText('Carrier I from [0.0.0]'))
+    for (let i = 0; i < 3; i++) click('cargo-home-n-fighter-plus')
+    click('cargo-home-n-infantry-plus')
+    click('btn-move-ships')
+    expect(text('stack-bereg-0-fighter')).toBe('3')
+    expect(screen.queryByTestId('stack-home-n-0-carrier')).toBeNull()
+    click('btn-end-movement')
+    expect(text('land-count-bereg')).toBe('1')
+    click('btn-land-bereg')
+    expect(screen.getByTestId('control-bereg')).toBeTruthy()
+    expect(screen.getByTestId('planet-0-bereg')).toBeTruthy()
+    click('btn-end-invasion')
+    click('btn-end-tactical')
+    handoff()
+    expect(text('turn-1')).toBe('Your turn')
+
+    // turn 2: R5 Technology primary, the opponent declines the secondary
+    click('btn-strategic')
+    click('strategic-pick-technology')
+    fireEvent.click(screen.getByTestId('tech-card-sarween_tools'))
+    click('btn-strategic-confirm')
+    handoff()
+    expect(screen.getByTestId('secondary-panel')).toBeTruthy()
+    click('btn-secondary-decline')
+    expect(screen.queryByTestId('secondary-panel')).toBeNull()
+    expect(text('tech-1-sarween_tools')).toBe('Sarween Tools')
+    expect(text('turn-0')).toBe('Your turn')
+
+    // turn 3: R6 Leadership primary
+    click('btn-strategic')
+    click('strategic-pick-leadership')
+    expect(text('token-tactic')).toBe('5')
+    click('btn-strategic-confirm')
+    expect(text('tokens-0-tactic')).toBe('5')
+    handoff()
+    click('btn-secondary-decline')
+    expect(text('turn-1')).toBe('Your turn')
+
+    // turn 4: R6 Trade primary; the responder is already replenished, so only declining is offered
+    click('btn-strategic')
+    click('strategic-pick-trade')
+    click('btn-strategic-confirm')
+    expect(text('economy-1-tradegoods')).toBe('3')
+    handoff()
+    expect(screen.getByTestId('btn-secondary-accept').hasAttribute('disabled')).toBe(true)
+    click('btn-secondary-decline')
+    expect(text('turn-0')).toBe('Your turn')
+
+    // turn 5: R6 Warfare primary, and an accepted secondary that produces one infantry
+    click('btn-strategic')
+    click('strategic-pick-warfare')
+    click('system-pick-bereg')
+    click('btn-strategic-confirm')
+    expect(text('tokens-0-tactic')).toBe('6')
+    handoff()
+    expect(text('secondary-units')).toContain('1 Infantry I')
+    click('btn-secondary-accept')
+    expect(text('forces-1-infantry')).toBe('4 Infantry I')
+    expect(text('tokens-1-strategy')).toBe('1')
+    expect(text('turn-1')).toBe('Your turn')
+
+    // turn 6: R3.2 passing is legal once both cards are used
+    expect(screen.getByTestId('btn-pass').hasAttribute('disabled')).toBe(false)
+    click('btn-pass')
+    handoff()
+    expect(text('turn-0')).toBe('Your turn')
+
+    // turn 7: R4.4 production at the home space dock
+    click('btn-tactical')
+    click('tile-home-n')
+    click('btn-end-movement')
+    click('btn-end-invasion')
+    expect(text('produce-limit')).toBe('7')
+    click('step-infantry-plus')
+    click('step-infantry-plus')
+    expect(text('produce-cost')).toBe('1')
+    click('pay-000')
+    click('btn-produce')
+    expect(text('forces-0-infantry')).toBe('7 Infantry I')
+    click('btn-end-tactical')
+
+    // turn 8: both have passed, the status phase begins with the speaker
+    click('btn-pass')
+    expect(text('round')).toBe('Round 1 of 6, status phase')
+    expect(screen.getByTestId('status-dialog').textContent).toContain('2 command tokens')
+    click('btn-status-confirm')
+    handoff()
+    expect(screen.getByTestId('status-scoring').textContent).toContain('Own 3 technologies')
+    click('btn-status-confirm')
+
+    // R3.3: scoring, the reveal and the next round
+    expect(text('vp-1')).toBe('1 of 7')
+    expect(text('vp-0')).toBe('0 of 7')
+    expect(screen.getByTestId('scored-own_3_techs-1')).toBeTruthy()
+    expect(screen.getByTestId('objective-control_4_outside_home')).toBeTruthy()
+    expect(text('round')).toBe('Round 2 of 6, strategy phase')
+    expect(text('strategy-state-leadership')).toBe('Unpicked')
+    expect(text('strategy-state-diplomacy')).toBe('+1 trade good')
+
+    // the log carries the whole round
+    click('btn-log')
+    const log = screen.getByTestId('log-panel').textContent ?? ''
+    expect(log).toContain('Despot activates Bereg')
+    expect(log).toContain('Despot lands 1 infantry on Bereg')
+    expect(log).toContain('Kael plays Technology')
+    expect(log).toContain('Despot declines the Technology secondary')
+    expect(log).toContain('Kael uses the Warfare secondary')
+    expect(log).toContain('Despot produces 2 infantry')
+  })
+})
+```
+
+- [ ] **Step 2: Run the test**
+
+Run: `npm test -- src/ui/hotseat`
+Expected: PASS. If a step fails, fix the component that owns it, never the assertion, unless the assertion contradicts `docs/spec/game-rules.md`.
+
+```bash
+git add src/ui/hotseat.e2e.test.tsx
+git commit -m "test(ui): scripted hot-seat game through draft, tactical, strategic and status phase"
+```
+
+- [ ] **Step 3: Full check and final commit**
+
+Run: `npm test && npx tsc -p tsconfig.app.json --noEmit && npm run lint && npm run build`
+Expected: PASS, the engine suite plus roughly 40 UI tests, a clean type-check, a clean lint and a production build.
+
+```bash
+git commit --allow-empty -m "chore(ui): hot-seat client complete, engine unchanged"
+```
+
+---
+
+## Self-review notes
+
+### Move coverage: every move kind has a UI path
+
+| Move | Where the player triggers it | Parameters the UI supplies |
+| --- | --- | --- |
+| `pickStrategyCard` | strategy strip in the top bar (task 3) | the card, from the enumerated picks |
+| `startTactical` | clicking a highlighted tile after "Tactical action" (4a) | the system, from `activatable(legal)` |
+| `moveShips` | movement panel: ship checkboxes plus cargo steppers per origin (4a) | ships and their cargo ids, filled up to printed capacity |
+| `endMovement` | "Done moving" (4a) | none |
+| `combatRound` | "Open fire" / "Fight round N" with the two Munitions Reserves checkboxes (4a) | `munitions`, only for the sides the enumerator offers |
+| `retreat` | one button per offered retreat target (4a) | the destination |
+| `bombard` | one button per bombardable planet (4a) | the planet |
+| `land` | stepper plus "Land N infantry" per landable planet (4a) | the first N of the offered `infantryIds` |
+| `groundCombatRound` | "Ground combat round", shown only while one is pending (4a) | none |
+| `endInvasion` | "Done invading" (4a) | none |
+| `produce` | production drawer: steppers, planet chips, trade goods (4a) | units, planets, trade goods |
+| `endTactical` | "End turn" in the production drawer, also in the `done` step (4a) | none |
+| `strategic` | action bar, card picker, then the card's dialog (4b) | per card: planets, trade goods, tokens, system, technology, objective, share |
+| `secondary` | secondary panel with Accept and Decline (4b) | the enumerated template, edited |
+| `research` | component panel, Inheritance Systems tech drawer (4b) | the technology |
+| `shipyard` | component panel, one button per eligible planet (4b) | the planet plus the offered payment |
+| `tradePost` | component panel, one button per open post (4b) | post and commodities from the offer |
+| `pass` | action bar, and the clock at zero (task 1 and 3) | none |
+| `status` | status dialog, token sheet (4b) | the resulting command sheet |
+
+Phases: `strategy` is the top strip, `action` is the action bar plus the step panels, `status` is the status dialog, `ended` is the game-over screen. The secondary window is its own panel because `legalMoves` returns only `secondary` moves while `pendingSecondary` is set.
+
+### Type consistency with the engine
+
+- No engine type changes. The UI imports `GameState`, `Move`, `StrategicParams`, `StatusParams`, `Player`, `Planet`, `Seat`, `Owner`, `Color`, `FactionId`, `StrategyCardId`, `TechColor`, `UnitType`, `LogEntry` and uses them as they are.
+- The only engine edit is the re-export block in `src/engine/index.ts` (task 1 step 3): value re-exports of functions that already existed, so `verbatimModuleSyntax` and the engine tests are unaffected.
+- `Owner` is handled everywhere a seat could be the guardian: `ownerKey`, `colourOf` (grey sprites), `ownerName` in the log and the combat dialog. The UI never indexes `state.players` with an `Owner` without narrowing it first.
+- `Session.clockMs` is a fixed two-tuple, so `clockMs[seat]` type-checks against `Seat`. `TokenSheet` and the status dialog both use `Player['tokens']` rather than a private copy of the shape, which is what `economy.distributeTokens` validates.
+- `describeMove` switches over the whole `Move` union with no `default`, so a new move kind in the engine becomes a compile error in the log, not a silent blank line.
+- `spriteSize` is typed `Record<UnitType, SpriteDef>`: a new unit type would fail to compile until its manifest entry exists.
+- Timers are `ReturnType<typeof setInterval>` through `clearInterval` in the effect's cleanup only, so no Node typings leak into the app code.
+
+### Resolved ambiguities and v1 rulings
+
+1. **The hot-seat seed is derived, not random** (controller ruling). `lobby-architecture.md` 2.8 lets the local transport pull `rng_seed` from `crypto.getRandomValues`. This plan uses `deriveSeed(gameSeed, moveIndex)` instead: the whole client becomes replayable from `(seed, moves)`, every test is deterministic, and persistence needs no separate seed log. The precomputation risk that motivates the secret seed only exists in online play, where plan 5 keeps the server-side HMAC seed; the two players here share a screen.
+2. **Undo is exactly `undoable`**: same seat still to act, no dice rolled by the move being taken back. The history stack is cleared the moment either condition breaks, which also keeps at most one turn of states in memory and in localStorage.
+3. **The clock runs for `state.active` during the action phase**, which includes the seat answering a secondary. Answering is not a turn under R3.2, but it is that player's decision time, and the alternative (a stopped clock during the response) would let a player think for free.
+4. **At zero the store passes only when passing is legal.** R3.2 forbids passing while holding an unused strategy card, and the engine also refuses inside a running tactical action or an open secondary window. The clock stays at zero and the pass fires as soon as the engine offers it, instead of the UI inventing a forced move.
+5. **The three extra minutes go only to a player at zero** (R6), granted when `state.round` changes, so a player who never flagged keeps their remaining time.
+6. **The handoff appears on every change of the acting seat**, the draft and the secondary window included. It is a courtesy today and the hook for hidden information later. It never appears when the game has just ended, because the game-over screen replaces the board.
+7. **Cargo is chosen per origin system, not per ship.** The engine wants cargo attached to a named ship; the panel collects "how many fighters and infantry leave this system" and fills the selected ships in order up to their printed capacity. Fewer controls, and `moveShips` still validates the result.
+8. **Every parameter editor starts from the enumerated move.** `land`, `secondary`, `shipyard` and `status` come out of `legalMoves` already playable, so their panels pre-fill from that move: pressing the primary button without touching anything always submits a legal move.
+9. **Munitions Reserves are two checkboxes, not two buttons.** They are shown only for the sides `legalMoves` offers a variant for, and the request is folded into the one `combatRound` move, matching the engine's per-side flags.
+10. **Command and control tokens are faction art, ship sprites are colour art.** `public/assets/tokens/` only holds `l1z1x_*` and `letnev_*`, so the colour a player picks in the setup screen paints their ships and nothing else. Colour-matched token art would be a second asset run and is deferred.
+11. **Technology colour icons are drawn in CSS.** The mockup used `pa_tech_techicons_*` files that are not in this repository, so the tech drawer and the technology list use small gold-framed diamonds in the colour instead. The real card art, which is present, still carries the colour.
+12. **The production drawer also owns the `done` step**, because that is where "End turn" lives. With the step at `done` the production limit reads zero and every stepper is capped, so only the closing button is live.
+13. **A card that can be played bare is played bare.** Diplomacy without an eligible system, Technology without a chosen technology and Imperial without a fulfilled objective all submit `params: {}`, exactly the variant the enumerator offers, so no card can ever be stuck and block R3.2's "you may not pass while holding an unused card".
+14. **Seats are fixed to the map**: seat 0 is north, seat 1 is south, and the swap button swaps the factions rather than the positions. The speaker of round 1 is always seat 0; R2 allows randomising it, and the setup screen deliberately does not, so a game is fully described by `(seed, names, factions, colours, minutes)`.
+15. **One fixed 1440x900 layout**, as in the mockups. No responsive breakpoints, no mobile layout; the page centres itself and scrolls if the window is smaller.
+16. **The trade post stations are CSS shapes**, not the mockup's inline SVG drawings. They keep the gold-framed panel, the name tab, the price line and the state chip, which is what the player reads; porting the two hand-drawn stations is a cosmetic follow-up.
+17. **Tile art positions come from the mockup, fleets are laid out programmatically.** The mockup places every ship by hand, which a live game cannot: units are grouped by owner and type and flow inside a 200px box anchored per tile, with a count badge above one sprite for a stack.
+18. **The board takes the world scale from the sprite manifest.** `round(spriteW / pxPerModelUnit * 11.6)` reproduces the mockup's sizes to the pixel, which is the evidence that the scale, not a table of hand-tuned widths, is the right source.
+19. **A seed can be fixed from the URL** (`#/?seed=7`). That is how the end-to-end test gets a reproducible game, and it doubles as a debugging aid.
+20. **Round 1 cannot show movement and production in one activation.** Every ship starts in the only system with a space dock, so the scripted game moves in the first activation and produces in the second. Found while writing task 6; it is a property of the Bereg Standoff setup, not a UI limitation.
+
+### Deferred
+
+- **The online lobby, seat tokens, Supabase transport, spectators and rematch**: plan 5, per `docs/spec/lobby-architecture.md`. The store's `Session` and `apply` are the seam: an online transport replaces the seed source and the move sink, nothing else.
+- **A Playwright smoke test**: deliberately out of scope. The end-to-end test of task 6 runs the real components under jsdom; a browser run would add the asset loading and the CSS, which is a separate piece of tooling.
+- **Unit style choice in the settings** (the sprite render style of `public/assets/sprites`): the manifest already carries the style name, so a second style is a directory swap plus a setting.
+- **Sound**, and **animations beyond CSS transitions**: no dice roll animation, no ship movement tween, no combat flash.
+- **Colour-matched command and control tokens** (ruling 10) and **the hand-drawn trade post stations** (ruling 16).
+- **Responsive and touch layout**, including a tablet-sized board, which the hot-seat pitch ("pass the tablet") eventually wants.
+- **Undo across a dice roll or a turn boundary**, and any undo in online play, which needs the opponent's approval.
+- **Declining a score in the status phase**: the engine scores everything automatically (engine plan 3, ruling 13), so the status dialog only shows what will be scored.
