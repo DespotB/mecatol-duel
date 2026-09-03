@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { applyMove, createGame, deriveSeed, legalMoves } from '../engine'
 import type { GameConfig, GameState, Move, Seat } from '../engine/types'
 import { moveCount, undoable } from './history'
-import { clearSession, loadSession, saveSession } from './persist'
+import { deleteGame, hasGame, latestGameCode, loadGame, newGameCode, saveGame } from './persist'
 
 export type { GameConfig } from '../engine/types'
 
@@ -12,6 +12,8 @@ const TICK_MS = 100
 const ROUND_BONUS_MS = 180000
 
 export interface Session {
+  /** The six-character code this game is stored and addressed under; it never changes. */
+  code: string
   seed: number
   minutes: number
   state: GameState
@@ -54,9 +56,10 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
 
   const start = useCallback((config: GameConfig, seed: number, minutes: number) => {
     const ms = minutes * 60000
+    const code = newGameCode(hasGame)
     roundRef.current = 1
     setError(null)
-    setSession({ seed, minutes, state: createGame(config, seed), history: [], clockMs: [ms, ms], handoff: null })
+    setSession({ code, seed, minutes, state: createGame(config, seed), history: [], clockMs: [ms, ms], handoff: null })
   }, [])
 
   const resume = useCallback((next: Session) => {
@@ -95,15 +98,18 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     setSession(prev => prev ? { ...prev, handoff: null } : prev)
   }, [])
 
+  // R7: abandoning drops this one game, never the other games the browser holds
   const abandon = useCallback(() => {
+    if (session) deleteGame(session.code)
     roundRef.current = null
     setError(null)
     setSession(null)
-  }, [])
+  }, [session])
 
   // resume the game in progress after a reload; a broken payload is simply ignored
   useEffect(() => {
-    const saved = loadSession()
+    const code = latestGameCode()
+    const saved = code === null ? null : loadGame(code)
     if (!saved) return
     roundRef.current = saved.state.round
     setSession(saved)
@@ -114,8 +120,7 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
   // one from the render whose state or history changed, so the clock it writes is current.
   const history = session?.history ?? null
   useEffect(() => {
-    if (session) saveSession(session)
-    else clearSession()
+    if (session) saveGame(session)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, history])
 

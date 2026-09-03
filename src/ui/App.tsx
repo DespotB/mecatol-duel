@@ -9,6 +9,7 @@ import type { Move, StrategyCardId } from '../engine/types'
 
 // Manual/visual QA only (e.g. a headless screenshot of the board): `?demo=1` skips setup and starts
 // a fixed hot-seat game straight into the action phase draft, seeded for a reproducible board.
+const DEMO_CODE = 'DEMOAA'
 const DEMO_CONFIG: GameConfig = {
   players: [{ faction: 'l1z1x', color: 'blue', name: 'A' }, { faction: 'letnev', color: 'red', name: 'B' }],
   speaker: 0,
@@ -30,8 +31,8 @@ function useDemoBootstrap() {
       void import('../engine/testUtils').then(({ cardsUsed, toActionPhase }) => {
         const state = toActionPhase(1, 0)
         resume(panel === 'handoff'
-          ? { seed: 1, minutes: 15, state: cardsUsed(state), history: [], clockMs: [900000, 900000], handoff: 1 }
-          : { seed: 1, minutes: 15, state, history: [], clockMs: [900000, 900000], handoff: null })
+          ? { code: DEMO_CODE, seed: 1, minutes: 15, state: cardsUsed(state), history: [], clockMs: [900000, 900000], handoff: 1 }
+          : { code: DEMO_CODE, seed: 1, minutes: 15, state, history: [], clockMs: [900000, 900000], handoff: null })
         navigate('#/play')
       })
       return

@@ -1,31 +1,125 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { toActionPhase } from '../engine/testUtils'
-import { STORAGE_KEY, clearSession, loadSession, saveSession } from './persist'
+import {
+  CODE_ALPHABET, INDEX_KEY, LEGACY_KEY, MAX_GAMES,
+  deleteGame, gameKey, hasGame, latestGameCode, listGames, loadGame, newGameCode, saveGame,
+} from './persist'
 import type { Session } from './store'
 
-const session: Session = {
-  seed: 7, minutes: 15, state: toActionPhase(), history: [], clockMs: [123456, 654321], handoff: null,
+function session(code: string, clockMs: [number, number] = [123456, 654321]): Session {
+  return { code, seed: 7, minutes: 15, state: toActionPhase(), history: [], clockMs, handoff: null }
 }
 
-describe('hot-seat persistence', () => {
-  it('round-trips seed, clocks, state and history', () => {
-    saveSession(session)
-    const loaded = loadSession()
+describe('the saved games of one browser', () => {
+  it('round-trips seed, clocks, state and history under the game code', () => {
+    saveGame(session('ABC234'))
+    const loaded = loadGame('ABC234')
+    expect(loaded?.code).toBe('ABC234')
     expect(loaded?.seed).toBe(7)
     expect(loaded?.clockMs).toEqual([123456, 654321])
     expect(loaded?.state.phase).toBe('action')
     expect(loaded?.state.systems['home-n'].space).toHaveLength(5)
     expect(loaded?.handoff).toBeNull()
   })
-  it('ignores an empty, broken or foreign payload', () => {
-    expect(loadSession()).toBeNull()
-    window.localStorage.setItem(STORAGE_KEY, 'not json')
-    expect(loadSession()).toBeNull()
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 99, state: {} }))
-    expect(loadSession()).toBeNull()
-    saveSession(session)
-    clearSession()
-    expect(loadSession()).toBeNull()
+
+  it('keeps two games side by side, each under its own key', () => {
+    saveGame(session('AAA222'))
+    saveGame(session('BBB333', [1000, 2000]))
+    expect(loadGame('AAA222')?.clockMs).toEqual([123456, 654321])
+    expect(loadGame('BBB333')?.clockMs).toEqual([1000, 2000])
+    expect(hasGame('AAA222')).toBe(true)
+    expect(hasGame('CCC444')).toBe(false)
+  })
+
+  it('indexes the games newest first, with the names and the round', () => {
+    saveGame(session('AAA222'))
+    saveGame(session('BBB333'))
+    const listed = listGames()
+    expect(listed.map(g => g.code)).toEqual(['BBB333', 'AAA222'])
+    expect(listed[0].names).toEqual(['A', 'B'])
+    expect(listed[0].round).toBe(1)
+    expect(listed[0].updatedAt).toBeGreaterThan(0)
+    expect(latestGameCode()).toBe('BBB333')
+    // saving the older game again moves it back to the front
+    saveGame(session('AAA222'))
+    expect(latestGameCode()).toBe('AAA222')
+  })
+
+  it(`keeps at most ${String(MAX_GAMES)} games and drops the payloads it prunes`, () => {
+    const codes = Array.from({ length: MAX_GAMES + 2 }, (_, i) => `G${String(i).padStart(5, '0')}`)
+    for (const code of codes) saveGame(session(code))
+    const listed = listGames().map(g => g.code)
+    expect(listed).toHaveLength(MAX_GAMES)
+    expect(listed[0]).toBe(codes[codes.length - 1])
+    expect(listed).not.toContain(codes[0])
+    expect(listed).not.toContain(codes[1])
+    expect(window.localStorage.getItem(gameKey(codes[0]))).toBeNull()
+    expect(window.localStorage.getItem(gameKey(codes[codes.length - 1]))).not.toBeNull()
+  })
+
+  it('deletes one game without touching the others', () => {
+    saveGame(session('KEE222'))
+    saveGame(session('DEL222'))
+    deleteGame('DEL222')
+    expect(loadGame('DEL222')).toBeNull()
+    expect(loadGame('KEE222')?.seed).toBe(7)
+    expect(listGames().map(g => g.code)).toEqual(['KEE222'])
+  })
+
+  it('migrates the single game of the first version to a coded game', () => {
+    const legacy = { version: 1, seed: 42, minutes: 20, clockMs: [1000, 2000], state: toActionPhase(), history: [] }
+    window.localStorage.setItem(LEGACY_KEY, JSON.stringify(legacy))
+    const listed = listGames()
+    expect(listed).toHaveLength(1)
+    expect(listed[0].code).toHaveLength(6)
+    expect([...listed[0].code].every(c => CODE_ALPHABET.includes(c))).toBe(true)
+    expect(window.localStorage.getItem(LEGACY_KEY)).toBeNull()
+    const migrated = loadGame(listed[0].code)
+    expect(migrated?.seed).toBe(42)
+    expect(migrated?.minutes).toBe(20)
+    expect(migrated?.clockMs).toEqual([1000, 2000])
+    expect(migrated?.state.phase).toBe('action')
+  })
+
+  it('ignores an empty, broken or foreign payload instead of throwing', () => {
+    expect(loadGame('NOPE22')).toBeNull()
+    window.localStorage.setItem(gameKey('BAD222'), 'not json')
+    expect(loadGame('BAD222')).toBeNull()
+    window.localStorage.setItem(gameKey('OLD222'), JSON.stringify({ version: 99, state: {} }))
+    expect(loadGame('OLD222')).toBeNull()
+    window.localStorage.setItem(INDEX_KEY, 'not json')
+    expect(listGames()).toEqual([])
+    window.localStorage.setItem(LEGACY_KEY, 'not json')
+    expect(listGames()).toEqual([])
+    expect(window.localStorage.getItem(LEGACY_KEY)).toBeNull()
+  })
+
+  it('survives a blocked or full storage', () => {
+    const blocked = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('QuotaExceededError')
+    })
+    expect(() => { saveGame(session('FUL222')) }).not.toThrow()
+    blocked.mockRestore()
+    expect(loadGame('FUL222')).toBeNull()
+  })
+})
+
+describe('the game code', () => {
+  it('is six characters that cannot be misread aloud', () => {
+    expect(CODE_ALPHABET).not.toMatch(/[ILO01]/)
+    for (let i = 0; i < 200; i += 1) {
+      const code = newGameCode(() => false)
+      expect(code).toHaveLength(6)
+      expect([...code].every(c => CODE_ALPHABET.includes(c))).toBe(true)
+    }
+  })
+
+  it('is drawn again when it collides with a game this browser already holds', () => {
+    const values = [0, 0, 0, 0, 0, 0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+    let i = 0
+    const random = vi.spyOn(Math, 'random').mockImplementation(() => values[i++] ?? 0.5)
+    expect(newGameCode(code => code === 'AAAAAA')).toBe('SSSSSS')
+    random.mockRestore()
   })
 })
