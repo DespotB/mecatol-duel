@@ -39,6 +39,9 @@ function PlayerBlock({ state, seat, clockMs, clockMaxMs, clockRunning }: { state
 function StrategyStrip({ state, onPick }: { state: GameState; onPick?: (card: StrategyCardId) => void }) {
   return (
     <div className="strats">
+      {/* R3.1: the draft is the one moment nothing on the board tells the player what to do, so the strip
+          says it and the cards that can still be taken pulse until the last one is gone */}
+      {onPick ? <div className="pickprompt" data-testid="pick-prompt">Pick a strategy card</div> : null}
       {ALL_CARDS.map(card => {
         const pool = state.strategyPool.find(c => c.id === card)
         const owner = cardOwner(state, card)

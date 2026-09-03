@@ -162,6 +162,19 @@ button{font-family:inherit}
 .strats{position:relative;display:flex;gap:7px;flex:none;margin-left:auto}
 .sc{position:relative;width:62px;display:flex;flex-direction:column;align-items:center;background:none;border:0;padding:0;cursor:default}
 .sc.pick{cursor:pointer}
+/* the draft prompt and the pulse that carries it: both live only while a card can still be picked */
+.pickprompt{position:absolute;left:50%;top:-15px;transform:translateX(-50%);z-index:4;white-space:nowrap;
+  font:700 12px/20px var(--hud);letter-spacing:.14em;text-transform:uppercase;color:#15110a;padding:0 12px;
+  background:linear-gradient(180deg,var(--gold-hi) 0%,var(--gold) 55%,#a8842f 100%);
+  clip-path:polygon(7px 0,100% 0,calc(100% - 7px) 100%,0 100%);animation:promptglow 1.6s ease-in-out infinite}
+.sc.pick .card{animation:pickpulse 1.6s ease-in-out infinite}
+@keyframes pickpulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(232,207,138,0)}
+  50%{box-shadow:0 0 0 2px rgba(232,207,138,.85),0 0 14px 3px rgba(232,207,138,.45)}}
+@keyframes promptglow{0%,100%{filter:none}50%{filter:drop-shadow(0 0 7px rgba(232,207,138,.75))}}
+@media (prefers-reduced-motion:reduce){
+  .sc.pick .card{animation:none;box-shadow:0 0 0 2px rgba(232,207,138,.85)}
+  .pickprompt{animation:none}}
 .sc .card{position:relative;width:62px;height:78px;background:#000;border:1px solid transparent}
 .sc .card>.face{width:100%;height:100%;object-fit:cover}
 /* nobody has taken it yet: no frame, dimmed, with whatever trade goods have piled up on it */
