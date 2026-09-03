@@ -6,6 +6,13 @@ import { SidePanel } from '../hud/SidePanel'
 import { TopBar } from '../hud/TopBar'
 import { useGame } from '../store'
 import type { StrategyCardId } from '../../engine/types'
+// strategic, component and status flows (Task 4b)
+import { ComponentPanel } from '../flows/ComponentPanel'
+import { SecondaryPanel } from '../flows/SecondaryPanel'
+import { StatusDialog } from '../flows/StatusDialog'
+import { StrategicDialog } from '../flows/StrategicDialog'
+import { CARD_NAME } from '../format'
+import { strategicCards } from '../moveOptionsStrategic'
 
 const HINTS: Record<string, string> = {
   tactical: 'Tactical action. Choose a system to activate.',
@@ -20,6 +27,7 @@ export function BoardScreen() {
   const { session, legal, apply } = useGame()
   const [mode, setMode] = useState<ActionMode>(null)
   const [showLog, setShowLog] = useState(false)
+  const [card, setCard] = useState<StrategyCardId | null>(null)
   if (!session) return null
   const state = session.state
   const drafting = state.phase === 'strategy'
@@ -41,6 +49,25 @@ export function BoardScreen() {
         onSelect={systemId => { if (apply({ type: 'startTactical', systemId })) setMode(null) }}
       />
       <ActionBar mode={mode} onMode={setMode} hint={hint} onLog={() => setShowLog(!showLog)} />
+      {/* strategic, component and status flows (Task 4b) */}
+      <div className="flows-4b">
+        {mode === 'strategic' && card === null ? (
+          <div className="dialog cut" data-testid="strategic-picker">
+            <div className="in">
+              <div className="dhead"><span className="tab">Strategic action</span></div>
+              <div className="rowline">
+                {strategicCards(legal).map(id => (
+                  <button key={id} type="button" className="btn" data-testid={`strategic-pick-${id}`} onClick={() => setCard(id)}>{CARD_NAME[id]}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
+        {mode === 'strategic' && card !== null ? <StrategicDialog card={card} onClose={() => { setCard(null); setMode(null) }} /> : null}
+        {mode === 'component' ? <ComponentPanel onClose={() => setMode(null)} /> : null}
+        {state.pendingSecondary !== null ? <SecondaryPanel /> : null}
+        {state.phase === 'status' ? <StatusDialog /> : null}
+      </div>
     </div>
   )
 }
