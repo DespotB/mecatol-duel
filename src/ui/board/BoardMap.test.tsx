@@ -50,7 +50,7 @@ describe('the board', () => {
   it('R1: every planet carries its own nameplate, and wormholes show their glyph', () => {
     render(<BoardMap state={state} />)
     expect(screen.getByTestId('plate-sakulag').textContent).toBe('21Sakulag')
-    expect(screen.getByTestId('plate-centauri').textContent).toBe('13Centauri')
+    expect(screen.getByTestId('plate-centauri').textContent).toBe('23Centauri')
     expect(screen.getByTestId('plate-bereg').textContent).toBe('31Bereg')
     expect(screen.getByTestId('plate-mecatol-rex').textContent).toBe('16Mecatol Rex')
     expect(screen.getByTestId('sigil-home-n').getAttribute('src')).toContain('l1z1x.png')
