@@ -3,7 +3,8 @@ import type { ReactNode } from 'react'
 import { applyMove, createGame, deriveSeed, legalMoves } from '../engine'
 import type { GameConfig, GameState, Move, Seat } from '../engine/types'
 import { moveCount, undoable } from './history'
-import { deleteGame, hasGame, newGameCode, saveGame } from './persist'
+import { actingSeats, deleteGame, hasGame, newGameCode, playerId, readClaim, saveGame, writeClaim } from './persist'
+import type { Claim } from './persist'
 import { gamePath, navigate } from './route'
 
 export type { GameConfig } from '../engine/types'
@@ -36,6 +37,15 @@ export interface GameStore {
   canUndo: boolean
   /** Whether the active seat's clock is ticking right now; the top bar labels the clocks from it. */
   clockRunning: boolean
+  /** The seats this browser may act for: both in hot-seat, one online, none as a watcher. */
+  seats: Seat[]
+  /**
+   * Whether this browser holds the seat the game is waiting on. Every control that would submit a move
+   * reads this one flag rather than repeating the question, and `apply` refuses what it forbids.
+   */
+  canAct: boolean
+  /** The seat the handoff interstitial is for, or null when this browser must not be shown one. */
+  handoffSeat: Seat | null
   start(config: GameConfig, seed: number, minutes: number): void
   resume(session: Session): void
   apply(move: Move): boolean
@@ -55,7 +65,10 @@ export function useGame(): GameStore {
 export function GameProvider({ children, ticking = true }: { children: ReactNode; ticking?: boolean }) {
   const [session, setSession] = useState<Session | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // what this browser may do in the open game; null until it has answered the mode question
+  const [claim, setClaim] = useState<Claim | null>(null)
   const roundRef = useRef<number | null>(null)
+  const seats = useMemo(() => actingSeats(claim), [claim])
 
   // keyed on the game state alone: the clock ticks ten times a second and must not re-enumerate the moves
   const state = session?.state ?? null
@@ -66,6 +79,10 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     const code = newGameCode(hasGame)
     roundRef.current = 1
     setError(null)
+    // the lobby only starts hot-seat games, and the host of one is never asked how they want to play it
+    const held: Claim = { seats: [0, 1], playerId: playerId() }
+    writeClaim(code, held)
+    setClaim(held)
     setSession({ code, seed, minutes, state: createGame(config, seed), history: [], clockMs: [ms, ms], handoff: null })
     // the URL names the game from the first move on, so the code and the address cannot drift apart
     navigate(gamePath(code))
@@ -74,11 +91,15 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
   const resume = useCallback((next: Session) => {
     roundRef.current = next.state.round
     setError(null)
+    setClaim(readClaim(next.code, playerId()))
     setSession(next)
   }, [])
 
   const apply = useCallback((move: Move): boolean => {
     if (!session) return false
+    // The claim, not the engine, decides who may push a button here: a move for a seat this browser does
+    // not hold is dropped before the rules ever see it, and it is no engine error, so nothing is reported.
+    if (!actingSeats(claim).includes(session.state.active)) return false
     const result = applyMove(session.state, move, deriveSeed(session.seed, moveCount(session.state)))
     if (!result.ok) {
       setError(result.error)
@@ -104,14 +125,17 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
       handoff: next.active !== session.state.active && next.winner === null ? next.active : null,
     })
     return true
-  }, [session])
+  }, [session, claim])
 
   const undo = useCallback(() => {
+    // R: undo is a hot-seat courtesy between two people at one screen. Online a move that is out is out,
+    // because the other browser has already seen it.
+    if (actingSeats(claim).length !== 2) return
     if (!session || session.history.length === 0) return
     const previous = session.history[session.history.length - 1]
     setError(null)
     setSession({ ...session, state: previous, history: session.history.slice(0, -1), handoff: null })
-  }, [session])
+  }, [session, claim])
 
   const dismissHandoff = useCallback(() => {
     setSession(prev => prev ? { ...prev, handoff: null } : prev)
@@ -122,6 +146,7 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     if (session) deleteGame(session.code)
     roundRef.current = null
     setError(null)
+    setClaim(null)
     setSession(null)
   }, [session])
 
@@ -137,7 +162,12 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
   // R6: the clock runs for whichever seat has something to decide, in every phase. Picking a strategy card
   // or distributing status tokens is a turn like any other, so a player cannot hold the other one hostage
   // by sitting on a draft pick. `legal` is memoised on the state, so this costs no enumeration per tick.
-  const running = session !== null && session.state.winner === null && session.handoff === null && legal.length > 0
+  // The interstitial is worded from the claim: both seats read "pass the device", a single seat sees only
+  // its own turn, and a watcher never sees one. The board goes inert for exactly as long as it is up.
+  const handoffSeat = session === null || session.handoff === null ? null
+    : seats.length === 2 || seats.includes(session.handoff) ? session.handoff : null
+  const canAct = session !== null && session.state.winner === null && seats.includes(session.state.active)
+  const running = session !== null && session.state.winner === null && handoffSeat === null && legal.length > 0
   const seat = session ? session.state.active : 0
   useEffect(() => {
     if (!ticking || !running) return
@@ -172,9 +202,11 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
   }, [session])
 
   const store: GameStore = useMemo(() => ({
-    session, legal, error, canUndo: session !== null && session.history.length > 0, clockRunning: running,
+    session, legal, error, clockRunning: running, seats, canAct, handoffSeat,
+    canUndo: session !== null && session.history.length > 0 && seats.length === 2,
     start, resume, apply, undo, dismissHandoff, abandon,
-  }), [session, legal, error, running, start, resume, apply, undo, dismissHandoff, abandon])
+  }), [session, legal, error, running, seats, canAct, handoffSeat,
+    start, resume, apply, undo, dismissHandoff, abandon])
 
   return <GameContext.Provider value={store}>{children}</GameContext.Provider>
 }

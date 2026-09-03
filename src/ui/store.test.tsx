@@ -5,9 +5,10 @@ import type { ReactNode } from 'react'
 import * as engine from '../engine'
 import { applyMove, createGame, deriveSeed } from '../engine'
 import { cardsUsed, toActionPhase, toStatusPhase } from '../engine/testUtils'
+import { playerId, readClaim, writeClaim } from './persist'
 import { GameProvider, useGame } from './store'
 import type { GameConfig, Session } from './store'
-import type { StrategyCardId } from '../engine/types'
+import type { Seat, StrategyCardId } from '../engine/types'
 
 const CONFIG: GameConfig = {
   players: [
@@ -23,8 +24,8 @@ function wrapper(ticking: boolean) {
   }
 }
 
-function session(state: Session['state'], clockMs: [number, number]): Session {
-  return { code: 'TESTAA', seed: 7, minutes: 15, state, history: [], clockMs, handoff: null }
+function session(state: Session['state'], clockMs: [number, number], handoff: Seat | null = null): Session {
+  return { code: 'TESTAA', seed: 7, minutes: 15, state, history: [], clockMs, handoff }
 }
 
 describe('the hot-seat store', () => {
@@ -180,6 +181,102 @@ describe('the hot-seat store', () => {
     expect(write).toHaveBeenCalled()
     enumerate.mockRestore()
     write.mockRestore()
+    vi.useRealTimers()
+  })
+})
+
+describe('the store and the seat claim', () => {
+  /** Claims the given seats for this browser on the harness game, the way the mode question would. */
+  function claim(seats: Seat[]): void {
+    writeClaim('TESTAA', { seats, playerId: playerId() })
+  }
+
+  it('claims both seats for the game it starts, so the host is never asked the question', () => {
+    const { result } = renderHook(() => useGame(), { wrapper: wrapper(false) })
+    act(() => { result.current.start(CONFIG, 7, 15) })
+    const code = result.current.session?.code ?? ''
+    expect(readClaim(code, playerId())).toEqual({ seats: [0, 1], playerId: playerId() })
+    expect(result.current.seats).toEqual([0, 1])
+    expect(result.current.canAct).toBe(true)
+  })
+
+  it('reads the claim of the game it resumes and holds only that seat', () => {
+    claim([1])
+    const { result } = renderHook(() => useGame(), { wrapper: wrapper(false) })
+    act(() => { result.current.resume(session(cardsUsed(toActionPhase()), [60000, 60000])) })
+    expect(result.current.seats).toEqual([1])
+    expect(result.current.canAct).toBe(false)          // seat 0 is the one to act
+  })
+
+  it('refuses a move for a seat the claim does not hold, without bothering the engine', () => {
+    claim([1])
+    const { result } = renderHook(() => useGame(), { wrapper: wrapper(false) })
+    act(() => { result.current.resume(session(cardsUsed(toActionPhase()), [60000, 60000])) })
+    const before = result.current.session?.state
+    act(() => { result.current.apply({ type: 'pass' }) })
+    expect(result.current.session?.state).toBe(before)
+    expect(result.current.error).toBeNull()
+  })
+
+  it('lets the claimed seat act, and asks for no interstitial once the turn is the other one\'s', () => {
+    claim([1])
+    const { result } = renderHook(() => useGame(), { wrapper: wrapper(false) })
+    act(() => { result.current.resume(session(cardsUsed(toActionPhase(1, 1)), [60000, 60000])) })
+    expect(result.current.canAct).toBe(true)
+    act(() => { result.current.apply({ type: 'pass' }) })
+    expect(result.current.session?.state.players[1].passed).toBe(true)
+    expect(result.current.session?.state.active).toBe(0)
+    expect(result.current.handoffSeat).toBeNull()      // never for the seat that just moved
+  })
+
+  it('shows the interstitial for the seat the claim holds and for no other', () => {
+    claim([1])
+    const { result } = renderHook(() => useGame(), { wrapper: wrapper(false) })
+    act(() => { result.current.resume(session(toActionPhase(), [60000, 60000], 1)) })
+    expect(result.current.handoffSeat).toBe(1)
+    act(() => { result.current.resume(session(toActionPhase(), [60000, 60000], 0)) })
+    expect(result.current.handoffSeat).toBeNull()
+  })
+
+  it('leaves a watcher with no seat, no move and no interstitial', () => {
+    claim([])
+    const { result } = renderHook(() => useGame(), { wrapper: wrapper(false) })
+    act(() => { result.current.resume(session(cardsUsed(toActionPhase()), [60000, 60000], 0)) })
+    expect(result.current.seats).toEqual([])
+    expect(result.current.canAct).toBe(false)
+    expect(result.current.handoffSeat).toBeNull()
+    const before = result.current.session?.state
+    act(() => { result.current.apply({ type: 'pass' }) })
+    expect(result.current.session?.state).toBe(before)
+  })
+
+  it('keeps undo a hot-seat courtesy: online, a move that is out is out', () => {
+    claim([0])
+    const { result } = renderHook(() => useGame(), { wrapper: wrapper(false) })
+    act(() => { result.current.resume(session(toActionPhase(), [60000, 60000])) })
+    act(() => { result.current.apply({ type: 'startTactical', systemId: 'bereg' }) })
+    expect(result.current.canUndo).toBe(false)
+    act(() => { result.current.undo() })
+    expect(result.current.session?.state.tactical).not.toBeNull()
+  })
+
+  it('a board with no claim at all is the hot-seat it has always been', () => {
+    const { result } = renderHook(() => useGame(), { wrapper: wrapper(false) })
+    act(() => { result.current.resume(session(cardsUsed(toActionPhase()), [60000, 60000], 1)) })
+    expect(result.current.seats).toEqual([0, 1])
+    expect(result.current.canAct).toBe(true)
+    expect(result.current.handoffSeat).toBe(1)
+  })
+
+  it('R6: the clock runs on while the seat that just moved waits for the other browser', () => {
+    vi.useFakeTimers()
+    claim([1])
+    const { result } = renderHook(() => useGame(), { wrapper: wrapper(true) })
+    act(() => { result.current.resume(session(cardsUsed(toActionPhase(1, 1)), [60000, 60000])) })
+    act(() => { result.current.apply({ type: 'pass' }) })
+    expect(result.current.session?.state.active).toBe(0)
+    act(() => { vi.advanceTimersByTime(1000) })
+    expect(result.current.session?.clockMs[0]).toBe(59000)
     vi.useRealTimers()
   })
 })
