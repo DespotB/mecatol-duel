@@ -304,3 +304,7 @@ button{font-family:inherit}
 .noreach{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);white-space:nowrap;
   font:600 10px/16px var(--hud);letter-spacing:.06em;text-transform:uppercase;color:#b9c2d6;
   padding:0 7px;background:rgba(6,9,20,.82);border:1px solid rgba(150,160,180,.35)}
+.ticon{flex:none;object-fit:contain;display:inline-flex;align-items:center;justify-content:center;
+  filter:drop-shadow(0 1px 1px rgba(0,0,0,.8))}
+.ticon.unit img{display:block;max-width:none}
+.tcols h4 .ticon{margin-right:2px}

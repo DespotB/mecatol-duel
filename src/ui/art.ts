@@ -1,4 +1,4 @@
-import type { Color, FactionId, Owner, StrategyCardId, UnitType } from '../engine/types'
+import type { Color, FactionId, Owner, StrategyCardId, TechColor, UnitType } from '../engine/types'
 
 export const CARD_NUMBER: Record<StrategyCardId, number> = {
   leadership: 1, diplomacy: 2, trade: 5, warfare: 6, technology: 7, imperial: 8,
@@ -86,6 +86,9 @@ export function tokenUrl(faction: FactionId, kind: 'command' | 'command-fleet' |
 }
 export function strategyCardUrl(card: StrategyCardId): string {
   return `/assets/cards/strat_base_game_${CARD_NUMBER[card]}.png`
+}
+export function techIconUrl(colour: TechColor): string {
+  return `/assets/icons/tech_${colour}.png`
 }
 export function techArtUrl(techId: string): string {
   return `/assets/cards/${TECH_FILE[techId] ?? 'cardback_public2.png'}`
