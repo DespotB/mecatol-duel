@@ -10,12 +10,24 @@ zufällig zwischen diesen sechs ausgewählt. Die haben alle unterschiedliche Fä
 jedem mindestens zwei Commodities tauschen können, bei denen die mehr können, mehr und vielleicht noch was
 anderes."
 
-## 1. Setup
+## 1. Which posts are in play
 
-`createGame` rolls the two posts from the seeded RNG: draw one of the six for the west, then one of the
-remaining five for the east. The pair is part of the game state (`state.posts = { west, east }`), so a
-replay of the same seed produces the same posts. The linked systems stay as they are: west is linked to
-`sakulag` and `starpoint`, east to `bereg` and `quann`.
+**The posts change every round.** `createGame` rolls the first pair from the seeded RNG: draw one of the six
+for the west, then one of the remaining five for the east. At the start of every later round a new pair is
+rolled the same way, **excluding the two that were in play in the round before**, so the draw is from the
+other four. A post can come back later, just never in the round straight after its own.
+
+The user's ruling, verbatim (German, dictated): "In jeder Runde sollen neue Trading-Schiffe kommen, und die
+zwei, die gerade waren, können nächste Runde nicht nochmal kommen. Es werden immer random zwei neu gespawnt,
+aber nicht die zwei, die schon waren. Nicht jeden Zug, jede neue Runde."
+
+The pair lives in the game state (`state.posts = { west, east }`), so a replay of the same seed produces the
+same posts in the same rounds. The roll happens in the status phase, in the same step that readies the board
+for the next round, and it is logged like every other roll. The linked systems stay as they are: west is
+linked to `sakulag` and `starpoint`, east to `bereg` and `quann`.
+
+Because the posts turn over, an ability nobody used is gone with them: the pressure to take a post's offer
+while it is there is deliberate.
 
 ## 2. What every post can do
 
