@@ -178,7 +178,7 @@ describe('R3.2 strategic actions, the remaining three cards', () => {
     const s = holder('technology')
     expect(play(s, 'technology', { secondTechId: 'sarween_tools', planets: ['000'], tradeGoods: 1 }).ok).toBe(false)
     expect(play(s, 'technology', { techId: 'sarween_tools', secondTechId: 'antimass_deflectors', planets: ['000'] }).ok).toBe(false)   // 5 of 6
-    expect(play(s, 'technology', { techId: 'war_sun' }).ok).toBe(false)                // prerequisites missing
+    expect(play(s, 'technology', { techId: 'carrier_ii' }).ok).toBe(false)             // prerequisites missing (blue 2)
     expect(play(s, 'technology', { techId: 'l4_disruptors' }).ok).toBe(false)          // wrong faction
     expect(value(play(s, 'technology')).players[0].techs).toHaveLength(2)              // researching nothing is allowed
   })

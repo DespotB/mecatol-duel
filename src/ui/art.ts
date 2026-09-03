@@ -33,7 +33,7 @@ const TECH_FILE: Record<string, string> = {
   transit_diodes: 'tech_transit_diodes.png', integrated_economy: 'tech_integrated_economy.png',
   infantry_ii: 'tech_infantry_2.jpg', fighter_ii: 'tech_fighter_2.jpg', destroyer_ii: 'tech_destroyer_2.jpg',
   cruiser_ii: 'tech_cruiser_2.jpg', carrier_ii: 'tech_carrier_2.jpg', dreadnought_ii: 'tech_dreadnought_2.jpg',
-  space_dock_ii: 'tech_spacedock_2.jpg', war_sun: 'tech_warsun.jpg',
+  space_dock_ii: 'tech_spacedock_2.jpg',
   inheritance_systems: 'tech_faction_inheritance_systems.jpg',
   super_dreadnought_ii: 'tech_faction_superdreadnought_2.jpg',
   l4_disruptors: 'tech_faction_l4_disruptors.jpg',
