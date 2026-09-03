@@ -156,16 +156,24 @@ describe('R3.2 strategic actions, the remaining three cards', () => {
     expect(play(s, 'warfare', { tokens: { tactic: 2, fleet: 4, strategy: 3 } }).ok).toBe(false)   // 9, not 8
     expect(value(play(s, 'warfare')).players[0].tokens).toEqual({ tactic: 3, fleet: 3, strategy: 2 })
   })
-  it('R4.4/R6 Warfare primary: a redistribution that leaves a fleet over its pool is rejected', () => {
-    // three cruisers in bereg, so seat 0 needs at least 3 in the fleet pool to keep them
+  it('R4.4/R6 Warfare primary: a redistribution that shrinks the fleet pool is legal and costs ships', () => {
+    // three cruisers in bereg, so seat 0 needs at least 3 in the fleet pool to keep them all
     const base = withUnits(holder('warfare'), 'bereg', 0, ['cruiser', 'cruiser', 'cruiser'])
-    expect(play(base, 'warfare', { tokens: { tactic: 4, fleet: 2, strategy: 2 } }).ok).toBe(false)   // 8, fleet down to 2
-    expect(play(base, 'warfare', { tokens: { tactic: 2, fleet: 4, strategy: 2 } }).ok).toBe(true)    // 8, fleet up to 4
-    // the same check on the branch that takes a token off the board and hands out a ninth
+    const shrunk = value(play(base, 'warfare', { tokens: { tactic: 4, fleet: 2, strategy: 2 } }))   // 8, fleet down to 2
+    expect(shrunk.players[0].tokens).toEqual({ tactic: 4, fleet: 2, strategy: 2 })
+    expect(shrunk.systems.bereg.space.filter(u => u.owner === 0)).toHaveLength(2)
+    expect(shrunk.players[0].reinforcements.cruiser).toBe(base.players[0].reinforcements.cruiser + 1)
+    expect(shrunk.log.some(e => e.t === 'info' && e.text === 'seat 0 loses 1 ship beyond the fleet pool in bereg')).toBe(true)
+    // a pool that grows costs nothing, and neither does one that still holds the fleet
+    const grown = value(play(base, 'warfare', { tokens: { tactic: 2, fleet: 4, strategy: 2 } }))    // 8, fleet up to 4
+    expect(grown.systems.bereg.space.filter(u => u.owner === 0)).toHaveLength(3)
+    // the same rule on the branch that takes a token off the board and hands out a ninth
     const onBoard = deepFreeze({ ...base, systems: { ...base.systems, bereg: { ...base.systems.bereg, activatedBy: [0 as const] } } })
-    expect(play(onBoard, 'warfare', { systemId: 'bereg', tokens: { tactic: 5, fleet: 2, strategy: 2 } }).ok).toBe(false)
+    const emptied = value(play(onBoard, 'warfare', { systemId: 'bereg', tokens: { tactic: 5, fleet: 2, strategy: 2 } }))
+    expect(emptied.systems.bereg.space.filter(u => u.owner === 0)).toHaveLength(2)
     const moved = value(play(onBoard, 'warfare', { systemId: 'bereg', tokens: { tactic: 4, fleet: 3, strategy: 2 } }))
     expect(moved.players[0].tokens).toEqual({ tactic: 4, fleet: 3, strategy: 2 })
+    expect(moved.systems.bereg.space.filter(u => u.owner === 0)).toHaveLength(3)
   })
   it('R6 Warfare secondary: a strategy token produces at the home space dock under the R4.4 rules', () => {
     const played = value(play(holder('warfare'), 'warfare'))

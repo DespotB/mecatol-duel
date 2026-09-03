@@ -57,3 +57,10 @@ export function unitStats(type: UnitType, owner: StatsOwner): Readonly<UnitStats
 export const SHIP_TYPES: readonly UnitType[] = ['fighter', 'destroyer', 'cruiser', 'carrier', 'dreadnought', 'warsun', 'flagship']
 export const NON_FIGHTER_SHIPS: readonly UnitType[] = ['destroyer', 'cruiser', 'carrier', 'dreadnought', 'warsun', 'flagship']
 export function isShip(type: UnitType): boolean { return SHIP_TYPES.includes(type) }
+
+/**
+ * Cheapest hull first: the order every rule follows that has to give a ship up rather than choose one, from
+ * a hit the engine assigns itself to a fleet pool that no longer holds the fleet standing in it.
+ */
+export const DESTROY_ORDER: readonly UnitType[] = ['fighter', 'destroyer', 'cruiser', 'carrier', 'dreadnought', 'flagship', 'warsun']
+export const NON_FIGHTER_ORDER: readonly UnitType[] = DESTROY_ORDER.filter(t => t !== 'fighter')

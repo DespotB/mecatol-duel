@@ -68,13 +68,13 @@ describe('R4.4 enforceFleetPool: a fleet pool that shrinks costs ships', () => {
   })
 
   it('a destroyed carrier takes its capacity with it, so the cargo it carried is trimmed', () => {
-    // carrier (capacity 4) plus two dreadnoughts (capacity 1 each) hold three fighters and one infantry;
-    // the carrier is the cheapest of the three, so the two go over the capacity that is left
+    // carrier (capacity 4) and two L1Z1X dreadnoughts (capacity 2 each) carry five fighters and one
+    // infantry; the carrier is the cheapest of the three, so two fighters go over the capacity that is left
     const ships = withUnits(toActionPhase(), 'bereg', 0, ['carrier', 'dreadnought', 'dreadnought'])
-    const base = withUnits(ships, 'bereg', 0, ['fighter', 'fighter', 'fighter', 'infantry'])
+    const base = withUnits(ships, 'bereg', 0, ['fighter', 'fighter', 'fighter', 'fighter', 'fighter', 'infantry'])
     const after = enforceFleetPool(pool(base, 2), 0)
     expect(shipsIn(after, 'bereg', 'carrier')).toBe(0)
-    expect(shipsIn(after, 'bereg', 'fighter')).toBe(1)
+    expect(shipsIn(after, 'bereg', 'fighter')).toBe(3)
     expect(shipsIn(after, 'bereg', 'infantry')).toBe(1)
     expect(after.players[0].reinforcements.fighter).toBe(base.players[0].reinforcements.fighter + 2)
   })

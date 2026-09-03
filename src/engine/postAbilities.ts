@@ -2,7 +2,7 @@ import { TRADE_POSTS } from '../data/map'
 import type { PostDef } from '../data/posts'
 import { TECHS, findTech, type TechDef } from '../data/techs'
 import { SHIP_TYPES, isShip, unitStats, type StatsOwner } from '../data/units'
-import { checkFleet, destroyUnits, statsOwner } from './board'
+import { checkFleet, destroyUnits, enforceFleetPool, statsOwner } from './board'
 import { postDef, postLinked, turnReady } from './componentActions'
 import { exhaustPlanets } from './economy'
 import { addVp } from './objectives'
@@ -108,17 +108,10 @@ function returnToken(state: GameState, seat: Seat, params: PostAbilityParams): R
   if (player.tokens[pool] < 1) return { ok: false, error: `R8: no command token in the ${pool} pool` }
   const players = [...state.players] as GameState['players']
   players[seat] = { ...player, tokens: { ...player.tokens, [pool]: player.tokens[pool] - 1 } }
-  const next: GameState = { ...state, players }
-  // R4.4: only the fleet pool carries ships, and the engine never destroys ships to make a sheet fit. The
-  // same guard the Warfare redistribution uses, narrowed to the one pool whose shrinking can break a fleet:
-  // if a fleet on the board would be over the pool afterwards, the token stays where it is.
-  if (pool === 'fleet') {
-    for (const sys of Object.values(next.systems)) {
-      if (!sys.space.some(u => u.owner === seat)) continue
-      if (!checkFleet(next, seat, sys.id).ok) return { ok: false, error: `R8/R4.4: returning that token would leave your fleet in ${sys.id} over the pool` }
-    }
-  }
-  return { ok: true, value: next }
+  // R4.4 / LRR 34.3: the fleet pool is the one pool that carries ships, and taking a token out of it is a
+  // legal move that costs ships. Every system the shrunken pool no longer holds gives up its cheapest hulls,
+  // the same helper Warfare and the status phase use; the token never stays put.
+  return { ok: true, value: enforceFleetPool({ ...state, players }, seat) }
 }
 
 /** R8 Kesh Line Freighter: one command token from any pool for 4 trade goods. */
@@ -275,14 +268,14 @@ function techExchangeOptions(state: GameState, seat: Seat): PostAbilityParams[] 
 
 /**
  * R8: the pools that still hold a token, the fullest first, so the offered default is the least painful.
- * Each one goes through `returnToken`, which is what refuses a fleet token that a fleet on the board needs.
+ * A fleet token is offered like any other: returning it is legal and the ships it no longer holds are the
+ * price, which `returnToken` collects.
  */
 function poolOptions(state: GameState, seat: Seat): PostAbilityParams[] {
   const tokens = state.players[seat].tokens
   return POOLS.filter(pool => tokens[pool] >= 1)
     .sort((a, b) => tokens[b] - tokens[a])
     .map((pool): PostAbilityParams => ({ pool }))
-    .filter(params => returnToken(state, seat, params).ok)
 }
 
 /**

@@ -59,6 +59,8 @@ export type * from './types'
 
 // Read-only queries the UI derives its controls from. Re-exports only: no new logic, no behaviour change.
 export { ACTION_SPENT, activatableSystems, canPass, otherSeat } from './actionPhase'
+export { fleetPoolLoss } from './board'
+export type { FleetPoolLoss } from './board'
 export { actingSeat, assignmentComplete, assignmentTargets, canMunitions, pendingFor, retreatTargets } from './combat'
 export { canInheritance, canShipyard, inheritanceTechs, postDef, postLinked, shipyardPlanets, tradePostOptions } from './componentActions'
 export { capacity, cheapestPlanets, fleetPoolLimit, productionCost, productionLimit, readyInfluence, readyResources } from './economy'

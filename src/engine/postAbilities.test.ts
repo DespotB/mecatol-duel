@@ -158,6 +158,18 @@ describe('R8 Kesh Line Freighter: charter', () => {
     expect(error(use(base(), 'west', {}))).toMatch(/name the pool/)
     expect(error(use(base(), 'west', { pool: 'reinforcements' as 'fleet' }))).toMatch(/name the pool/)
   })
+  it('R4.4: a fleet token may go even when a fleet on the board needs it, and the ships pay for it', () => {
+    // three cruisers in Starpoint sit exactly on the pool of 3; the fourth token would have kept them
+    const s = withUnits(base(), 'starpoint', 0, ['cruiser', 'cruiser', 'cruiser'])
+    const done = value(use(s, 'west', { pool: 'fleet' }))
+    expect(done.players[0].tokens.fleet).toBe(2)
+    expect(done.players[0].tradeGoods).toBe(4)
+    expect(done.systems.starpoint.space.filter(u => u.owner === 0)).toHaveLength(2)
+    expect(done.players[0].reinforcements.cruiser).toBe(s.players[0].reinforcements.cruiser + 1)
+    expect(done.log.some(e => e.t === 'info' && e.text === 'seat 0 loses 1 ship beyond the fleet pool in starpoint')).toBe(true)
+    // and the enumerator offers that pool rather than hiding it: the price is the player's to weigh
+    expect(postAbilityOptions(s, 0, 'west')).toContainEqual({ pool: 'fleet' })
+  })
 })
 
 describe('R8 Vandel Bulk Tanker: layover', () => {
@@ -176,6 +188,14 @@ describe('R8 Vandel Bulk Tanker: layover', () => {
   it('rejects an empty pool', () => {
     const broke = withPlayer(base(), 0, { tokens: { tactic: 0, fleet: 3, strategy: 2 } })
     expect(error(use(broke, 'west', { pool: 'tactic' }))).toMatch(/no command token in the tactic pool/)
+  })
+  it('R4.4: the layover takes a fleet token on the same terms as the charter, ships and all', () => {
+    const s = withUnits(base(), 'starpoint', 0, ['dreadnought', 'cruiser', 'destroyer'])
+    const done = value(use(s, 'west', { pool: 'fleet' }))
+    expect(done.players[0].tokens.fleet).toBe(2)
+    // the cheapest hull goes first, so the destroyer is the one that leaves
+    expect(done.systems.starpoint.space.filter(u => u.owner === 0).map(u => u.type)).toEqual(['dreadnought', 'cruiser'])
+    expect(done.log.some(e => e.t === 'info' && e.text === 'seat 0 loses 1 ship beyond the fleet pool in starpoint')).toBe(true)
   })
 })
 
