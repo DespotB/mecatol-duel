@@ -7,10 +7,10 @@ export function readyResources(state: GameState, seat: Seat): number {
   return sum
 }
 
-export function payCost(state: GameState, seat: Seat, cost: number, planets: string[], tradeGoods: number): Result<GameState> {
-  const player = state.players[seat]
-  if (tradeGoods < 0 || tradeGoods > player.tradeGoods) return { ok: false, error: 'not enough trade goods' }
-  let paid = tradeGoods
+/** Exhausts the listed ready planets of the seat and reports what they were worth. */
+export function exhaustPlanets(state: GameState, seat: Seat, planets: string[]): Result<{ state: GameState; resources: number; influence: number }> {
+  let resources = 0
+  let influence = 0
   const systems = { ...state.systems }
   for (const planetId of planets) {
     const sysId = Object.keys(systems).find(id => systems[id].planets.some(p => p.id === planetId))
@@ -19,13 +19,44 @@ export function payCost(state: GameState, seat: Seat, cost: number, planets: str
     const planet = sys.planets.find(p => p.id === planetId)
     if (!planet || planet.owner !== seat) return { ok: false, error: `planet ${planetId} not controlled` }
     if (planet.exhausted) return { ok: false, error: `planet ${planetId} is exhausted` }
-    paid += planet.resources
+    resources += planet.resources
+    influence += planet.influence
     systems[sysId] = { ...sys, planets: sys.planets.map(p => p.id === planetId ? { ...p, exhausted: true } : p) }
   }
+  return { ok: true, value: { state: { ...state, systems }, resources, influence } }
+}
+
+export function payCost(state: GameState, seat: Seat, cost: number, planets: string[], tradeGoods: number): Result<GameState> {
+  const player = state.players[seat]
+  if (tradeGoods < 0 || tradeGoods > player.tradeGoods) return { ok: false, error: 'not enough trade goods' }
+  const spent = exhaustPlanets(state, seat, planets)
+  if (!spent.ok) return spent
+  const paid = tradeGoods + spent.value.resources
   if (paid < cost) return { ok: false, error: `paid ${paid} of ${cost}` }
-  const players = [...state.players] as GameState['players']
+  const players = [...spent.value.state.players] as GameState['players']
   players[seat] = { ...player, tradeGoods: player.tradeGoods - tradeGoods }
-  return { ok: true, value: { ...state, systems, players } }
+  return { ok: true, value: { ...spent.value.state, players } }
+}
+
+const TOKEN_POOLS = ['tactic', 'fleet', 'strategy'] as const
+
+/**
+ * R3.3 and R6: `wanted` is the resulting command sheet. The three pools must sum to the current total
+ * plus `gained`, and without `redistribute` no pool may shrink, because Leadership and the status phase hand
+ * out new tokens and only Warfare moves the ones already on the sheet. Undefined means "all into tactic".
+ */
+export function distributeTokens(state: GameState, seat: Seat, wanted: Player['tokens'] | undefined, gained: number, redistribute = false): Result<GameState> {
+  const current = state.players[seat].tokens
+  const target = wanted ?? { ...current, tactic: current.tactic + gained }
+  for (const pool of TOKEN_POOLS) {
+    if (!Number.isInteger(target[pool]) || target[pool] < 0) return { ok: false, error: `invalid token count for the ${pool} pool` }
+    if (!redistribute && target[pool] < current[pool]) return { ok: false, error: `the ${pool} pool may not shrink here` }
+  }
+  const total = TOKEN_POOLS.reduce((sum, pool) => sum + target[pool], 0)
+  if (total !== current.tactic + current.fleet + current.strategy + gained) return { ok: false, error: `distribute exactly ${gained} new command tokens` }
+  const players = [...state.players] as GameState['players']
+  players[seat] = { ...players[seat], tokens: target }
+  return { ok: true, value: { ...state, players } }
 }
 
 export function productionCost(units: Partial<Record<UnitType, number>>, owner: StatsOwner, sarween: boolean): number {

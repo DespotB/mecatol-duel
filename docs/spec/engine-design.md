@@ -15,6 +15,7 @@ export function createGame(config: GameConfig, seed: number): GameState
 - A rejected move comes back as `{ ok: false, error }`. `internal: true` marks the rare case where the engine threw instead of rejecting: an engine bug, never a rules question, so callers may treat it as fatal.
 - All randomness inside a move comes from `seed` (a 32-bit integer) through `mulberry32`; the same state, move and seed always give the same result. Dice are `1 + floor(rng() * 10)`.
 - `legalMoves` enumerates concrete moves for the active player; the UI builds its interaction from this list (highlighted systems, enabled buttons). Three kinds are templates whose parameters the UI fills in: `moveShips` (`moves: []`), `produce` (`units: {}`, `planets: []`, `tradeGoods: 0`) and `land` (pre-filled with every carried infantry, any subset is legal). `validateMove(state, move)` matches those three by `move.type` and every other kind structurally.
+- A strategic action is two moves: the `strategic` move resolves the primary, marks the card used and sets `pendingSecondary`; the opponent then answers with exactly one `secondary` move (`accept: true` pays the strategy token and resolves the ability, `accept: false` declines). Only then does the turn pass. While `pendingSecondary` is set, no other move is legal, and the answering seat responds even when it has already passed, because the response is not a turn.
 - The game log is part of the state (`state.log`), append-only, one entry per move plus one per dice roll, so replays and the online transport need only the move list and seeds.
 
 ## State shape (TypeScript, `src/engine/types.ts`)
@@ -104,12 +105,21 @@ export type Move =
   | { type: 'endTactical' }
   | { type: 'strategic'; card: StrategyCardId; params?: StrategicParams }
   | { type: 'secondary'; card: StrategyCardId; accept: boolean; params?: StrategicParams }
-  | { type: 'research'; techId: string; via: 'technology' | 'technologySecond' | 'inheritance' }
+  | { type: 'research'; techId: string; via: 'inheritance' }   // component action; the Technology card carries its technologies in StrategicParams
   | { type: 'shipyard'; planetId: string; planets: string[]; tradeGoods: number }
   | { type: 'tradePost'; post: 'west' | 'east'; commodities: number }
   | { type: 'pass' }
   | { type: 'status'; params: StatusParams }             // one move per player: token distribution, then the engine finishes the phase when both are in
-export interface StrategicParams { systemId?: string; planets?: string[]; techId?: string; secondTechId?: string; tradeGoods?: number; units?: Partial<Record<UnitType, number>> }
+export interface StrategicParams {
+  systemId?: string                 // Diplomacy: the chosen system; Warfare: where your command token comes off the board
+  planets?: string[]                // planets exhausted to pay (Leadership influence, Technology and Warfare resources) or readied (Diplomacy)
+  techId?: string; secondTechId?: string
+  tradeGoods?: number
+  units?: Partial<Record<UnitType, number>>
+  tokens?: { tactic: number; fleet: number; strategy: number }   // the resulting command sheet after Leadership or Warfare
+  objectiveId?: string              // Imperial primary: the public objective to score
+  shareWithOpponent?: boolean       // Trade primary: the opponent replenishes without paying
+}
 export interface StatusParams { tokens: { tactic: number; fleet: number; strategy: number } }
 ```
 
