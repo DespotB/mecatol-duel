@@ -275,5 +275,12 @@ button{font-family:inherit}
 .sw.red{background:#d63b3b}.sw.blue{background:#3d7be8}.sw.green{background:#3aa655}.sw.yellow{background:#e5c531}
 .sw.purple{background:#8a47c9}.sw.black{background:#2a2e36}.sw.orange{background:#e8842a}.sw.pink{background:#e067b0}
 .chosen{font:600 12px var(--hud);letter-spacing:.08em;text-transform:uppercase;color:#8fb4ff}
+/* error boundary */
+.crash{position:relative;width:1440px;min-height:900px;margin:0 auto;display:flex;align-items:center;justify-content:center;z-index:1}
+.crashbox{position:relative;z-index:1;width:640px}
+.crashbox .in{padding:28px 32px 30px;display:flex;flex-direction:column;align-items:flex-start;gap:16px}
+.crashbox .title{font-size:34px}
+.crashmsg{margin:0;font:500 14px/1.45 var(--body);color:#f1a3a3;word-break:break-word}
+
 .setup-foot{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:20px;margin-top:34px}
 .clockfield{display:flex;align-items:center;gap:10px}
