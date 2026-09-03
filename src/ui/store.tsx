@@ -79,7 +79,11 @@ export interface GameStore {
   canAct: boolean
   /** The seat the handoff interstitial is for, or null when this browser must not be shown one. */
   handoffSeat: Seat | null
-  start(config: GameConfig, seed: number, minutes: number): void
+  /**
+   * Starts a game and claims `seats` for this browser: both of them for hot-seat, the one the host picked
+   * for an online game. The default is hot-seat because that is the game a browser can finish on its own.
+   */
+  start(config: GameConfig, seed: number, minutes: number, seats?: Seat[]): void
   resume(session: Session): void
   apply(move: Move): boolean
   undo(): void
@@ -107,15 +111,15 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
   const state = session?.state ?? null
   const legal = useMemo(() => state ? legalMoves(state) : [], [state])
 
-  const start = useCallback((config: GameConfig, seed: number, minutes: number) => {
+  const start = useCallback((config: GameConfig, seed: number, minutes: number, held: Seat[] = [0, 1]) => {
     const ms = minutes * 60000
     const code = newGameCode(hasGame)
     roundRef.current = 1
     setError(null)
-    // the lobby only starts hot-seat games, and the host of one is never asked how they want to play it
-    const held: Claim = { seats: [0, 1], playerId: playerId() }
-    writeClaim(code, held)
-    setClaim(held)
+    // the mode question is answered in the lobby now, so the host arrives here with the seats already picked
+    const mine: Claim = { seats: held, playerId: playerId() }
+    writeClaim(code, mine)
+    setClaim(mine)
     setSession({ code, seed, minutes, state: createGame(config, seed), history: [], clockMs: [ms, ms], handoff: null })
     // the URL names the game from the first move on, so the code and the address cannot drift apart
     navigate(gamePath(code))
