@@ -7,6 +7,12 @@ export function readyResources(state: GameState, seat: Seat): number {
   return sum
 }
 
+export function readyInfluence(state: GameState, seat: Seat): number {
+  let sum = 0
+  for (const sys of Object.values(state.systems)) for (const p of sys.planets) if (p.owner === seat && !p.exhausted) sum += p.influence
+  return sum
+}
+
 /** Exhausts the listed ready planets of the seat and reports what they were worth. */
 export function exhaustPlanets(state: GameState, seat: Seat, planets: string[]): Result<{ state: GameState; resources: number; influence: number }> {
   let resources = 0

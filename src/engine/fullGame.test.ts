@@ -5,7 +5,7 @@ import { otherSeat } from './actionPhase'
 import { checkFleet } from './board'
 import { applyMove, legalMoves, validateMove } from './index'
 import { createGame, unitsOf } from './setup'
-import { DUEL_CONFIG, fillTemplate, shuffle, toActionPhase, toStatusPhase, withCards, withPlanetOwner, withPlayer, withTechs } from './testUtils'
+import { DUEL_CONFIG, fillTemplate, shuffle, toActionPhase, toStatusPhase, withCards, withExhausted, withPlanetOwner, withPlayer, withTechs } from './testUtils'
 import type { GameState, Move, Seat, StrategyCardId } from './types'
 
 const MAX_MOVES = 3000
@@ -172,6 +172,22 @@ describe('legal moves in every phase', () => {
     expect(played.value.players[1].commodities).toBe(FACTIONS[played.value.players[1].faction].commodityValue)
     const moves = legalMoves(played.value)
     expect(moves).toEqual([{ type: 'secondary', card: 'trade', accept: false }])
+  })
+  it('R3.2: the Leadership secondary is not offered when there is no influence and no trade good to spend', () => {
+    const base = withCards(withCards(toActionPhase(), 0, ['leadership']), 1, [])
+    const broke = withExhausted(base, ['arc-prime', 'wren-terra'])          // seat 1 has 0 ready influence
+    const played = applyMove(broke, { type: 'strategic', card: 'leadership' }, 0)
+    if (!played.ok) throw new Error(played.error)
+    expect(legalMoves(played.value)).toEqual([{ type: 'secondary', card: 'leadership', accept: false }])
+    // one trade good is one influence, so accepting is worth offering again
+    const rich = applyMove(withPlayer(broke, 1, { tradeGoods: 1 }), { type: 'strategic', card: 'leadership' }, 0)
+    if (!rich.ok) throw new Error(rich.error)
+    expect(legalMoves(rich.value)).toHaveLength(2)
+  })
+  it('R3.2: a window whose card holder is the active seat still offers the decline that closes it', () => {
+    const played = applyMove(withCards(withCards(toActionPhase(), 0, ['trade']), 1, []), { type: 'strategic', card: 'trade' }, 0)
+    if (!played.ok) throw new Error(played.error)
+    expect(legalMoves({ ...played.value, active: 0 })).toEqual([{ type: 'secondary', card: 'trade', accept: false }])
   })
   it('engine-design contract: validateMove matches structurally, not by JSON', () => {
     const s = withCards(toActionPhase(), 0, ['technology'])

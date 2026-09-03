@@ -1,7 +1,7 @@
 import { activatableSystems, canPass } from './actionPhase'
 import { canMunitions, retreatTargets } from './combat'
 import { SHIPYARD_COST, canInheritance, canShipyard, inheritanceTechs, shipyardPlanets, tradePostOptions } from './componentActions'
-import { cheapestPlanets, productionCost, productionLimit } from './economy'
+import { cheapestPlanets, productionCost, productionLimit, readyInfluence } from './economy'
 import { bombardablePlanets, groundCombatPending, landablePlanets } from './invasion'
 import { movableShips } from './movement'
 import { fulfils } from './objectives'
@@ -98,6 +98,9 @@ function secondaryMoves(state: GameState, seat: Seat, card: StrategyCardId): Mov
   const params: StrategicParams = {}
   switch (card) {
     case 'leadership':
+      // R6, consistent with the Diplomacy and Trade filters below: with nothing to spend as influence the
+      // secondary hands out 0 tokens, so accepting is a pure no-op and only the decline is offered
+      if (readyInfluence(state, seat) < 1 && player.tradeGoods < 1) return []
       return [{ type: 'secondary', card, accept: true, params }]
     case 'diplomacy': {
       const exhausted: string[] = []
@@ -146,7 +149,9 @@ export function legalMoves(state: GameState): Move[] {
   // R3.2: the answer to a strategy card is not a turn, so it comes before the passed check
   const pending = state.pendingSecondary
   if (pending !== null) {
-    if (cardOwner(state, pending) === seat) return []
+    // the holder never answers their own card (`secondary()` rejects that), but the enumerator must not hand
+    // back an empty list in a live phase, so the decline that closes the window stays on offer
+    if (cardOwner(state, pending) === seat) return [{ type: 'secondary', card: pending, accept: false }]
     return [{ type: 'secondary', card: pending, accept: false }, ...secondaryMoves(state, seat, pending)]
   }
   if (state.players[seat].passed) return []
