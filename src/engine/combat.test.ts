@@ -247,6 +247,20 @@ describe('R4.1 space combat', () => {
     expect(after.tactical?.step).toBe('done')
     expect(after.log.some(e => e.t === 'info' && e.text.includes('retreats'))).toBe(true)
   })
+  it('R4.4: a retreat over the fleet pool destroys the cheapest excess non-fighter ships at the destination', () => {
+    // home-n already holds the L1Z1X dreadnought and carrier plus an added cruiser: 3 non-fighter ships is
+    // exactly the fleet pool, so the retreating dreadnought is one too many and the cruiser is the cheapest
+    const crowded = withUnits(combat('bereg', ['dreadnought'], ['dreadnought'], 2), 'home-n', 0, ['cruiser'])
+    const announced = applyMove(crowded, { type: 'retreat', to: 'home-n' }, 0)
+    if (!announced.ok) throw new Error(announced.error)
+    const after = fight(announced.value, 3)   // seed 3: both dreadnoughts survive the round, so the retreat runs
+    expect(after.tactical?.step).toBe('done')
+    expect(owned(after, 'home-n', 0).filter(u => u.type === 'cruiser')).toHaveLength(0)
+    expect(after.players[0].reinforcements.cruiser).toBe(crowded.players[0].reinforcements.cruiser + 1)
+    expect(owned(after, 'home-n', 0).filter(u => u.type === 'dreadnought')).toHaveLength(2)
+    expect(owned(after, 'home-n', 0).filter(u => u.type !== 'fighter')).toHaveLength(3)
+    expect(after.log.some(e => e.t === 'info' && e.text.includes('beyond the fleet pool'))).toBe(true)
+  })
   it('R4.1 step 5: a structure (PDS or space dock) on a planet counts as the attacker\'s presence for a retreat target', () => {
     const later = combat('bereg', ['dreadnought'], ['dreadnought'], 2)
     const withDock = withUnits(later, 'quann', 0, ['spacedock'], 'quann')
