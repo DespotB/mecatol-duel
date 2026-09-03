@@ -21,6 +21,7 @@ export const SYSTEMS: SystemDef[] = [
   { id: 'mecatol', name: 'Mecatol Rex', tile: '18_MR', planets: [{ id: 'mecatol-rex', name: 'Mecatol Rex', resources: 1, influence: 6 }], anomaly: null, wormhole: null, neighbours: ['home-n', 'bereg', 'quann', 'home-s', 'starpoint', 'sakulag'], home: null },
 ]
 
+export const MECATOL_ID = 'mecatol'
 export const SYSTEM_IDS: string[] = SYSTEMS.map(s => s.id)
 export const TRADE_POSTS = { west: ['sakulag', 'starpoint'], east: ['bereg', 'quann'] } as const
 

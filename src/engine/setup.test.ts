@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { unitStats } from '../data/units'
 import { ALL_STRATEGY_CARDS, GUARDIAN_FLEETS, createGame, rollGuardianFleet, unitsOf } from './setup'
+import { deepFreeze } from './testUtils'
 import type { GameConfig, UnitType } from './types'
 
 const config: GameConfig = {
@@ -71,5 +72,34 @@ describe('R4.2 guardian fleet', () => {
     expect(count(rerolled.systems.mecatol.planets[0].ground, 'infantry')).toBe(2)
     expect(a.guardianRolls).toBe(1)   // input not mutated
     void c
+  })
+  it('R4.2 keeps non-guardian ships and ground forces on Mecatol Rex when the fleet is rerolled', () => {
+    const g = createGame(config, 5)
+    const mecatol = g.systems.mecatol
+    const seatDestroyer = { id: g.nextUnitId, type: 'destroyer' as UnitType, owner: 0 as const, damaged: false }
+    const seatInfantry = { id: g.nextUnitId + 1, type: 'infantry' as UnitType, owner: 0 as const, damaged: false }
+    const withIntruders = {
+      ...g,
+      systems: {
+        ...g.systems,
+        mecatol: {
+          ...mecatol,
+          space: [...mecatol.space, seatDestroyer],
+          planets: [{ ...mecatol.planets[0], ground: [...mecatol.planets[0].ground, seatInfantry] }],
+        },
+      },
+    }
+    const rerolled = rollGuardianFleet(withIntruders, 42)
+    expect(rerolled.systems.mecatol.space).toContainEqual(seatDestroyer)
+    expect(rerolled.systems.mecatol.planets[0].ground).toContainEqual(seatInfantry)
+    const oldGuardianIds = new Set(mecatol.space.map(u => u.id))
+    expect(rerolled.systems.mecatol.space.filter(u => u.owner === 'guardian').some(u => oldGuardianIds.has(u.id))).toBe(false)
+    expect(count(rerolled.systems.mecatol.planets[0].ground, 'infantry')).toBe(3)   // 2 new guardians + the seat-0 infantry
+  })
+  it('rollGuardianFleet succeeds on a deep-frozen state', () => {
+    const g = deepFreeze(createGame(config, 1))
+    const rerolled = rollGuardianFleet(g, 2)
+    expect(rerolled.systems.mecatol.space.length).toBeGreaterThan(0)
+    expect(rerolled.systems.mecatol.space.every(u => u.owner === 'guardian')).toBe(true)
   })
 })

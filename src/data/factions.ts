@@ -1,7 +1,7 @@
 import type { FactionId, UnitType } from '../engine/types'
 
 export interface FactionDef {
-  id: FactionId; name: string; commodities: number
+  id: FactionId; name: string; commodityValue: number
   startingTechs: string[]
   startingUnits: { type: UnitType; count: number; planetId?: string }[]
   abilities: string[]
@@ -9,7 +9,7 @@ export interface FactionDef {
 
 export const FACTIONS: Record<FactionId, FactionDef> = {
   l1z1x: {
-    id: 'l1z1x', name: 'L1Z1X Mindnet', commodities: 2,
+    id: 'l1z1x', name: 'L1Z1X Mindnet', commodityValue: 2,
     startingTechs: ['neural_motivator', 'plasma_scoring'],
     startingUnits: [
       { type: 'dreadnought', count: 1 }, { type: 'carrier', count: 1 }, { type: 'fighter', count: 3 },
@@ -18,7 +18,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     abilities: ['assimilate', 'harrow'],
   },
   letnev: {
-    id: 'letnev', name: 'Barony of Letnev', commodities: 2,
+    id: 'letnev', name: 'Barony of Letnev', commodityValue: 2,
     startingTechs: ['antimass_deflectors', 'plasma_scoring'],
     startingUnits: [
       { type: 'dreadnought', count: 1 }, { type: 'carrier', count: 1 }, { type: 'destroyer', count: 1 }, { type: 'fighter', count: 1 },

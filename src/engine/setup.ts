@@ -1,14 +1,14 @@
 import { FACTIONS } from '../data/factions'
-import { SYSTEMS } from '../data/map'
+import { MECATOL_ID, SYSTEMS } from '../data/map'
 import { PUBLIC_OBJECTIVES } from '../data/objectives'
 import { mulberry32 } from './rng'
 import type { GameConfig, GameState, Owner, Planet, Player, Seat, StrategyCardId, System, Unit, UnitType } from './types'
 
 export const START_TOKENS = { tactic: 3, fleet: 3, strategy: 2 }
 export const ALL_STRATEGY_CARDS: StrategyCardId[] = ['leadership', 'diplomacy', 'trade', 'warfare', 'technology', 'imperial']
-export const REINFORCEMENTS: Record<UnitType, number> = { infantry: 12, fighter: 10, destroyer: 8, cruiser: 8, carrier: 4, dreadnought: 5, warsun: 2, flagship: 1, pds: 6, spacedock: 3 }
+export const REINFORCEMENTS: Readonly<Record<UnitType, number>> = { infantry: 12, fighter: 10, destroyer: 8, cruiser: 8, carrier: 4, dreadnought: 5, warsun: 2, flagship: 1, pds: 6, spacedock: 3 }
 
-export const GUARDIAN_FLEETS: Partial<Record<UnitType, number>>[] = [
+export const GUARDIAN_FLEETS: readonly Partial<Record<UnitType, number>>[] = [
   { dreadnought: 1, cruiser: 1, destroyer: 1, fighter: 2 },
   { dreadnought: 2 },
   { carrier: 1, cruiser: 1, destroyer: 2, fighter: 2 },
@@ -17,8 +17,8 @@ export const GUARDIAN_FLEETS: Partial<Record<UnitType, number>>[] = [
   { carrier: 1, dreadnought: 1, fighter: 2 },
 ]
 
-function makeUnit(state: { nextUnitId: number }, type: UnitType, owner: Owner): Unit {
-  return { id: state.nextUnitId++, type, owner, damaged: false }
+function makeUnit(counter: { nextUnitId: number }, type: UnitType, owner: Owner): Unit {
+  return { id: counter.nextUnitId++, type, owner, damaged: false }
 }
 
 function makePlayer(seat: Seat, cfg: GameConfig['players'][number]): Player {
@@ -27,7 +27,7 @@ function makePlayer(seat: Seat, cfg: GameConfig['players'][number]): Player {
   for (const su of f.startingUnits) reinforcements[su.type] -= su.count
   return {
     seat, faction: cfg.faction, color: cfg.color, name: cfg.name, vp: 0,
-    tokens: { ...START_TOKENS }, tradeGoods: 0, commodities: f.commodities,
+    tokens: { ...START_TOKENS }, tradeGoods: 0, commodities: f.commodityValue,
     techs: [...f.startingTechs], strategyCards: [], passed: false,
     scoredObjectives: [], mandateScored: false, mandateEarnedThisRound: false,
     spentInOneProductionThisRound: 0, tradedThisRound: { west: false, east: false },
@@ -73,16 +73,21 @@ export function rollGuardianFleet(state: GameState, seed: number): GameState {
   const rng = mulberry32(seed)
   const fleet = GUARDIAN_FLEETS[Math.floor(rng() * GUARDIAN_FLEETS.length)]
   const counter = { nextUnitId: state.nextUnitId }
-  const space: Unit[] = []
-  for (const [type, n] of Object.entries(fleet) as [UnitType, number][]) for (let i = 0; i < n; i++) space.push(makeUnit(counter, type, 'guardian'))
-  const mecatol = state.systems.mecatol
-  const planet = mecatol.planets[0]
-  const ground = [makeUnit(counter, 'infantry', 'guardian'), makeUnit(counter, 'infantry', 'guardian')]
+  const newGuardians: Unit[] = []
+  for (const [type, n] of Object.entries(fleet) as [UnitType, number][]) for (let i = 0; i < n; i++) newGuardians.push(makeUnit(counter, type, 'guardian'))
+  const mecatol = state.systems[MECATOL_ID]
+  const twoNewGuardianInfantry = [makeUnit(counter, 'infantry', 'guardian'), makeUnit(counter, 'infantry', 'guardian')]
+  const planets = mecatol.planets.map((p, i) => i === 0
+    ? { ...p, ground: [...p.ground.filter(u => u.owner !== 'guardian'), ...twoNewGuardianInfantry] }
+    : p)
   return {
     ...state,
     nextUnitId: counter.nextUnitId,
     guardianRolls: state.guardianRolls + 1,
-    systems: { ...state.systems, mecatol: { ...mecatol, space, planets: [{ ...planet, ground, owner: null }] } },
+    systems: {
+      ...state.systems,
+      [MECATOL_ID]: { ...mecatol, space: [...mecatol.space.filter(u => u.owner !== 'guardian'), ...newGuardians], planets },
+    },
     log: [...state.log, { t: 'info', text: `Guardian fleet: ${Object.entries(fleet).map(([t, n]) => `${n} ${t}`).join(', ')} and 2 infantry` }],
   }
 }
