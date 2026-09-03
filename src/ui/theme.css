@@ -62,15 +62,30 @@ button{font-family:inherit}
 .badge.res{color:#f6e3a1}
 .badge.inf{color:#fff}
 
-/* layout */
-.app{position:relative;width:1440px;height:900px;margin:0 auto}
-.topbar{position:absolute;left:0;top:0;width:1440px;height:118px;display:flex;align-items:center;padding:0 12px;gap:16px;
+/* layout
+   Every region is docked to a viewport edge and scales its contents with `zoom`, so the bars stay at the
+   top and the bottom and the columns at the sides however the window is sized or the browser zoomed.
+   The design coordinates stay 1440x900: `--k` (see useViewportScale.ts) is the zoom of the docked
+   regions and `--s` the extra zoom of the map inside the stage; at 1440x900 both are 1 and the rendered
+   layout is the authored one. A zoomed fixed box still resolves left/right/top/bottom against the
+   viewport, so `left:0;right:0` keeps spanning the full width while `height:118px` renders as 118*k. */
+.app{position:fixed;inset:0}
+.topbar{position:fixed;left:0;right:0;top:0;height:118px;zoom:var(--k);display:flex;align-items:center;padding:0 12px;gap:16px;
   background:linear-gradient(180deg,rgba(6,10,24,.92),rgba(6,10,24,.72));border-bottom:1px solid var(--hair);z-index:3}
-.bottombar{position:absolute;left:0;top:816px;width:1440px;height:84px;display:flex;align-items:center;padding:0 20px;gap:16px;
+.bottombar{position:fixed;left:0;right:0;bottom:0;height:84px;zoom:var(--k);display:flex;align-items:center;padding:0 20px;gap:16px;
   background:linear-gradient(180deg,rgba(6,10,24,.72),rgba(6,10,24,.94));border-top:1px solid var(--hair);z-index:3}
-.colL{position:absolute;left:8px;top:126px;width:234px;height:684px;z-index:2}
-.colR{position:absolute;left:1198px;top:126px;width:234px;height:684px;z-index:2}
-.map{position:absolute;left:250px;top:118px;width:940px;height:698px;z-index:1}
+/* bottom:90px keeps the authored 684px column height at the 1440x900 design size */
+.colL,.colR{position:fixed;top:126px;bottom:90px;width:234px;zoom:var(--k);z-index:2}
+.colL{left:8px}
+.colR{right:8px}
+/* a short viewport scrolls the panel instead of clipping it */
+.colL>.in,.colR>.in{overflow:auto}
+/* the centre stage: the board plus everything that overlays it, docked between the bars and columns */
+.stage{position:fixed;left:250px;right:250px;top:118px;bottom:84px;zoom:var(--k);
+  display:flex;align-items:center;justify-content:center;overflow:hidden;z-index:1}
+/* a grouping wrapper only; its dialogs position themselves against the stage */
+.stage>.flows-4b{display:contents}
+.map{position:relative;width:940px;height:698px;zoom:var(--s);z-index:1}
 .actions{display:flex;gap:10px;margin:0 auto}
 .hintbox{width:390px;text-align:right}
 .hintbox .h{font:500 13px/1.25 var(--body);color:#d8d2c2}
@@ -194,12 +209,13 @@ button{font-family:inherit}
 .post .station.west{background:linear-gradient(120deg,#3a475f,#9fb0c8 50%,#2d3850);clip-path:polygon(10% 50%,28% 22%,72% 22%,90% 50%,72% 78%,28% 78%)}
 .post .station.east{background:radial-gradient(circle at 40% 35%,#e8cf8a,#6b4a17 70%);border-radius:50%;clip-path:polygon(0 30%,100% 30%,100% 70%,0 70%)}
 
-/* drawers and dialogs */
-.scrim{position:absolute;left:0;top:118px;width:1440px;height:698px;background:rgba(3,5,12,.52);z-index:15}
-.drawer{position:absolute;left:250px;width:940px;z-index:20}
+/* drawers and dialogs — children of `.stage`, so every offset below is stage-relative, never page-relative */
+.scrim{position:absolute;inset:0;background:rgba(3,5,12,.52);z-index:15}
+.drawer{position:absolute;left:50%;transform:translateX(-50%);width:min(940px,100%);z-index:20}
 .drawer .in{padding:12px 16px 14px}
-.drawer.bottom{top:466px}
-.drawer.full{top:126px}
+.drawer.bottom{bottom:0;max-height:100%;overflow:auto}
+.drawer.full{top:8px;bottom:8px}
+.drawer.full>.in{display:flex;flex-direction:column;overflow:hidden}
 .dhead{display:flex;align-items:center;gap:14px;margin-bottom:10px}
 .dhead .sub{font:500 12px/1 var(--body);color:#d8d2c2}
 .dhead .sub b{color:var(--gold-hi);font-weight:600}
@@ -218,8 +234,11 @@ button{font-family:inherit}
 .pay{display:flex;align-items:center;gap:5px;height:26px;padding:0 9px 0 6px;border:1px solid var(--hair);background:rgba(0,0,0,.35);font:600 12px/1 var(--hud);color:#e9e4d6;cursor:pointer}
 .pay.on{border-color:var(--gold);background:rgba(201,162,77,.16);color:var(--gold-hi)}
 .pay:disabled{opacity:.45;cursor:default}
-.tcols{display:flex;gap:8px}
+.tcols{display:flex;gap:8px;max-width:100%;overflow-x:auto}
 .tcol{width:166px;flex:none;max-height:656px;overflow-y:auto;overflow-x:hidden}
+/* inside the full-height drawer the columns take the height they are given instead of a fixed cap */
+.drawer.full .tcols{flex:1;min-height:0}
+.drawer.full .tcol{max-height:100%}
 .tcol.units{width:210px}
 .tcol h4{margin:0 0 6px;display:flex;align-items:center;gap:6px;font:600 11px/1 var(--hud);letter-spacing:.08em;text-transform:uppercase;color:var(--gold)}
 .tc{position:relative;margin-bottom:6px;border:1px solid rgba(255,255,255,.10);background:#000;overflow:hidden;width:100%;padding:0;cursor:pointer}
@@ -229,11 +248,12 @@ button{font-family:inherit}
 .tc.now{border-color:var(--gold)}
 .tc.sel{border-color:var(--gold-hi);box-shadow:0 0 0 2px rgba(232,207,138,.55)}
 .tc.owned .cap{color:var(--gold-hi)}
-.dialog{position:absolute;left:370px;top:220px;width:700px;z-index:25}
+/* a dialog taller than the stage scrolls inside its frame rather than being clipped by it */
+.dialog{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(700px,calc(100% - 16px));max-height:100%;overflow:auto;z-index:25}
 .dialog .in{padding:14px 16px 16px}
 .rowline{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap}
 .overlay{position:fixed;inset:0;background:rgba(3,5,12,.94);z-index:40;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px}
-.logpanel{position:absolute;left:250px;top:126px;width:520px;height:640px;overflow:auto;z-index:30}
+.logpanel{position:absolute;left:0;top:8px;bottom:8px;width:min(520px,60%);overflow:auto;z-index:30}
 .logpanel .in{padding:12px 14px}
 .logline{font:500 12px/1.5 var(--body);color:#d8d2c2;border-bottom:1px solid rgba(201,162,77,.14);padding:2px 0}
 .logline.roll{color:var(--gold-hi)}
@@ -293,7 +313,7 @@ button{font-family:inherit}
 .sw.purple{background:#8a47c9}.sw.black{background:#2a2e36}.sw.orange{background:#e8842a}.sw.pink{background:#e067b0}
 .chosen{font:600 12px var(--hud);letter-spacing:.08em;text-transform:uppercase;color:#8fb4ff}
 /* error boundary */
-.crash{position:relative;width:1440px;min-height:900px;margin:0 auto;display:flex;align-items:center;justify-content:center;z-index:1}
+.crash{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:1}
 .crashbox{position:relative;z-index:1;width:640px}
 .crashbox .in{padding:28px 32px 30px;display:flex;flex-direction:column;align-items:flex-start;gap:16px}
 .crashbox .title{font-size:34px}
