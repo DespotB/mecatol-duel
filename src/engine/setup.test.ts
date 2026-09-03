@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { PUBLIC_OBJECTIVES } from '../data/objectives'
+import { POSTS, POST_IDS } from '../data/posts'
 import { unitStats } from '../data/units'
 import { ALL_STRATEGY_CARDS, GUARDIAN_FLEETS, OBJECTIVES_PER_GAME, createGame, rollGuardianFleet, unitsOf } from './setup'
 import { deepFreeze } from './testUtils'
@@ -54,6 +55,39 @@ describe('R2 setup', () => {
     const ids = [...unitsOf(g, 0), ...unitsOf(g, 1), ...unitsOf(g, 'guardian')].map(u => u.id)
     expect(new Set(ids).size).toBe(ids.length)
     expect(g.nextUnitId).toBe(Math.max(...ids) + 1)
+  })
+})
+
+describe('R8 trade posts', () => {
+  it('rolls two different posts, the same pair for the same seed', () => {
+    const a = createGame(config, 7)
+    const b = createGame(config, 7)
+    expect(POST_IDS).toContain(a.posts.west)
+    expect(POST_IDS).toContain(a.posts.east)
+    expect(a.posts.west).not.toBe(a.posts.east)
+    expect(b.posts).toEqual(a.posts)
+    expect(a.postAbilityUsed).toEqual({ west: false, east: false })
+  })
+  it('different seeds produce different pairs, and the roll is logged', () => {
+    const pairs = new Set<string>()
+    for (let seed = 1; seed <= 40; seed++) {
+      const g = createGame(config, seed)
+      expect(g.posts.west).not.toBe(g.posts.east)
+      pairs.add(`${g.posts.west}/${g.posts.east}`)
+      expect(g.log.some(e => e.t === 'info' && e.text.includes(POSTS[g.posts.west].name))).toBe(true)
+    }
+    expect(pairs.size).toBeGreaterThan(1)
+  })
+  it('every one of the six posts is reachable on both sides', () => {
+    const west = new Set<string>()
+    const east = new Set<string>()
+    for (let seed = 1; seed <= 400; seed++) {
+      const g = createGame(config, seed)
+      west.add(g.posts.west)
+      east.add(g.posts.east)
+    }
+    expect(west.size).toBe(POST_IDS.length)
+    expect(east.size).toBe(POST_IDS.length)
   })
 })
 

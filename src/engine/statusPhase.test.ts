@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { POST_IDS } from '../data/posts'
 import { applyMove, legalMoves } from './index'
 import { decideWinner, tokensGained } from './statusPhase'
 import { deepFreeze, toActionPhase, toStatusPhase, withExhausted, withPlanetOwner, withPlayer, withTechs } from './testUtils'
@@ -252,5 +253,40 @@ describe('R3.3 status phase', () => {
     expect(paying.params.score?.map(r => r.objectiveId)).toEqual(['pay_6_resources', 'pay_time_20'])
     for (const move of moves) expect(applyMove(s, move, 5).ok).toBe(true)
     expect(value(applyMove(s, paying, 5)).players[0].vp).toBe(2)
+  })
+  it('R8: every round brings two new posts, neither of them one of the round before', () => {
+    for (const seed of [1, 2, 3, 5, 8, 13, 21]) {
+      const before = toActionPhase(seed)
+      const done = bothSubmit(toStatusPhase(before))
+      expect(done.round).toBe(2)
+      expect(done.posts.west).not.toBe(done.posts.east)
+      expect([before.posts.west, before.posts.east]).not.toContain(done.posts.west)
+      expect([before.posts.west, before.posts.east]).not.toContain(done.posts.east)
+      // the pair is new, so an ability nobody took is simply gone and the fresh pair starts unused
+      expect(done.postAbilityUsed).toEqual({ west: false, east: false })
+      expect(done.log.filter(e => e.t === 'info' && e.text.startsWith('Trade posts:'))).toHaveLength(2)
+      // the roll is seeded, so the same game rolled again brings the same pair in the same round
+      expect(bothSubmit(toStatusPhase(before)).posts).toEqual(done.posts)
+    }
+  })
+  it('R8: a used ability does not carry into the next round, even on the same side', () => {
+    const before = toActionPhase(3)
+    const used = deepFreeze({ ...before, postAbilityUsed: { west: true, east: true } })
+    expect(bothSubmit(toStatusPhase(used)).postAbilityUsed).toEqual({ west: false, east: false })
+  })
+  it('R8: the excluded pair is the previous one, not a fixed two off the top of the list', () => {
+    const excluded = new Set<string>()
+    const arrived = new Set<string>()
+    // the status move carries its own seed in real play (the UI derives it from the move count), so the
+    // round-2 roll is varied here the same way; a fixed move seed would draw the same slots every game
+    for (let seed = 1; seed <= 30; seed++) {
+      const before = toActionPhase(seed)
+      const done = bothSubmit(toStatusPhase(before), 500 + seed)
+      excluded.add([before.posts.west, before.posts.east].sort().join('/'))
+      arrived.add(done.posts.west)
+      arrived.add(done.posts.east)
+    }
+    expect(excluded.size).toBeGreaterThan(1)          // different games sit out different pairs
+    expect(arrived.size).toBe(POST_IDS.length)        // and every post still arrives in some game's round 2
   })
 })

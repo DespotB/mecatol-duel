@@ -3,6 +3,7 @@ import { assignHits, combatRound, pendingFor, retreat } from './combat'
 import { research, shipyard, tradePost } from './componentActions'
 import { bombard, endInvasion, groundCombatRound, land } from './invasion'
 import { endMovement, moveShips } from './movement'
+import { postAbility } from './postAbilities'
 import { produce } from './production'
 import { secondary, strategic } from './strategicActions'
 import { status } from './statusPhase'
@@ -38,6 +39,7 @@ export function applyMove(state: GameState, move: Move, seed: number): Result<Ga
       case 'research': return research(logged, move.techId)
       case 'shipyard': return shipyard(logged, move.planetId, move.planets, move.tradeGoods)
       case 'tradePost': return tradePost(logged, move.post, move.commodities)
+      case 'postAbility': return postAbility(logged, move.post, move.params)
       case 'status': return status(logged, move.params, seed)
       default: {
         // every Move kind is dispatched above; this only runs for a malformed move from outside the type system
@@ -58,10 +60,11 @@ export type * from './types'
 // Read-only queries the UI derives its controls from. Re-exports only: no new logic, no behaviour change.
 export { ACTION_SPENT, activatableSystems, canPass, otherSeat } from './actionPhase'
 export { actingSeat, assignmentComplete, assignmentTargets, canMunitions, pendingFor, retreatTargets } from './combat'
-export { canInheritance, canShipyard, inheritanceTechs, shipyardPlanets, tradePostOptions } from './componentActions'
+export { canInheritance, canShipyard, inheritanceTechs, postDef, postLinked, shipyardPlanets, tradePostOptions } from './componentActions'
 export { capacity, cheapestPlanets, fleetPoolLimit, productionCost, productionLimit, readyInfluence, readyResources } from './economy'
 export { bombardablePlanets, groundCombatPending, landablePlanets } from './invasion'
 export { movableShips, movementObstacle, shipsThatCanReach } from './movement'
+export { CHARTER_TRADE_GOODS, TIME_TRADE_VP, postAbilityOptions, postAbilityReady } from './postAbilities'
 export type { MovementObstacle } from './movement'
 export { controlledPlanets, controlsMecatol, freeScoreable, paidScoreable, scoreable } from './objectives'
 export { PRODUCIBLE } from './production'

@@ -1,10 +1,11 @@
 import { ACTION_SPENT, activatableSystems, canPass } from './actionPhase'
 import { canMunitions, defaultAssignment, pendingFor, retreatTargets } from './combat'
-import { SHIPYARD_COST, canInheritance, canShipyard, inheritanceTechs, shipyardPlanets, tradePostOptions } from './componentActions'
+import { SHIPYARD_COST, canInheritance, canShipyard, inheritanceTechs, postDef, shipyardPlanets, tradePostOptions } from './componentActions'
 import { cheapestPayment, cheapestPlanets, payCost, productionCost, productionLimit, readyInfluence } from './economy'
 import { PRODUCIBLE } from './production'
 import { bombardablePlanets, groundCombatPending, landablePlanets } from './invasion'
 import { movableShips } from './movement'
+import { postAbilityOptions } from './postAbilities'
 import { fulfils, paidScoreable } from './objectives'
 import { researchable } from './research'
 import { FACTIONS } from '../data/factions'
@@ -141,6 +142,23 @@ function secondaryMoves(state: GameState, seat: Seat, card: StrategyCardId): Mov
 }
 
 /**
+ * R8: the free moves at the two posts, offered before and after the action alike. The sale takes as many
+ * commodities as the post in play allows; the special ability is offered with the first of the ready-made
+ * picks `postAbilityOptions` enumerates, every one of which the handler accepts as it is.
+ */
+function postMoves(state: GameState, seat: Seat): Move[] {
+  const out: Move[] = []
+  for (const post of tradePostOptions(state, seat)) {
+    out.push({ type: 'tradePost', post, commodities: Math.min(postDef(state, post).commodityLimit, state.players[seat].commodities) })
+  }
+  for (const post of ['west', 'east'] as const) {
+    const options = postAbilityOptions(state, seat, post)
+    if (options.length) out.push({ type: 'postAbility', post, params: options[0] })
+  }
+  return out
+}
+
+/**
  * R7: one payable request per paid objective the seat could score, priced in the order they are listed so a
  * second resource cost sees the planets the first one exhausted. An objective it cannot cover is left out.
  */
@@ -194,10 +212,7 @@ export function legalMoves(state: GameState): Move[] {
   // R3.2/R8: the action is spent but the turn is not over. Only the free moves and the handover are left:
   // no second action, and no `pass` either, because you pass instead of taking an action, never after one.
   if (state.turnDone) {
-    const spent: Move[] = [{ type: 'endTurn' }]
-    for (const post of tradePostOptions(state, seat)) {
-      spent.push({ type: 'tradePost', post, commodities: Math.min(2, state.players[seat].commodities) })
-    }
+    const spent: Move[] = [{ type: 'endTurn' }, ...postMoves(state, seat)]
     return spent
   }
   const out: Move[] = activatableSystems(state, seat).map(id => ({ type: 'startTactical', systemId: id }))
@@ -209,9 +224,7 @@ export function legalMoves(state: GameState): Move[] {
     const planets = cheapestPlanets(state, seat, SHIPYARD_COST) ?? []
     for (const planetId of shipyardPlanets(state, seat)) out.push({ type: 'shipyard', planetId, planets, tradeGoods: 0 })
   }
-  for (const post of tradePostOptions(state, seat)) {
-    out.push({ type: 'tradePost', post, commodities: Math.min(2, state.players[seat].commodities) })
-  }
+  out.push(...postMoves(state, seat))
   if (canPass(state, seat)) out.push({ type: 'pass' })
   return out
 }
@@ -246,6 +259,10 @@ function matches(candidate: Move, move: Move): boolean {
       return candidate.type === 'shipyard' && candidate.planetId === move.planetId
     case 'tradePost':
       return candidate.type === 'tradePost' && candidate.post === move.post
+    // R8: which ability it is follows from the post, so the side identifies the move; the parameters the
+    // interface fills in are checked by `postAbility`, the only place that knows what the ability needs
+    case 'postAbility':
+      return candidate.type === 'postAbility' && candidate.post === move.post
     default:
       // moveShips, produce, assignHits, status and the closing moves are identified by their kind alone; the
       // picks of an assignment are checked by its handler, which is the only place that knows the queue

@@ -146,9 +146,10 @@ export interface StatusParams {
 | `src/data/techs.ts` | technology ids, colours, prerequisites, effects flags |
 | `src/data/factions.ts` | starting units, techs, abilities flags |
 | `src/data/map.ts` | Bereg Standoff systems, planets, adjacency, wormholes, trade post links |
+| `src/data/posts.ts` | the six trade posts: name, model, commodity limit, ability and its wording |
 | `src/data/objectives.ts` | public objective ids, order and texts, the Mandate |
 | `src/engine/objectives.ts` | objective predicates, scoring and victory point bookkeeping |
-| `src/engine/setup.ts` | `createGame`, guardian fleet table |
+| `src/engine/setup.ts` | `createGame`, guardian fleet table, the trade post roll |
 | `src/engine/economy.ts` | cost, payment, production value, fleet pool and capacity checks |
 | `src/engine/strategyPhase.ts` | draft and initiative |
 | `src/engine/actionPhase.ts` | activation, passing, turn alternation |
@@ -158,8 +159,9 @@ export interface StatusParams {
 | `src/engine/invasion.ts` | bombardment, landing, ground combat, control change |
 | `src/engine/production.ts` | produce move |
 | `src/engine/strategicActions.ts` | six cards primary and secondary |
-| `src/engine/componentActions.ts` | Inheritance Systems research, emergency shipyard, trade posts |
-| `src/engine/statusPhase.ts` | one status move per player: scoring, token distribution, readying, guardian respawn, victory and round advance |
+| `src/engine/componentActions.ts` | Inheritance Systems research, emergency shipyard, the commodity sale at a trade post |
+| `src/engine/postAbilities.ts` | the special ability of each trade post and the picks the interface offers for it |
+| `src/engine/statusPhase.ts` | one status move per player: scoring, token distribution, readying, guardian respawn, trade post turnover, victory and round advance |
 | `src/engine/legalMoves.ts` | enumerator and `validateMove` |
 | `src/engine/index.ts` | `applyMove` dispatcher, re-exports, and the read-only query helpers the UI builds its controls from |
 

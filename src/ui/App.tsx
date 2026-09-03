@@ -10,6 +10,7 @@ import { UnknownGameScreen } from './screens/UnknownGameScreen'
 import type { GameConfig } from './store'
 import type { Move, StrategyCardId } from '../engine/types'
 import { ModelStyleProvider } from './modelStyle'
+import { MusicProvider } from './music'
 
 // Manual/visual QA only (e.g. a headless screenshot of the board): `?demo=1` skips setup and starts
 // a fixed hot-seat game straight into the action phase draft, seeded for a reproducible board.
@@ -37,6 +38,24 @@ function useDemoBootstrap() {
         resume(panel === 'handoff'
           ? { code: DEMO_CODE, seed: 1, minutes: 15, state: cardsUsed(state), history: [], clockMs: [900000, 900000], handoff: 1 }
           : { code: DEMO_CODE, seed: 1, minutes: 15, state, history: [], clockMs: [900000, 900000], handoff: null })
+        navigate(gamePath(DEMO_CODE))
+      })
+      return
+    }
+    // `&panel=crowded` is the placement check: Bereg holds a big mixed fleet with the infantry its
+    // carriers are still carrying (all of it belongs in space), Quann has a seat's infantry landed on the
+    // planet under a dock and a PDS, Starpoint is activated by both seats, and Mecatol keeps its guardians.
+    if (panel === 'crowded') {
+      void import('../engine/testUtils').then(({ toActionPhase, withPlanetOwner, withUnits }) => {
+        let state = toActionPhase(1, 0)
+        state = withUnits(state, 'bereg', 0,
+          ['flagship', 'warsun', 'dreadnought', 'dreadnought', 'carrier', 'carrier', 'cruiser', 'destroyer',
+            'fighter', 'fighter', 'fighter', 'fighter', 'infantry', 'infantry', 'infantry'])
+        state = withUnits(state, 'quann', 1, ['infantry', 'infantry', 'infantry', 'spacedock', 'pds'], 'quann')
+        state = withPlanetOwner(state, 'quann', 'quann', 1)
+        state = withUnits(state, 'quann', 1, ['carrier', 'destroyer', 'fighter'])
+        state = { ...state, systems: { ...state.systems, starpoint: { ...state.systems.starpoint, activatedBy: [0, 1] } } }
+        resume({ code: DEMO_CODE, seed: 1, minutes: 15, state, history: [], clockMs: [900000, 900000], handoff: null })
         navigate(gamePath(DEMO_CODE))
       })
       return
@@ -122,10 +141,12 @@ function Screens() {
 
 export default function App({ ticking = true }: { ticking?: boolean }) {
   return (
-    <ModelStyleProvider>
-      <GameProvider ticking={ticking}>
-        <Screens />
-      </GameProvider>
-    </ModelStyleProvider>
+    <MusicProvider>
+      <ModelStyleProvider>
+        <GameProvider ticking={ticking}>
+          <Screens />
+        </GameProvider>
+      </ModelStyleProvider>
+    </MusicProvider>
   )
 }

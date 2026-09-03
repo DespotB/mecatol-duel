@@ -58,6 +58,7 @@ function signature(move: Move): string {
   if (move.type === 'strategic') return `strategic:${move.card}`
   if (move.type === 'secondary') return `secondary:${move.card}:${move.accept ? 'accept' : 'decline'}`
   if (move.type === 'tradePost') return `tradePost:${move.post}`
+  if (move.type === 'postAbility') return `postAbility:${move.post}`
   if (move.type === 'status' && move.params.score?.length) return 'status:paid'
   return move.type
 }
@@ -205,9 +206,10 @@ describe('legal moves in every phase', () => {
 // The seeds past the Fibonacci run are coverage ballast: every rules or flow change reshuffles these
 // deterministic playthroughs, so the tail is retuned whenever one of them stops reaching a rare move kind.
 // Two sessions have retuned it on the same day, which is why the list is longer than it looks it should be.
-// 6 is the odd one in the middle: after the objectives became a drawn pool it was the only seed under 40 that
-// still reached a ground combat.
-const SEEDS: readonly number[] = [1, 2, 3, 5, 6, 8, 13, 21, 34, 40, 55, 71, 89]
+// 246 is the one seed off the end: merging the paid objectives into the trade post abilities reshuffled every
+// playthrough again and the tail lost both `bombard` and `groundCombatRound`. Of the seeds 1 to 250 it is the
+// only one that still reaches both, which is why one large number replaces the two the merge invalidated.
+const SEEDS: readonly number[] = [1, 2, 3, 5, 8, 13, 21, 34, 40, 55, 71, 89, 246]
 const RUNS = new Map<number, GameRun>()
 
 /** The smoke games are shared by the tests below, so each seed is actually played only once. */
@@ -222,7 +224,7 @@ function runGame(seed: number): GameRun {
 const ALL_MOVE_TYPES: readonly Move['type'][] = [
   'pickStrategyCard', 'startTactical', 'moveShips', 'endMovement', 'combatRound', 'assignHits', 'retreat', 'bombard',
   'land', 'groundCombatRound', 'endInvasion', 'produce', 'endTactical', 'endTurn', 'strategic', 'secondary', 'research',
-  'shipyard', 'tradePost', 'pass', 'status',
+  'shipyard', 'tradePost', 'postAbility', 'pass', 'status',
 ]
 const ALL_CARDS: readonly StrategyCardId[] = ['leadership', 'diplomacy', 'trade', 'warfare', 'technology', 'imperial']
 
@@ -239,6 +241,8 @@ const COUNTERS: readonly [string, RegExp][] = [
   ['commodities sold at a post', /sells \d+ commodities at the (west|east) post/],
   ['guardian fleet rolled', /^Guardian fleet:/],
   ['technology researched', /^seat \d researches /],
+  ['trade posts rolled', /^Trade posts: /],
+  ['a post ability used', /^seat \d uses .+ at the (west|east) post/],
 ]
 
 describe('R3.1 to R3.3 full game', () => {
@@ -316,3 +320,4 @@ describe('R3.1 to R3.3 full game', () => {
     }
   })
 })
+

@@ -3,11 +3,17 @@ import { otherSeat } from './actionPhase'
 import { distributeTokens, payCost } from './economy'
 import { addVp, controlledPlanets, controlsMecatol, freeScoreable, fulfils, scoreObjective } from './objectives'
 import { deriveSeed } from './rng'
-import { ALL_STRATEGY_CARDS, rollGuardianFleet } from './setup'
+import { ALL_STRATEGY_CARDS, postRollEntry, rollGuardianFleet, rollPosts } from './setup'
 import type { GameState, Result, ScoreRequest, Seat, StatusParams, System } from './types'
 
 // R3.3 step 5 / R4.2: seed salt for the status-phase guardian reroll, kept distinct from other seeded rolls
 const GUARDIAN_REROLL_SALT = 91
+/**
+ * R8: the trade posts turn over every round, so the status phase rolls a new pair in the same step. The salt
+ * carries the round that is starting (2 to 6, so the salts are 102 to 106) and is therefore disjoint both
+ * from the guardian reroll's 91 on the same seed and from every other round's post roll.
+ */
+const POSTS_ROUND_SALT_BASE = 100
 
 /** R3.3 step 3: two command tokens, three with Hyper Metabolism. */
 export function tokensGained(state: GameState, seat: Seat): number {
@@ -113,7 +119,15 @@ export function finishStatusPhase(state: GameState, seed: number): GameState {
   // R3.3 step 6 and R3.1: the speaker token moves on and the next round drafts anew
   const speaker = otherSeat(next.speaker)
   const other = otherSeat(speaker)
-  return { ...next, round: next.round + 1, phase: 'strategy', speaker, active: speaker, draft: [speaker, other, other, speaker] }
+  // R8: the round starting here gets two new posts, drawn from the four that were not in play. They are new
+  // posts, so the ability nobody took is gone with them and the fresh pair starts unused.
+  const round = next.round + 1
+  const posts = rollPosts(deriveSeed(seed, POSTS_ROUND_SALT_BASE + round), [next.posts.west, next.posts.east])
+  return {
+    ...next, round, phase: 'strategy', speaker, active: speaker, draft: [speaker, other, other, speaker],
+    posts, postAbilityUsed: { west: false, east: false },
+    log: [...next.log, { t: 'info', text: postRollEntry(posts) }],
+  }
 }
 
 // R3.3: the status phase normally opens with `active === speaker` (set by `pass()` on the action phase's last

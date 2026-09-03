@@ -15,6 +15,7 @@ import '../setup.css'
 import type { CSSProperties, ReactElement } from 'react'
 import type { Color, FactionId, Seat, UnitType } from '../../engine/types'
 import { SpaceBackdrop } from '../SpaceBackdrop'
+import { MusicButton } from '../music'
 
 const COLOURS: Color[] = ['red', 'blue', 'green', 'yellow', 'purple', 'black', 'orange', 'pink']
 const COLOUR_NAMES: Record<Color, string> = {
@@ -384,6 +385,7 @@ export function SetupScreen() {
                   ))}
                 </div>
                 <div className="sub">Your own view, this browser only. Online, each player picks their own.</div>
+                <div className="stylepick"><MusicButton className="btn ghost sm" /></div>
               </div>
             </div>
             <div className="cell" data-testid="setup-target">
@@ -410,6 +412,7 @@ export function SetupScreen() {
 
       <p className="legal" data-testid="setup-legal">
         Fan project. Twilight Imperium and its artwork belong to Fantasy Flight Games. Unit, tile and card images via AsyncTI4.
+        {' '}Music by Kevin MacLeod (incompetech.com), licensed under Creative Commons By Attribution 4.0.
       </p>
     </div>
   )

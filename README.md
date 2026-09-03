@@ -1,32 +1,100 @@
-# React + TypeScript + Vite
+# Mecatol Duel
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A two-player distillation of *Twilight Imperium 4*, played in a browser. Seven hexes, two factions, a chess
+clock, about thirty minutes. The rules are the real ones wherever they fit two players and a short evening,
+and the pieces are the real miniatures, rendered.
 
-Currently, two official plugins are available:
+**Play it: [mecatol-duel.vercel.app](https://mecatol-duel.vercel.app)**
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+![The board in play](docs/img/board.png)
 
-## React Compiler
+## The game
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+L1Z1X Mindnet in the north against the Barony of Letnev in the south, with Mecatol Rex in the middle behind a
+neutral guardian fleet. Both sides start with their printed fleet, their printed technologies and their own
+home planets.
 
-## Expanding the Oxlint configuration
+A round runs the way it does in Twilight Imperium:
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+1. **Strategy phase.** A snake draft over six strategy cards. Cards nobody takes collect a trade good and
+   pay it to whoever picks them up next round.
+2. **Action phase.** Players alternate. A turn is one tactical action, one strategic action, one component
+   action, or a pass. A tactical action activates a system, moves ships into it, fights, invades and
+   produces, in that order.
+3. **Status phase.** Score what you fulfilled, hand out command tokens, ready your planets, reveal the next
+   objective.
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+Seven victory points win it. If nobody gets there, the higher score after round six does.
+
+**Victory points come from** six public objectives drawn from a pool at setup, one revealed per round, two
+of which cost something to score (six resources, or a fifth of the time left on your clock), plus two
+cards that are in play from the first round: *First Strike*, a race for a single point that goes to whoever
+first wins a space combat at Mecatol Rex, and *Foothold*, the secret both players hold, worth a point for
+taking a planet in the opponent's home system. Holding Mecatol Rex is worth a point in every status phase.
+
+**What is cut:** action cards, promissory notes, the agenda phase and secret objectives. **What is added:**
+neutral trade posts outside the map that turn commodities into trade goods, an emergency shipyard, and a
+guardian fleet on Mecatol Rex worth eight resources that has to be beaten before the centre is anyone's.
+
+The complete rules are in [`docs/spec/game-rules.md`](docs/spec/game-rules.md), and the game itself has a
+rules page under the menu.
+
+## Playing
+
+![The lobby](docs/img/lobby.png)
+
+- **Hot-seat** on one device: pass the tablet, the clock changes hands with it.
+- **Saved games** live in the browser, several at a time, each under a six-character code.
+- **Unit art** is the viewer's own choice: the miniatures at a three quarter angle, the same models seen
+  straight from above, or the flat Async TI counters. Online, each player picks their own.
+- **A soundtrack** of three tracks in rotation, switched off in the lobby or in the game menu.
+- Online play over a shared code is specified in [`docs/spec/online-play.md`](docs/spec/online-play.md) and
+  is the next thing being built.
+
+## How it is built
+
+The rules live in a pure TypeScript engine that knows nothing about React, the DOM or time. Everything the
+interface can do goes through two functions:
+
+```ts
+legalMoves(state)            // every move that is legal right now
+applyMove(state, move, seed) // a new state, or an error explaining the refusal
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+That shape is what makes the game testable and what will make it safe over a network: the interface never
+decides what is allowed, it only offers what the engine already listed. Randomness is seeded and every die
+roll is logged, so a game replays from its own move log, and the same seed always produces the same map, the
+same guardian fleet and the same objective order.
+
+| Path | What is in it |
+| --- | --- |
+| `src/engine/` | The rules: movement, combat, invasion, production, strategy cards, objectives, phases |
+| `src/data/` | The map, the factions, the units, the technology tree, the objectives, the trade posts |
+| `src/ui/` | React on top: board, panels, flows, lobby, persistence |
+| `docs/spec/` | The binding specification the engine is written against |
+| `tools/render/` | The renderer that turns the 3D models into the sprite sets |
+
+## Development
+
+```bash
+npm install
+npm run dev      # the game on localhost
+npm test         # the whole suite
+npm run lint     # oxlint
+npx tsc -p tsconfig.app.json --noEmit
+```
+
+Rules for every change are in [`CLAUDE.md`](CLAUDE.md). The short version: small commits, one per logical
+step, conventional messages in English, and `npm test`, the type check and the lint clean before anything
+that touches `src/` is committed. The specification in `docs/spec/` is the authority; when a rule changes,
+it changes there first.
+
+Pushing to `main` deploys to Vercel.
+
+## Credits
+
+A fan project, not affiliated with anyone. *Twilight Imperium* and its artwork belong to Fantasy Flight
+Games. Unit, tile and card images come from the [AsyncTI4 map generator](https://github.com/AsyncTI4/TI4_map_generator_bot),
+the 3D unit models from the Tabletop Playground community port, and the music is by Kevin MacLeod
+(incompetech.com), licensed under Creative Commons By Attribution 4.0. Full music credits are in
+[`public/audio/CREDITS.md`](public/audio/CREDITS.md).

@@ -1,3 +1,5 @@
+import type { PostId } from '../data/posts'
+
 // `internal` marks an error that came out of a thrown exception rather than a rules rejection: an engine bug,
 // never a legal-move question. Callers may treat it as fatal.
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string; internal?: boolean }
@@ -64,7 +66,7 @@ export interface InvasionState { planetId: string | null; landed: number[]; bomb
 export interface DieRoll { owner: Owner; unit: UnitType; value: number; hit: boolean }
 export interface GameState {
   /** Bumped whenever the shape changes so much that a saved game cannot be read any more. */
-  version: 2
+  version: 3
   round: number; phase: Phase
   speaker: Seat; active: Seat
   strategyPool: { id: StrategyCardId; bonus: number }[]   // unpicked cards with trade goods
@@ -80,6 +82,10 @@ export interface GameState {
   turnDone: boolean
   pendingSecondary: StrategyCardId | null                // opponent may respond
   statusSubmitted: Seat[]                                // seats whose status move is in; the phase closes at two
+  // R8: the two posts in play this round, rolled at setup and again in every status phase from the four that
+  // were not in play, and whether their special ability is spent — once per round for the whole table
+  posts: { west: PostId; east: PostId }
+  postAbilityUsed: { west: boolean; east: boolean }
   nextUnitId: number
   guardianRolls: number
   winner: Seat | null
@@ -107,6 +113,7 @@ export type Move =
   | { type: 'research'; techId: string; via: 'inheritance' }   // component action; the Technology card carries its technologies in StrategicParams
   | { type: 'shipyard'; planetId: string; planets: string[]; tradeGoods: number }
   | { type: 'tradePost'; post: 'west' | 'east'; commodities: number }
+  | { type: 'postAbility'; post: 'west' | 'east'; params: PostAbilityParams }   // R8: the post's own ability, a free move like the sale
   | { type: 'pass' }
   | { type: 'status'; params: StatusParams }             // one move per player: token distribution, then the engine finishes the phase when both are in
 export interface StrategicParams {
@@ -127,6 +134,19 @@ export interface StatusParams {
 }
 /** R7: one entry of `StatusParams.score`: the objective to buy, and the planets and trade goods that buy it. */
 export type ScoreRequest = NonNullable<StatusParams['score']>[number]
+
+/**
+ * R8: the parameters of a `postAbility` move. Which of them matter is decided by the ability of the post
+ * actually in play on that side, never by which fields the caller filled in.
+ */
+export interface PostAbilityParams {
+  techId?: string; takeTechId?: string                 // techExchange: the one returned, the one taken
+  planet?: string; pays?: 'resources' | 'influence'    // clearingHouse: the one planet exhausted and which value it pays
+  pool?: 'tactic' | 'fleet' | 'strategy'               // charter, layover
+  give?: number[]                                      // refit: the unit ids returned
+  take?: Partial<Record<UnitType, number>>             // refit: the units taken, the shape `produce` uses
+  // timeTrade needs no parameters: the victory point is the engine's, the clock is the interface's
+}
 
 export interface UnitStats {
   cost: number; producedPerCost: number
