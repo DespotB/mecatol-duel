@@ -40,6 +40,14 @@ const MIN_STAGE_H = 380
 const S_MIN = 0.5
 const S_MAX = 2
 
+/**
+ * The two default sizes, calibrated by playing rather than by arithmetic: the board reads best at what a
+ * browser shows at 125 percent and the lobby at what it shows at 80, so those are what the page renders at
+ * 100. A browser zoom multiplies on top of this, which is what the player expects it to do.
+ */
+const BOARD_ZOOM = 1.25
+const LOBBY_TRIM = 0.8
+
 function clamp(min: number, value: number, max: number): number {
   return Math.min(max, Math.max(min, value))
 }
@@ -50,7 +58,12 @@ function round3(value: number): number {
 }
 
 export function viewportScale(width: number, height: number): ViewportScale {
-  const k = round3(clamp(K_MIN, Math.min(width / (GUTTERS + MIN_STAGE_W), height / (BARS + MIN_STAGE_H)), K_MAX))
+  // the layout is solved for the viewport a 125 percent zoom would report, then everything is magnified by
+  // that factor again: exactly what the browser does at 125 percent, which is the size this board wants
+  const w = width / BOARD_ZOOM
+  const h = height / BOARD_ZOOM
+  const base = clamp(K_MIN, Math.min(w / (GUTTERS + MIN_STAGE_W), h / (BARS + MIN_STAGE_H)), K_MAX)
+  const k = round3(base * BOARD_ZOOM)
   // the stage's own size in design pixels, i.e. after `k` has been applied to the regions around it
   const stageW = width / k - GUTTERS
   const stageH = height / k - BARS
@@ -71,7 +84,8 @@ const FIT_MAX = 2
  * bottom edge, which is what the design was drawn for.
  */
 export function fitScale(width: number, height: number): number {
-  return round3(clamp(FIT_MIN, Math.min(width / PAGE_W, height / PAGE_H), FIT_MAX))
+  const fill = Math.min(width / PAGE_W, height / PAGE_H)
+  return round3(clamp(FIT_MIN, fill * LOBBY_TRIM, FIT_MAX))
 }
 
 /**
