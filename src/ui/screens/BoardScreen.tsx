@@ -32,6 +32,7 @@ const HINTS: Record<string, string> = {
   strategy: 'Strategy phase. Choose a strategy card.',
   status: 'Status phase. Distribute your new command tokens.',
   idle: 'Choose an action.',
+  spent: 'Your action is spent. Trade at a post or end your turn.',
 }
 
 export function BoardScreen() {
@@ -54,7 +55,11 @@ export function BoardScreen() {
   // R3.2: activating a system your ships cannot enter is legal but usually a mistake, so the board says so
   // before the click rather than the movement panel saying it afterwards
   const outOfReach = selectable.filter(id => shipsThatCanReach(state, state.active, id).length === 0)
-  const hint = drafting ? HINTS.strategy : state.phase === 'status' ? HINTS.status : HINTS[mode ?? 'idle']
+  // R3.2: with the action spent the bar has only two things left to say, whichever panel happens to be open
+  const hint = drafting ? HINTS.strategy
+    : state.phase === 'status' ? HINTS.status
+      : state.turnDone ? HINTS.spent
+        : HINTS[mode ?? 'idle']
   // R4.4: production needs a space dock of your own in the activated system, so `productionLimit` is 0
   // everywhere else. Without one there is nothing to decide at the end of the action, and the drawer would
   // only ask the player to confirm an empty production, so the turn simply ends.
