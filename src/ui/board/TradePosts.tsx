@@ -1,12 +1,38 @@
 import { TRADE_POSTS } from '../../data/map'
 import { POSTS } from '../../data/posts'
 import { systemLabel } from '../format'
-import { POST_ART_H, POST_ART_W, POST_H, POST_POS, POST_W } from '../layout'
+import { MAP_H, MAP_W, POST_ART_H, POST_ART_W, POST_H, POST_POS, POST_W, lanePath, postAnchor } from '../layout'
 import type { GameState, Seat } from '../../engine/types'
 
 /** R8: the sale needs a planet of yours in one of the two systems the post serves. */
 export function postInReach(state: GameState, seat: Seat, post: 'west' | 'east'): boolean {
   return TRADE_POSTS[post].some(id => state.systems[id].planets.some(p => p.owner === seat))
+}
+
+/**
+ * R8: the hyperlanes, one per link, drawn as a layer behind the tiles so each lane runs out of its post and
+ * disappears under the hexagon it plugs into. A lane whose system the acting seat holds a planet in is lit,
+ * which is what makes the rule readable without opening a panel: those are the posts you can trade at.
+ */
+export function TradeLanes({ state, seat }: { state: GameState; seat: Seat }) {
+  return (
+    <svg className="lanes" viewBox={`0 0 ${String(MAP_W)} ${String(MAP_H)}`} aria-hidden="true" data-testid="trade-lanes">
+      {(['west', 'east'] as const).flatMap(post => {
+        const anchor = postAnchor(post)
+        return TRADE_POSTS[post].map(systemId => {
+          const lit = state.systems[systemId].planets.some(p => p.owner === seat)
+          const d = lanePath(post, systemId)
+          return (
+            <g key={`${post}-${systemId}`} className={`lane${lit ? ' lit' : ''}`} data-testid={`lane-${post}-${systemId}`}>
+              <path className="glow" d={d} />
+              <path className="line" d={d} />
+              <circle cx={anchor.left} cy={anchor.top} r={3} />
+            </g>
+          )
+        })
+      })}
+    </svg>
+  )
 }
 
 function stateLine(state: GameState, seat: Seat, post: 'west' | 'east'): string {

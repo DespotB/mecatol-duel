@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+// the map box is declared once, in the layout the board is drawn from, so the two cannot drift apart
+import { MAP_H, MAP_W } from './layout'
 
 /**
  * The HUD is authored in a 1440x900 coordinate system: a 118px top bar, an 84px bottom bar, two 234px
@@ -21,8 +23,6 @@ export interface ViewportScale {
   s: number
 }
 
-const MAP_W = 940
-const MAP_H = 698
 /** the two 250px gutters the side columns live in */
 const GUTTERS = 500
 /** the 118px top bar plus the 84px bottom bar */

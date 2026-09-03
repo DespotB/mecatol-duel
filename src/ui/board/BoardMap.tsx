@@ -1,6 +1,6 @@
 import { SYSTEMS } from '../../data/map'
 import { Tile } from './Tile'
-import { TradePosts } from './TradePosts'
+import { TradeLanes, TradePosts } from './TradePosts'
 import type { GameState } from '../../engine/types'
 
 export interface BoardMapProps {
@@ -15,6 +15,8 @@ export interface BoardMapProps {
 export function BoardMap({ state, activeSystemId = null, selectable = [], outOfReach = [], onSelect }: BoardMapProps) {
   return (
     <div className="map" data-testid="board-map">
+      {/* R8: behind the tiles, so a lane ends under the hexagon it serves rather than on top of it */}
+      <TradeLanes state={state} seat={state.active} />
       {SYSTEMS.map(def => (
         <Tile
           key={def.id} state={state} system={state.systems[def.id]}

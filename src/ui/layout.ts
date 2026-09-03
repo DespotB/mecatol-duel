@@ -1,3 +1,6 @@
+/** The map box every position below is authored in; `useViewportScale` zooms it, it never changes size. */
+export const MAP_W = 940
+export const MAP_H = 698
 export const TILE_W = 232
 export const TILE_H = 201
 export interface Point { left: number; top: number }
@@ -147,7 +150,7 @@ export const POST_W = 172
 export const POST_H = 302
 export const POST_POS: Record<'west' | 'east', Point> = {
   west: { left: 4, top: 198 },
-  east: { left: 940 - 4 - POST_W, top: 198 },
+  east: { left: MAP_W - 4 - POST_W, top: 198 },
 }
 /** The model box inside the panel; the render is letterboxed into it, so every post keeps its own ratio. */
 export const POST_ART_W = 160

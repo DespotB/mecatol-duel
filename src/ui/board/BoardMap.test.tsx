@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { TRADE_POSTS } from '../../data/map'
 import { toActionPhase, withPlanetOwner } from '../../engine/testUtils'
 import { BoardMap } from './BoardMap'
 import type { PostId } from '../../data/posts'
@@ -134,6 +135,24 @@ describe('the board', () => {
     rerender(<BoardMap state={{ ...reachable, postAbilityUsed: { west: true, east: false } }} />)
     expect(screen.getByTestId('post-used-west').textContent).toBe('Ability used this round')
     expect(screen.queryByTestId('post-used-east')).toBeNull()
+  })
+
+  it('R8: a hyperlane runs from each post to both systems it serves', () => {
+    render(<BoardMap state={state} />)
+    for (const [post, systems] of Object.entries(TRADE_POSTS)) {
+      for (const systemId of systems) {
+        const lane = screen.getByTestId(`lane-${post}-${systemId}`)
+        expect(lane.querySelectorAll('path').length, `${post}-${systemId}`).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  it('R8: only the lane of a system the acting seat holds a planet in is lit', () => {
+    render(<BoardMap state={withPlanetOwner(state, 'starpoint', 'starpoint', 0)} />)
+    expect(screen.getByTestId('lane-west-starpoint').getAttribute('class')).toContain('lit')
+    for (const id of ['lane-west-sakulag', 'lane-east-bereg', 'lane-east-quann']) {
+      expect(screen.getByTestId(id).getAttribute('class'), id).not.toContain('lit')
+    }
   })
 
   it('shows a played command token per seat with a token on the system, and none on an idle system', () => {
