@@ -1,3 +1,5 @@
+import type { PostId } from '../data/posts'
+
 // `internal` marks an error that came out of a thrown exception rather than a rules rejection: an engine bug,
 // never a legal-move question. Callers may treat it as fatal.
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string; internal?: boolean }
@@ -80,6 +82,10 @@ export interface GameState {
   turnDone: boolean
   pendingSecondary: StrategyCardId | null                // opponent may respond
   statusSubmitted: Seat[]                                // seats whose status move is in; the phase closes at two
+  // R8: the two posts in play this round, rolled at setup and again in every status phase from the four that
+  // were not in play, and whether their special ability is spent — once per round for the whole table
+  posts: { west: PostId; east: PostId }
+  postAbilityUsed: { west: boolean; east: boolean }
   nextUnitId: number
   guardianRolls: number
   winner: Seat | null
