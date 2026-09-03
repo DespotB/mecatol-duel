@@ -5,7 +5,7 @@
  * so the three cannot drift apart.
  */
 export type PostId = 'sarnex' | 'tessik' | 'orrun' | 'kesh' | 'vandel' | 'dromm'
-export type PostAbility = 'none' | 'techExchange' | 'clearingHouse' | 'charter' | 'layover' | 'refit'
+export type PostAbility = 'timeTrade' | 'techExchange' | 'clearingHouse' | 'charter' | 'layover' | 'refit'
 
 export interface PostDef {
   id: PostId
@@ -14,7 +14,6 @@ export interface PostDef {
   /** How many commodities the post buys in one sale; 4 at the Sarnex Wheel, 2 everywhere else. */
   commodityLimit: number
   ability: PostAbility
-  /** Empty at the Sarnex Wheel, which has no special ability. */
   abilityName: string
   /** One sentence, short enough for the card under the model and the same wording the rules page uses. */
   abilityText: string
@@ -23,9 +22,9 @@ export interface PostDef {
 
 export const POSTS: Record<PostId, PostDef> = {
   sarnex: {
-    id: 'sarnex', name: 'Sarnex Wheel', kind: 'station', commodityLimit: 4,
-    ability: 'none', abilityName: '',
-    abilityText: 'No special ability: the ring simply buys twice as deep as any other post.',
+    id: 'sarnex', name: 'Sarnex Time Machine Wheel', kind: 'station', commodityLimit: 4,
+    ability: 'timeTrade', abilityName: 'Time trade',
+    abilityText: 'Pay half the time left on your chess clock, rounded down to the second, and take 1 victory point.',
     art: '/assets/posts/sarnex.png',
   },
   tessik: {
@@ -37,7 +36,7 @@ export const POSTS: Record<PostId, PostDef> = {
   orrun: {
     id: 'orrun', name: 'Orrun Port Authority', kind: 'station', commodityLimit: 2,
     ability: 'clearingHouse', abilityName: 'Clearing house',
-    abilityText: 'Exhaust ready planets and take one trade good per resource or influence spent, up to 3.',
+    abilityText: 'Exhaust one ready planet and take one trade good per resource or per influence it prints, your choice.',
     art: '/assets/posts/orrun.png',
   },
   kesh: {
@@ -55,7 +54,7 @@ export const POSTS: Record<PostId, PostDef> = {
   dromm: {
     id: 'dromm', name: 'Dromm Heavy Hauler', kind: 'ship', commodityLimit: 2,
     ability: 'refit', abilityName: 'Refit',
-    abilityText: 'Return ships in a linked system and take one from your reinforcements that costs no more.',
+    abilityText: 'Return ships in a linked system and take ships from your reinforcements of no greater total cost.',
     art: '/assets/posts/dromm.png',
   },
 }

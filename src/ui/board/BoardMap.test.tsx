@@ -100,11 +100,11 @@ describe('the board', () => {
   it('R8: both trade posts sit outside the map, each drawn as the post the state rolled', () => {
     render(<BoardMap state={withPosts(state, 'sarnex', 'tessik')} />)
     const west = screen.getByTestId('post-west')
-    expect(west.textContent).toContain('Sarnex Wheel')
+    expect(west.textContent).toContain('Sarnex Time Machine Wheel')
+    // R8: the Sarnex Wheel is the one post that buys four commodities in a sale
     expect(west.textContent).toContain('4 commodities for 4 trade goods')
     expect(screen.getByTestId('post-art-west').getAttribute('src')).toBe('/assets/posts/sarnex.png')
-    // R8: the Sarnex Wheel is the one post without a special ability, and the card says so
-    expect(screen.getByTestId('post-ability-west').textContent).toBe('No special ability')
+    expect(screen.getByTestId('post-ability-west').textContent).toBe('Time trade')
     const east = screen.getByTestId('post-east')
     expect(east.textContent).toContain('Tessik Refinery')
     expect(east.textContent).toContain('2 commodities for 2 trade goods')

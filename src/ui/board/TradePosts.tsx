@@ -69,8 +69,8 @@ export function TradePosts({ state, seat }: { state: GameState; seat: Seat }) {
                 <span className="nm">{def.name}</span>
                 <div className="trade">{def.commodityLimit} commodities for {def.commodityLimit} trade goods</div>
                 <div className="ability">
-                  <b data-testid={`post-ability-${post}`}>{def.abilityName === '' ? 'No special ability' : def.abilityName}</b>
-                  {def.ability === 'none' ? null : <span className="txt">{def.abilityText}</span>}
+                  <b data-testid={`post-ability-${post}`}>{def.abilityName}</b>
+                  <span className="txt">{def.abilityText}</span>
                 </div>
                 {used ? <span className="usedline" data-testid={`post-used-${post}`}>Ability used this round</span> : null}
                 <span className={`chip ${reachable ? 'gold' : 'lock'}`} data-testid={`post-state-${post}`}>

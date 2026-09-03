@@ -130,10 +130,11 @@ export interface StatusParams { tokens: { tactic: number; fleet: number; strateg
 
 /** R8: the parameters of a post's special ability; every ability reads only the fields it needs. */
 export interface PostAbilityParams {
-  techId?: string; takeTechId?: string              // techExchange: the technology given and the one taken
-  planets?: string[]; influencePlanets?: string[]   // clearingHouse: planets paying resources, planets paying influence
-  pool?: 'tactic' | 'fleet' | 'strategy'            // charter, layover
-  give?: number[]; take?: UnitType                  // refit: the unit ids returned and the unit type taken
+  techId?: string; takeTechId?: string                 // techExchange: the technology given and the one taken
+  planet?: string; pay?: 'resources' | 'influence'     // clearingHouse: the one planet exhausted and what it pays with
+  pool?: 'tactic' | 'fleet' | 'strategy'               // charter, layover
+  give?: number[]                                      // refit: the unit ids returned
+  take?: Partial<Record<UnitType, number>>             // refit: the ships taken, the shape production already uses
 }
 
 export interface UnitStats {

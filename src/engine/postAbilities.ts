@@ -1,12 +1,14 @@
 import { TRADE_POSTS } from '../data/map'
 import { POSTS } from '../data/posts'
 import { TECHS, findTech } from '../data/techs'
-import { unitStats } from '../data/units'
+import { SHIP_TYPES, unitStats } from '../data/units'
 import { checkFleet } from './board'
 import { turnReady } from './componentActions'
 import { exhaustPlanets } from './economy'
+import { addVp } from './objectives'
 import type { PostDef } from '../data/posts'
 import type { TechDef } from '../data/techs'
+import type { StatsOwner } from '../data/units'
 import type { GameState, PostAbilityParams, Result, Seat, TechColor, Unit, UnitType } from './types'
 
 /** R8: the post in play on that side this round. */
@@ -22,14 +24,13 @@ function tier(prereq: Partial<Record<TechColor, number>>): number {
 /**
  * R8: the shared preconditions of every special ability. They are the ones the commodity sale already has
  * (your own turn, no tactical action, no open secondary window, not passed, a planet in a linked system),
- * plus the two that are the ability's own: the post has one, and nobody at the table has taken it this round.
+ * plus the one that is the ability's own: nobody at the table has taken it this round.
  */
 function abilityReady(state: GameState, post: 'west' | 'east'): Result<Seat> {
   const ready = turnReady(state)
   if (!ready.ok) return ready
   const seat = ready.value
   const def = postDef(state, post)
-  if (def.ability === 'none') return { ok: false, error: `R8: the ${def.name} has no special ability` }
   if (state.postAbilityUsed[post]) return { ok: false, error: `R8: the ${def.name} ability is used this round` }
   if (!TRADE_POSTS[post].some(id => state.systems[id].planets.some(p => p.owner === seat))) {
     return { ok: false, error: `R8: no planet controlled in a system linked to the ${post} post` }
@@ -53,16 +54,31 @@ export function exchangeTargets(state: GameState, seat: Seat, techId: string): s
     .map(t => t.id)
 }
 
-function ships(state: GameState, seat: Seat, systemId: string): Unit[] {
-  return state.systems[systemId].space.filter(u => u.owner === seat && u.type !== 'fighter' && u.type !== 'infantry')
+/**
+ * R8, Dromm Heavy Hauler: what a ship is worth in a refit. A fighter costs 1 for 2, so it is worth half a
+ * cost and a dreadnought is worth eight of them; that is what "counts fighters at their real value" means.
+ */
+export function refitValue(type: UnitType, stats: StatsOwner): number {
+  const printed = unitStats(type, stats)
+  return printed.cost / printed.producedPerCost
 }
 
-const REFIT_TAKES: readonly UnitType[] = ['destroyer', 'cruiser', 'carrier', 'dreadnought', 'flagship', 'warsun']
+/** R8: a refit moves ships, never infantry, which is no ship. */
+export const REFIT_TYPES: readonly UnitType[] = SHIP_TYPES
+
+function refitShips(state: GameState, seat: Seat, systemId: string): Unit[] {
+  return state.systems[systemId].space.filter(u => u.owner === seat && REFIT_TYPES.includes(u.type))
+}
+
+function statsOf(state: GameState, seat: Seat): StatsOwner {
+  const player = state.players[seat]
+  return { faction: player.faction, techs: player.techs }
+}
 
 /**
  * R8: what the seat could legally do at that post right now, in the shape the UI needs. It is an offer list,
- * not an enumeration of every combination: the clearing house and the refit take a set of planets or ships,
- * and the panel builds those from the state, so one playable representative per choice is enough.
+ * not an enumeration of every combination: the refit takes a set of ships on each side and the panel builds
+ * those from the state, so one playable representative per choice is enough there.
  */
 export function postAbilityOptions(state: GameState, seat: Seat, post: 'west' | 'east'): PostAbilityParams[] {
   const ready = abilityReady(state, post)
@@ -70,6 +86,9 @@ export function postAbilityOptions(state: GameState, seat: Seat, post: 'west' | 
   const player = state.players[seat]
   const out: PostAbilityParams[] = []
   switch (postDef(state, post).ability) {
+    case 'timeTrade':
+      // the clock is the UI's business, so there is nothing to choose and nothing that can make it illegal
+      return [{}]
     case 'techExchange':
       for (const techId of player.techs) {
         for (const takeTechId of exchangeTargets(state, seat, techId)) out.push({ techId, takeTechId })
@@ -79,8 +98,8 @@ export function postAbilityOptions(state: GameState, seat: Seat, post: 'west' | 
       for (const sys of Object.values(state.systems)) {
         for (const p of sys.planets) {
           if (p.owner !== seat || p.exhausted) continue
-          if (p.resources >= 1 && p.resources <= 3) out.push({ planets: [p.id], influencePlanets: [] })
-          if (p.influence >= 1 && p.influence <= 3) out.push({ planets: [], influencePlanets: [p.id] })
+          if (p.resources >= 1) out.push({ planet: p.id, pay: 'resources' })
+          if (p.influence >= 1) out.push({ planet: p.id, pay: 'influence' })
         }
       }
       return out
@@ -88,21 +107,19 @@ export function postAbilityOptions(state: GameState, seat: Seat, post: 'west' | 
     case 'layover':
       return (['tactic', 'fleet', 'strategy'] as const).filter(pool => player.tokens[pool] >= 1).map(pool => ({ pool }))
     case 'refit': {
-      const stats = { faction: player.faction, techs: player.techs }
+      const stats = statsOf(state, seat)
       for (const systemId of TRADE_POSTS[post]) {
-        for (const ship of ships(state, seat, systemId)) {
-          const budget = unitStats(ship.type, stats).cost
-          for (const take of REFIT_TAKES) {
+        for (const ship of refitShips(state, seat, systemId)) {
+          const budget = refitValue(ship.type, stats)
+          for (const take of REFIT_TYPES) {
             if (player.reinforcements[take] < 1) continue
-            if (unitStats(take, stats).cost > budget) continue
-            out.push({ give: [ship.id], take })
+            if (refitValue(take, stats) > budget) continue
+            out.push({ give: [ship.id], take: { [take]: 1 } })
           }
         }
       }
       return out
     }
-    default:
-      return []
   }
 }
 
@@ -117,27 +134,14 @@ function techExchange(state: GameState, seat: Seat, params: PostAbilityParams): 
   return { ok: true, value: { ...state, players } }
 }
 
-const CLEARING_HOUSE_CAP = 3
-
+/** R8, Orrun Port Authority: exactly one ready planet, paying either its resources or its influence. */
 function clearingHouse(state: GameState, seat: Seat, params: PostAbilityParams): Result<GameState> {
-  const forResources = params.planets ?? []
-  const forInfluence = params.influencePlanets ?? []
-  if (forResources.some(id => forInfluence.includes(id))) {
-    return { ok: false, error: 'R8: a planet pays either its resources or its influence, never both' }
-  }
-  const both = [...forResources, ...forInfluence]
-  if (both.length === 0) return { ok: false, error: 'R8: exhaust at least one ready planet' }
-  const exhausted = exhaustPlanets(state, seat, both)
+  const { planet, pay } = params
+  if (!planet || !pay) return { ok: false, error: 'R8: name one ready planet and whether it pays resources or influence' }
+  const exhausted = exhaustPlanets(state, seat, [planet])
   if (!exhausted.ok) return exhausted
-  let gained = 0
-  for (const sys of Object.values(state.systems)) {
-    for (const p of sys.planets) {
-      if (forResources.includes(p.id)) gained += p.resources
-      if (forInfluence.includes(p.id)) gained += p.influence
-    }
-  }
-  if (gained < 1) return { ok: false, error: 'R8: that pays nothing' }
-  if (gained > CLEARING_HOUSE_CAP) return { ok: false, error: `R8: at most ${String(CLEARING_HOUSE_CAP)} trade goods` }
+  const gained = pay === 'resources' ? exhausted.value.resources : exhausted.value.influence
+  if (gained < 1) return { ok: false, error: `R8: ${planet} prints no ${pay}` }
   const players = [...exhausted.value.state.players] as GameState['players']
   players[seat] = { ...players[seat], tradeGoods: players[seat].tradeGoods + gained }
   return { ok: true, value: { ...exhausted.value.state, players } }
@@ -164,30 +168,49 @@ function charter(state: GameState, seat: Seat, params: PostAbilityParams): Resul
   return { ok: true, value: { ...returned.value, players } }
 }
 
+/**
+ * R8, Sarnex Time Machine Wheel: one victory point. The engine is time-free, so the price is charged by the
+ * UI against that seat's chess clock; the point itself is granted here like any other, which is what keeps a
+ * replay of the move log reproducing the score without knowing anything about clocks.
+ */
+function timeTrade(state: GameState, seat: Seat): Result<GameState> {
+  return { ok: true, value: addVp(state, seat, 1, 'time trade at the Sarnex Time Machine Wheel') }
+}
+
+/** R8, Dromm Heavy Hauler: many for many, as long as the total cost taken is not the larger one. */
 function refit(state: GameState, seat: Seat, post: 'west' | 'east', params: PostAbilityParams): Result<GameState> {
   const give = params.give ?? []
-  const take = params.take
-  if (give.length === 0 || !take) return { ok: false, error: 'R8: name the ships returned and the ship taken' }
-  if (!REFIT_TAKES.includes(take)) return { ok: false, error: 'R8: fighters and infantry cannot be part of a refit' }
-  const systemId = TRADE_POSTS[post].find(id => give.every(unitId => ships(state, seat, id).some(u => u.id === unitId)))
+  const take = params.take ?? {}
+  const taken = (Object.entries(take) as [UnitType, number][]).filter(([, n]) => n > 0)
+  if (give.length === 0 || taken.length === 0) return { ok: false, error: 'R8: name the ships returned and the ships taken' }
+  const systemId = TRADE_POSTS[post].find(id => give.every(unitId => refitShips(state, seat, id).some(u => u.id === unitId)))
   if (!systemId) return { ok: false, error: `R8: return ships of yours from one system linked to the ${post} post` }
   const player = state.players[seat]
-  const stats = { faction: player.faction, techs: player.techs }
+  const stats = statsOf(state, seat)
+  for (const [type, n] of taken) {
+    if (!REFIT_TYPES.includes(type)) return { ok: false, error: `R8: ${type} is no ship, so it cannot be part of a refit` }
+    if (player.reinforcements[type] < n) return { ok: false, error: `R8: not enough ${type} in the reinforcements` }
+  }
   const sys = state.systems[systemId]
   const returned = sys.space.filter(u => give.includes(u.id))
-  const budget = returned.reduce((sum, u) => sum + unitStats(u.type, stats).cost, 0)
-  if (unitStats(take, stats).cost > budget) return { ok: false, error: 'R8: the new ship may not cost more than what you returned' }
-  if (player.reinforcements[take] < 1) return { ok: false, error: `R8: no ${take} in the reinforcements` }
-  const built: Unit = { id: state.nextUnitId, type: take, owner: seat, damaged: false }
-  const players = [...state.players] as GameState['players']
-  const reinforcements = { ...player.reinforcements, [take]: player.reinforcements[take] - 1 }
+  const budget = returned.reduce((sum, u) => sum + refitValue(u.type, stats), 0)
+  const price = taken.reduce((sum, [type, n]) => sum + refitValue(type, stats) * n, 0)
+  if (price > budget) return { ok: false, error: 'R8: the new ships may not cost more than what you returned' }
+  let nextUnitId = state.nextUnitId
+  const built: Unit[] = []
+  const reinforcements = { ...player.reinforcements }
+  for (const [type, n] of taken) {
+    reinforcements[type] -= n
+    for (let i = 0; i < n; i++) built.push({ id: nextUnitId++, type, owner: seat, damaged: false })
+  }
   for (const u of returned) reinforcements[u.type] += 1
+  const players = [...state.players] as GameState['players']
   players[seat] = { ...player, reinforcements }
   const next: GameState = {
-    ...state, players, nextUnitId: state.nextUnitId + 1,
-    systems: { ...state.systems, [systemId]: { ...sys, space: [...sys.space.filter(u => !give.includes(u.id)), built] } },
+    ...state, players, nextUnitId,
+    systems: { ...state.systems, [systemId]: { ...sys, space: [...sys.space.filter(u => !give.includes(u.id)), ...built] } },
   }
-  // R4.2: the refit may not put more non-fighter ships into the system than the fleet pool allows
+  // R4.2: a refit may not leave the system over its capacity or its fleet pool
   const fleet = checkFleet(next, seat, systemId)
   if (!fleet.ok) return fleet
   return { ok: true, value: next }
@@ -201,13 +224,13 @@ export function postAbility(state: GameState, post: 'west' | 'east', params: Pos
   const def = postDef(state, post)
   let done: Result<GameState>
   switch (def.ability) {
+    case 'timeTrade': done = timeTrade(state, seat); break
     case 'techExchange': done = techExchange(state, seat, params); break
     case 'clearingHouse': done = clearingHouse(state, seat, params); break
     case 'charter': done = charter(state, seat, params); break
     // R8: the engine is time-free, so the layover only spends the token; the UI adds the three minutes
     case 'layover': done = returnToken(state, seat, params); break
     case 'refit': done = refit(state, seat, post, params); break
-    default: return { ok: false, error: `R8: the ${def.name} has no special ability` }
   }
   if (!done.ok) return done
   return {
