@@ -1,8 +1,9 @@
 // src/engine/objectives.test.ts
 import { describe, expect, it } from 'vitest'
-import { MANDATE } from '../data/objectives'
+import { FIRST_STRIKE, FOOTHOLD, PUBLIC_OBJECTIVES } from '../data/objectives'
+import { createGame } from './setup'
 import { addVp, controlsMecatol, fulfils, scoreObjective, scoreable } from './objectives'
-import { deepFreeze, toActionPhase, withPlanetOwner, withPlayer, withTechs, withUnits } from './testUtils'
+import { DUEL_CONFIG, deepFreeze, toActionPhase, withPlanetOwner, withPlayer, withUnits } from './testUtils'
 import type { GameState } from './types'
 
 /** Gives seat 0 the four neutral ring planets used by the control objectives. */
@@ -14,61 +15,84 @@ function withRing(state: GameState): GameState {
 }
 
 describe('R7 objectives', () => {
-  it('R7 objective 1: own 3 technologies, the two starting technologies count', () => {
+  it('R7: win a space combat against your opponent, a guardian fleet does not count', () => {
     const s = toActionPhase()
-    expect(s.players[0].techs).toHaveLength(2)
-    expect(fulfils(s, 0, 'own_3_techs')).toBe(false)
-    expect(fulfils(withTechs(s, 0, ['sarween_tools']), 0, 'own_3_techs')).toBe(true)
+    expect(fulfils(s, 0, 'win_space_combat')).toBe(false)
+    expect(fulfils(withPlayer(s, 0, { spaceCombatWins: 1 }), 0, 'win_space_combat')).toBe(true)
   })
-  it('R7 objective 2: control 4 planets outside your home system', () => {
+  it('R7: control 4 planets outside your home system', () => {
     const s = toActionPhase()
     expect(fulfils(withPlanetOwner(withRing(s), 'sakulag', 'sakulag', null), 0, 'control_4_outside_home')).toBe(false)
     expect(fulfils(withRing(s), 0, 'control_4_outside_home')).toBe(true)
     expect(fulfils(withRing(s), 1, 'control_4_outside_home')).toBe(false)
   })
-  it('R7 objective 3: 3 or more non-fighter ships in the Mecatol Rex system', () => {
+  it('R7: spend 6 resources in a single round, however they were spent', () => {
     const s = toActionPhase()
-    expect(fulfils(withUnits(s, 'mecatol', 0, ['cruiser', 'destroyer', 'fighter', 'fighter']), 0, 'three_ships_mecatol')).toBe(false)
-    expect(fulfils(withUnits(s, 'mecatol', 0, ['cruiser', 'destroyer', 'carrier']), 0, 'three_ships_mecatol')).toBe(true)
+    expect(fulfils(withPlayer(s, 0, { resourcesSpentThisRound: 5 }), 0, 'spend_6_resources')).toBe(false)
+    expect(fulfils(withPlayer(s, 0, { resourcesSpentThisRound: 6 }), 0, 'spend_6_resources')).toBe(true)
   })
-  it('R7 objective 4: 6 resources spent in a single production this round', () => {
+  it('R7: trade three times, at the posts or with the opponent', () => {
     const s = toActionPhase()
-    expect(fulfils(withPlayer(s, 0, { spentInOneProductionThisRound: 5 }), 0, 'spend_6_production')).toBe(false)
-    expect(fulfils(withPlayer(s, 0, { spentInOneProductionThisRound: 6 }), 0, 'spend_6_production')).toBe(true)
+    expect(fulfils(withPlayer(s, 0, { trades: 2 }), 0, 'trade_three_times')).toBe(false)
+    expect(fulfils(withPlayer(s, 0, { trades: 3 }), 0, 'trade_three_times')).toBe(true)
   })
-  it('R7 objective 5: control 5 planets, home planets included', () => {
-    const s = withRing(toActionPhase())
-    expect(fulfils(s, 0, 'control_5_planets')).toBe(true)          // [0.0.0] plus the four ring planets
-    expect(fulfils(withPlanetOwner(s, 'quann', 'quann', null), 0, 'control_5_planets')).toBe(false)
-  })
-  it('R7 objective 6: two technologies of the same colour, unit upgrades have no colour', () => {
+  it('R7: have more ships on the board than your opponent, every ship type counts', () => {
     const s = toActionPhase()
-    expect(fulfils(s, 0, 'two_techs_same_colour')).toBe(false)      // one green, one red
-    expect(fulfils(withTechs(s, 0, ['fighter_ii', 'carrier_ii']), 0, 'two_techs_same_colour')).toBe(false)
-    expect(fulfils(withTechs(s, 0, ['dacxive_animators']), 0, 'two_techs_same_colour')).toBe(true)
+    expect(fulfils(s, 0, 'more_ships')).toBe(true)                                   // 5 against 4 at setup
+    expect(fulfils(s, 1, 'more_ships')).toBe(false)
+    expect(fulfils(withUnits(s, 'bereg', 1, ['fighter', 'fighter']), 1, 'more_ships')).toBe(true)
+    // a tie is not "more"
+    expect(fulfils(withUnits(s, 'bereg', 1, ['fighter']), 0, 'more_ships')).toBe(false)
   })
-  it('R7 Mandate: earned by a won space combat this round, unknown ids are false', () => {
+  it('R7 First Strike: the first space combat won in Mecatol Rex takes the point, and only that one', () => {
     const s = toActionPhase()
-    expect(fulfils(s, 0, MANDATE.id)).toBe(false)
-    expect(fulfils(withPlayer(s, 0, { mandateEarnedThisRound: true }), 0, MANDATE.id)).toBe(true)
+    expect(fulfils(s, 0, FIRST_STRIKE.id)).toBe(false)
+    const claimed = deepFreeze({ ...s, mecatolCombatWinner: 0 as const })
+    expect(fulfils(claimed, 0, FIRST_STRIKE.id)).toBe(true)
+    expect(fulfils(claimed, 1, FIRST_STRIKE.id)).toBe(false)
+  })
+  it('R7 Foothold: a planet taken in the opponent home system, one for each player', () => {
+    const s = toActionPhase()
+    expect(fulfils(s, 0, FOOTHOLD.id)).toBe(false)
+    expect(fulfils(withPlanetOwner(s, 'home-s', 'wren-terra', 0), 0, FOOTHOLD.id)).toBe(true)
+    expect(fulfils(withPlanetOwner(s, 'home-n', '000', 1), 1, FOOTHOLD.id)).toBe(true)
     expect(fulfils(s, 0, 'no_such_objective')).toBe(false)
   })
-  it('R7: scoreable lists revealed, fulfilled and unscored objectives plus the Mandate', () => {
-    const s = withPlayer(withTechs(toActionPhase(), 0, ['sarween_tools']), 0, { mandateEarnedThisRound: true })
-    expect(s.publicObjectives).toEqual(['own_3_techs'])
-    expect(scoreable(s, 0)).toEqual(['own_3_techs', MANDATE.id])
-    expect(scoreable(withPlayer(s, 0, { scoredObjectives: ['own_3_techs'], mandateScored: true }), 0)).toEqual([])
+  it('R7: the pool is shuffled per game and one objective is revealed at setup', () => {
+    const ids = PUBLIC_OBJECTIVES.map(o => o.id).sort()
+    const orders = [1, 2, 3, 4, 5, 6, 7, 8].map(seed => createGame(DUEL_CONFIG, seed).objectiveOrder)
+    for (const order of orders) {
+      expect([...order].sort()).toEqual(ids)
+      expect(order).toHaveLength(PUBLIC_OBJECTIVES.length)
+    }
+    expect(new Set(orders.map(o => o.join(','))).size).toBeGreaterThan(1)
+    const game = createGame(DUEL_CONFIG, 7)
+    expect(game.publicObjectives).toEqual([game.objectiveOrder[0]])
+  })
+  it('R7: scoreable lists revealed, fulfilled and unscored objectives plus both mandates', () => {
+    const base = toActionPhase()
+    const revealed = base.publicObjectives[0]
+    const s = deepFreeze({
+      ...withPlayer(base, 0, { spaceCombatWins: 1, trades: 3, resourcesSpentThisRound: 6 }),
+      mecatolCombatWinner: 0 as const,
+      publicObjectives: ['win_space_combat', 'trade_three_times'],
+    })
+    expect(revealed).toBeTruthy()
+    expect(scoreable(s, 0)).toEqual(['win_space_combat', 'trade_three_times', FIRST_STRIKE.id])
+    expect(scoreable(withPlayer(s, 0, {
+      scoredObjectives: ['win_space_combat', 'trade_three_times'], scoredMandates: [FIRST_STRIKE.id],
+    }), 0)).toEqual([])
     expect(scoreable(s, 1)).toEqual([])
   })
   it('R7: scoring records the objective and adds one victory point', () => {
-    const s = deepFreeze(toActionPhase())
-    const scored = scoreObjective(s, 0, 'own_3_techs')
+    const s = deepFreeze({ ...toActionPhase(), publicObjectives: ['win_space_combat'] })
+    const scored = scoreObjective(s, 0, 'win_space_combat')
     expect(scored.players[0].vp).toBe(1)
-    expect(scored.players[0].scoredObjectives).toEqual(['own_3_techs'])
-    const mandate = scoreObjective(scored, 0, MANDATE.id)
+    expect(scored.players[0].scoredObjectives).toEqual(['win_space_combat'])
+    const mandate = scoreObjective(scored, 0, FOOTHOLD.id)
     expect(mandate.players[0].vp).toBe(2)
-    expect(mandate.players[0].mandateScored).toBe(true)
-    expect(mandate.players[0].scoredObjectives).toEqual(['own_3_techs'])
+    expect(mandate.players[0].scoredMandates).toEqual([FOOTHOLD.id])
+    expect(mandate.players[0].scoredObjectives).toEqual(['win_space_combat'])
     expect(addVp(mandate, 0, 1, 'Mecatol Rex').players[0].vp).toBe(3)
     expect(s.players[0].vp).toBe(0)                                // input not mutated
   })

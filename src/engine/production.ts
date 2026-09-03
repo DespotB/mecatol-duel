@@ -57,7 +57,7 @@ export function produce(state: GameState, units: Partial<Record<UnitType, number
     }
     me = { ...me, reinforcements: { ...me.reinforcements, [type]: me.reinforcements[type] - n } }
   }
-  players[seat] = { ...me, spentInOneProductionThisRound: Math.max(me.spentInOneProductionThisRound, cost) }
+  players[seat] = me
   const sys = paid.value.systems[tac.systemId]
   const log = [...paid.value.log, { t: 'info' as const, text: `seat ${seat} produces ${total} units for ${cost}` }]
   if (trimmedFighters) log.push({ t: 'info' as const, text: `${trimmedFighters} fighters exceed the capacity and are not produced` })

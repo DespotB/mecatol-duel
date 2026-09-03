@@ -34,8 +34,10 @@ export interface Player {
   techs: string[]                  // tech ids from data/techs.ts
   strategyCards: { id: StrategyCardId; used: boolean }[]
   passed: boolean
-  scoredObjectives: string[]; mandateScored: boolean; mandateEarnedThisRound: boolean
-  spentInOneProductionThisRound: number
+  scoredObjectives: string[]; scoredMandates: string[]
+  resourcesSpentThisRound: number        // R7: the "spend 6 resources" objective counts a whole round
+  spaceCombatWins: number                // R7: space combats won against the opponent, guardians excluded
+  trades: number                         // R7: trade post uses plus trades with the opponent, over the game
   tradedThisRound: { west: boolean; east: boolean }
   inheritanceExhausted: boolean; shipyardUsed: boolean
   pendingInfantry: number          // R4.3 step 4: Infantry II waiting to return at the start of your next turn
@@ -61,12 +63,15 @@ export interface CombatState {
 export interface InvasionState { planetId: string | null; landed: number[]; bombarded: string[]; round: number }
 export interface DieRoll { owner: Owner; unit: UnitType; value: number; hit: boolean }
 export interface GameState {
-  version: 1
+  /** Bumped whenever the shape changes so much that a saved game cannot be read any more. */
+  version: 2
   round: number; phase: Phase
   speaker: Seat; active: Seat
   strategyPool: { id: StrategyCardId; bonus: number }[]   // unpicked cards with trade goods
   draft: Seat[]                                          // remaining pick order in the strategy phase
-  publicObjectives: string[]                             // revealed ids
+  publicObjectives: string[]                             // revealed ids, in the order they were revealed
+  objectiveOrder: string[]                               // R7: the shuffled pool, one revealed per round
+  mecatolCombatWinner: Seat | null                       // R7 First Strike: the race is over once this is set
   players: [Player, Player]
   systems: Record<string, System>
   tactical: TacticalContext | null

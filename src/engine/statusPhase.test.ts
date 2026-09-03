@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { applyMove } from './index'
 import { decideWinner, tokensGained } from './statusPhase'
-import { deepFreeze, toActionPhase, toStatusPhase, withPlanetOwner, withPlayer, withTechs, withUnits } from './testUtils'
+import { deepFreeze, toActionPhase, toStatusPhase, withPlanetOwner, withPlayer, withTechs } from './testUtils'
 import type { GameState, Result, StatusParams } from './types'
 
 const value = (r: Result<GameState>): GameState => {
@@ -34,21 +34,26 @@ describe('R3.3 status phase', () => {
     expect(submit(hyper, plain(6)).ok).toBe(true)                    // 11, three tokens
     expect(submit(hyper, plain(5)).ok).toBe(false)
   })
-  it('R3.3 step 1: fulfilled objectives, the Mandate and Mecatol Rex score, each only once', () => {
-    let s = withTechs(toActionPhase(), 0, ['sarween_tools'])
-    s = withPlayer(s, 0, { mandateEarnedThisRound: true })
+  it('R3.3 step 1: fulfilled objectives, the mandates and Mecatol Rex score, each only once', () => {
+    // a pool of one keeps the second status phase from revealing something that is already fulfilled
+    let s: GameState = {
+      ...toActionPhase(), publicObjectives: ['win_space_combat'],
+      objectiveOrder: ['win_space_combat'], mecatolCombatWinner: 0,
+    }
+    s = withPlayer(s, 0, { spaceCombatWins: 1 })
     s = withPlanetOwner(s, 'mecatol', 'mecatol-rex', 0)
     const done = bothSubmit(toStatusPhase(s))
-    expect(done.players[0].vp).toBe(3)                               // objective 1, Mandate, Mecatol Rex
-    expect(done.players[0].scoredObjectives).toEqual(['own_3_techs'])
-    expect(done.players[0].mandateScored).toBe(true)
+    expect(done.players[0].vp).toBe(3)                               // the objective, First Strike, Mecatol Rex
+    expect(done.players[0].scoredObjectives).toEqual(['win_space_combat'])
+    expect(done.players[0].scoredMandates).toEqual(['first_strike'])
     expect(done.players[1].vp).toBe(0)
     const second = bothSubmit(toStatusPhase({ ...done, phase: 'action' }))
     expect(second.players[0].vp).toBe(4)                             // only Mecatol Rex again
   })
-  it('R3.3 step 2: the next objective is revealed in rounds 1 to 5, none after round 6', () => {
-    const done = bothSubmit(toStatusPhase(toActionPhase()))
-    expect(done.publicObjectives).toEqual(['own_3_techs', 'control_4_outside_home'])
+  it('R3.3 step 2: the next objective off the shuffled pool is revealed, none once it runs out', () => {
+    const start = toActionPhase()
+    const done = bothSubmit(toStatusPhase(start))
+    expect(done.publicObjectives).toEqual([start.objectiveOrder[0], start.objectiveOrder[1]])
     expect(done.round).toBe(2)
     const late = bothSubmit(toStatusPhase({ ...toActionPhase(), round: 6, publicObjectives: ['a', 'b', 'c', 'd', 'e', 'f'] }))
     expect(late.publicObjectives).toHaveLength(6)
@@ -60,8 +65,8 @@ describe('R3.3 status phase', () => {
       ...base,
       players: [
         {
-          ...base.players[0], inheritanceExhausted: true, spentInOneProductionThisRound: 8, tradedThisRound: { west: true, east: true },
-          passed: true, mandateEarnedThisRound: true, mandateScored: true, scoredObjectives: ['own_3_techs'], shipyardUsed: true,
+          ...base.players[0], inheritanceExhausted: true, resourcesSpentThisRound: 8, tradedThisRound: { west: true, east: true },
+          passed: true, scoredMandates: ['first_strike'], scoredObjectives: ['win_space_combat'], shipyardUsed: true,
         },
         { ...base.players[1], passed: true },
       ] as GameState['players'],
@@ -70,9 +75,9 @@ describe('R3.3 status phase', () => {
     const done = bothSubmit(toStatusPhase(dirty))
     expect(done.systems.bereg.activatedBy).toEqual([])
     expect(done.systems.bereg.planets.every(p => !p.exhausted)).toBe(true)
-    expect(done.players[0]).toMatchObject({ inheritanceExhausted: false, spentInOneProductionThisRound: 0, passed: false, mandateEarnedThisRound: false, tradedThisRound: { west: false, east: false } })
+    expect(done.players[0]).toMatchObject({ inheritanceExhausted: false, resourcesSpentThisRound: 0, passed: false, tradedThisRound: { west: false, east: false } })
     // these are once-per-game (or once-ever) flags, not per-round state: the reset must leave them untouched
-    expect(done.players[0]).toMatchObject({ mandateScored: true, scoredObjectives: ['own_3_techs'], shipyardUsed: true })
+    expect(done.players[0]).toMatchObject({ scoredMandates: ['first_strike'], scoredObjectives: ['win_space_combat'], shipyardUsed: true })
     expect(done.players.every(p => p.strategyCards.length === 0)).toBe(true)
     // R3.1: warfare, leadership, imperial and technology were played and come back at 0; the two unpicked
     // cards keep the trade good each of them collected at the end of the draft
@@ -124,11 +129,11 @@ describe('R3.3 status phase', () => {
   })
   it('R7: both players reach 7 VP in the same status phase through real submissions, tie-break decides', () => {
     let s = withPlayer(toActionPhase(), 0, { vp: 6 })
-    s = withPlayer(s, 1, { vp: 6, mandateEarnedThisRound: true })
+    s = { ...withPlayer(s, 1, { vp: 6 }), mecatolCombatWinner: 1 }
     s = withPlanetOwner(s, 'mecatol', 'mecatol-rex', 0)                // player 0's own scoreAll() call scores this
     const done = bothSubmit(toStatusPhase(s))
     expect(done.players[0].vp).toBe(7)                                // 6 + 1 for Mecatol Rex
-    expect(done.players[1].vp).toBe(7)                                // 6 + 1 for the Mandate
+    expect(done.players[1].vp).toBe(7)                                // 6 + 1 for First Strike
     expect(done.phase).toBe('ended')
     expect(done.winner).toBe(0)                                       // tied at 7, decided by the Mecatol Rex controller
   })
@@ -175,12 +180,11 @@ describe('R3.3 status phase', () => {
     expect(second.phase).toBe('strategy')
     expect(second.players[0].tokens.tactic).toBe(5)                   // seat 0's own submission was applied
   })
-  it('R7 objective 3 and 4 are scored from the round they were fulfilled in', () => {
-    let s = { ...toActionPhase(), round: 4, publicObjectives: ['own_3_techs', 'control_4_outside_home', 'three_ships_mecatol', 'spend_6_production'] }
-    s = withPlayer(s, 0, { spentInOneProductionThisRound: 6 })
-    s = withUnits(s, 'mecatol', 0, ['cruiser', 'cruiser', 'destroyer'])
+  it('R7: the round objective is scored from the round it was fulfilled in, then its counter resets', () => {
+    let s = { ...toActionPhase(), round: 4, publicObjectives: ['control_4_outside_home', 'spend_6_resources'] }
+    s = withPlayer(s, 0, { resourcesSpentThisRound: 6 })
     const done = bothSubmit(toStatusPhase(s))
-    expect(done.players[0].scoredObjectives).toEqual(['three_ships_mecatol', 'spend_6_production'])
-    expect(done.players[0].spentInOneProductionThisRound).toBe(0)
+    expect(done.players[0].scoredObjectives).toEqual(['spend_6_resources'])
+    expect(done.players[0].resourcesSpentThisRound).toBe(0)
   })
 })

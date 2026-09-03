@@ -169,15 +169,16 @@ describe('a scripted hot-seat game', () => {
     click('token-tactic-plus')
     click('btn-status-confirm')
     handoff()
-    expect(screen.getByTestId('status-scoring').textContent).toContain('Own 3 technologies')
+    // R7 with the shuffled pool: seed 7 reveals "win a space combat" first, and this round had none
+    expect(screen.getByTestId('status-scoring').textContent).toContain('Nothing to score.')
     click('token-fleet-plus')
     click('token-fleet-plus')
     click('btn-status-confirm')
 
     // R3.3: scoring, the reveal and the next round
-    expect(text('vp-1')).toBe('1 of 7')
+    expect(text('vp-1')).toBe('0 of 7')
     expect(text('vp-0')).toBe('0 of 7')
-    expect(screen.getByTestId('scored-own_3_techs-1')).toBeTruthy()
+    expect(screen.getByTestId('objective-win_space_combat')).toBeTruthy()
     expect(screen.getByTestId('objective-control_4_outside_home')).toBeTruthy()
     expect(text('round')).toBe('Round 2 of 6, strategy phase')
     expect(text('strategy-state-leadership')).toBe('unpicked')

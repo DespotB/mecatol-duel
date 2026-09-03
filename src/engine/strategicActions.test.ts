@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { applyMove } from './index'
 import { warfareTokenSystems } from './strategicActions'
-import { deepFreeze, toActionPhase, withCards, withExhausted, withPlanetOwner, withPlayer, withTechs, withUnits } from './testUtils'
+import { deepFreeze, toActionPhase, withCards, withExhausted, withPlanetOwner, withPlayer, withUnits } from './testUtils'
 import type { GameState, Result, StrategicParams, StrategyCardId } from './types'
 
 const play = (state: GameState, card: StrategyCardId, params?: StrategicParams) =>
@@ -201,14 +201,16 @@ describe('R3.2 strategic actions, the remaining three cards', () => {
     expect(answer(played, 'technology', true, {}).ok).toBe(false)
   })
   it('R7/R6 Imperial primary: scores one fulfilled public objective and 1 VP for Mecatol Rex', () => {
-    let s = withTechs(holder('imperial'), 0, ['sarween_tools'])
-    s = withPlanetOwner(s, 'mecatol', 'mecatol-rex', 0)
-    const played = value(play(s, 'imperial', { objectiveId: 'own_3_techs' }))
+    // seat 0 starts with five ships against four, so "more ships" is fulfilled from the first turn
+    const revealed = { ...holder('imperial'), publicObjectives: ['more_ships'] }
+    const s = withPlanetOwner(revealed, 'mecatol', 'mecatol-rex', 0)
+    const played = value(play(s, 'imperial', { objectiveId: 'more_ships' }))
     expect(played.players[0].vp).toBe(2)
-    expect(played.players[0].scoredObjectives).toEqual(['own_3_techs'])
-    expect(play(s, 'imperial', { objectiveId: 'control_5_planets' }).ok).toBe(false)   // not revealed
-    expect(play(holder('imperial'), 'imperial', { objectiveId: 'own_3_techs' }).ok).toBe(false)   // not fulfilled
-    expect(play(withPlayer(s, 0, { scoredObjectives: ['own_3_techs'] }), 'imperial', { objectiveId: 'own_3_techs' }).ok).toBe(false)
+    expect(played.players[0].scoredObjectives).toEqual(['more_ships'])
+    expect(play(s, 'imperial', { objectiveId: 'trade_three_times' }).ok).toBe(false)   // not revealed
+    const unfulfilled = { ...holder('imperial'), publicObjectives: ['trade_three_times'] }
+    expect(play(unfulfilled, 'imperial', { objectiveId: 'trade_three_times' }).ok).toBe(false)
+    expect(play(withPlayer(s, 0, { scoredObjectives: ['more_ships'] }), 'imperial', { objectiveId: 'more_ships' }).ok).toBe(false)
     expect(value(play(holder('imperial'), 'imperial')).players[0].vp).toBe(0)          // no objective, no Mecatol Rex
   })
   it('R6 Imperial secondary: a strategy token for 2 trade goods', () => {

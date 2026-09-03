@@ -6,14 +6,14 @@
 import * as THREE from 'three';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-const q=new URLSearchParams(location.search); const faction=q.get('faction')||'l1z1x'; const elevDeg=+(q.get('elev')||52);
+const q=new URLSearchParams(location.search); const faction=q.get('faction')||'l1z1x'; const elevDeg=+(q.get('elev')||89);   // straight down: the tokens lie flat on the table, unlike the ships
 const SIZE=512, DPR=2;
 const canvas=document.createElement('canvas');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,preserveDrawingBuffer:true});
 renderer.setPixelRatio(DPR); renderer.setSize(SIZE,SIZE,false);
 renderer.outputColorSpace=THREE.SRGBColorSpace; renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.0; renderer.setClearColor(0x000000,0);
 const scene=new THREE.Scene(); const pmrem=new THREE.PMREMGenerator(renderer); scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
-const tex=await new Promise(res=>new THREE.TextureLoader().load(`assets3d/token-tex-${faction}.png`,res)); tex.colorSpace=THREE.SRGBColorSpace; tex.flipY=true;
+const tex=await new Promise(res=>new THREE.TextureLoader().load(`models/token-tex-${faction}.png`,res)); tex.colorSpace=THREE.SRGBColorSpace; tex.flipY=true;
 const mat=new THREE.MeshStandardMaterial({map:tex,metalness:0.05,roughness:0.7,envMapIntensity:0.6});
 scene.add(new THREE.HemisphereLight(0xdfe8ff,0x1a2140,0.7));
 const key=new THREE.DirectionalLight(0xfff4e0,1.5); key.position.set(-3,6,-3); scene.add(key);
@@ -23,7 +23,7 @@ const cam=new THREE.PerspectiveCamera(30,1,0.1,200);
 const grid=document.getElementById('grid');
 const variants=[['command',false],['command',true],['control',false]];
 for(const [kind,flip] of variants){
-  const obj=await new Promise((res,rej)=>new OBJLoader().load(`assets3d/token-${kind}.obj`,res,undefined,rej));
+  const obj=await new Promise((res,rej)=>new OBJLoader().load(`models/token-${kind}.obj`,res,undefined,rej));
   const box=new THREE.Box3().setFromObject(obj); const size=box.getSize(new THREE.Vector3()); const c=box.getCenter(new THREE.Vector3()); obj.position.sub(c);
   obj.traverse(m=>{ if(m.isMesh){ m.material=mat; m.geometry.computeVertexNormals(); }});
   const g=new THREE.Group(); g.add(obj); if(flip) g.rotation.x=Math.PI; else if(kind==='command') g.rotation.y=Math.PI; scene.add(g);

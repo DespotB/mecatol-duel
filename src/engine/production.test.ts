@@ -125,14 +125,14 @@ describe('R4.4 production', () => {
     expect(produce(s, { pds: 1 }, ['000']).ok).toBe(false)
     expect(produce(s, { spacedock: 1 }, ['000']).ok).toBe(false)
   })
-  it('R7 objective 4: the highest spend of the round is recorded', () => {
+  it('R7: what a production costs adds to the resources spent this round', () => {
     const first = produce(producing(), { infantry: 2 }, ['000'])
     if (!first.ok) throw new Error(first.error)
-    expect(first.value.players[0].spentInOneProductionThisRound).toBe(1)
+    expect(first.value.players[0].resourcesSpentThisRound).toBe(1)
     const again = withPlayer(withTactical(first.value, { systemId: 'home-n', step: 'production' }), 0, { tradeGoods: 6 })
     const second = produce(again, { dreadnought: 1, infantry: 4 }, [], 6)   // 4 + 2 resources, 5 units, one more non-fighter ship
     if (!second.ok) throw new Error(second.error)
-    expect(second.value.players[0].spentInOneProductionThisRound).toBe(6)
+    expect(second.value.players[0].resourcesSpentThisRound).toBe(7)          // 1 from the first production plus 6
     expect(second.value.players[0].tradeGoods).toBe(0)
     expect(second.value.systems['home-n'].space.filter(u => u.owner === 0 && u.type === 'dreadnought')).toHaveLength(2)
     expect(second.value.systems['home-n'].planets[0].ground.filter(u => u.owner === 0)).toHaveLength(11)

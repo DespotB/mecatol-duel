@@ -43,7 +43,9 @@ function isLegacy(value: unknown): value is Legacy {
   return p.version === 1 && typeof p.seed === 'number' && typeof p.minutes === 'number'
     && Array.isArray(p.clockMs) && p.clockMs.length === 2
     && Array.isArray(p.history)
-    && typeof p.state === 'object' && p.state !== null && p.state.version === 1
+    // R7 changed the objectives and with them the shape of a player, so a game saved under version 1 is
+    // not readable any more and is dropped rather than crashed into
+    && typeof p.state === 'object' && p.state !== null && p.state.version === 2
 }
 
 function isSummary(value: unknown): value is GameSummary {
@@ -164,8 +166,15 @@ function migrate(): void {
 
 export function listGames(): GameSummary[] {
   migrate()
-  // an index entry whose payload is gone would be a row that resumes into nothing
-  return readIndex().filter(entry => hasGame(entry.code))
+  // an index entry whose payload is gone, or was written by an older version of the game, would be a row
+  // that resumes into nothing, so it is dropped from the list and from storage
+  const out: GameSummary[] = []
+  for (const entry of readIndex()) {
+    if (isPayload(read(gameKey(entry.code)))) out.push(entry)
+    else remove(gameKey(entry.code))
+  }
+  if (out.length !== readIndex().length) write(INDEX_KEY, out)
+  return out
 }
 
 export function latestGameCode(): string | null {

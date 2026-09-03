@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { PUBLIC_OBJECTIVES } from '../../data/objectives'
+import { objectiveDef } from '../../data/objectives'
 import { scoreable, tokensGained } from '../../engine'
 import { TokenSheet } from './TokenSheet'
 import { useGame } from '../store'
@@ -35,7 +35,7 @@ export function StatusDialog() {
           <span className="lbl">Scoring</span>
           {scoring.length === 0 ? <span className="sub">Nothing to score.</span> : null}
           {scoring.map(id => (
-            <span className="chip gold" key={id}>{PUBLIC_OBJECTIVES.find(o => o.id === id)?.text ?? 'Mandate, First Strike'}</span>
+            <span className="chip gold" key={id}>{objectiveDef(id)?.text ?? id}</span>
           ))}
         </div>
         <TokenSheet current={player.tokens} gained={gained} value={sheet} onChange={setTokens} />

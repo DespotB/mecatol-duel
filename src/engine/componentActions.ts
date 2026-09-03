@@ -143,6 +143,7 @@ export function tradePost(state: GameState, post: 'west' | 'east', commodities: 
     commodities: player.commodities - commodities,
     tradeGoods: player.tradeGoods + commodities,
     tradedThisRound: { ...player.tradedThisRound, [post]: true },
+    trades: player.trades + 1,
   }
   return {
     ok: true,

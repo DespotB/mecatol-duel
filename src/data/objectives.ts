@@ -1,17 +1,35 @@
-/** `short` is what the board prints; the full `text` belongs in the card that opens on hover. */
-export interface ObjectiveDef { id: string; text: string; short: string; round: number }
+/**
+ * R7: the public objectives are a pool the game shuffles at setup and reveals one at a time, so no two games
+ * run the same race. `short` is what the board prints, the full `text` belongs in the card that opens on
+ * hover. The mandates are not part of the pool: First Strike is a race both players run for the same single
+ * point, Foothold is the secret each of them starts with.
+ */
+export interface ObjectiveDef { id: string; text: string; short: string }
 
 export const PUBLIC_OBJECTIVES: ObjectiveDef[] = [
-  { id: 'own_3_techs', text: 'Own 3 technologies', short: '3 technologies', round: 1 },
-  { id: 'control_4_outside_home', text: 'Control 4 planets outside your home system', short: '4 planets abroad', round: 2 },
-  { id: 'three_ships_mecatol', text: 'Have 3 or more non-fighter ships in the Mecatol Rex system', short: '3 ships at Rex', round: 3 },
-  { id: 'spend_6_production', text: 'Spend 6 resources in a single production', short: '6 resources at once', round: 4 },
-  { id: 'control_5_planets', text: 'Control 5 planets', short: '5 planets', round: 5 },
-  { id: 'two_techs_same_colour', text: 'Own 2 technologies of the same colour', short: '2 of one colour', round: 6 },
+  { id: 'win_space_combat', text: 'Win a space combat against your opponent', short: 'Win a space fight' },
+  { id: 'control_4_outside_home', text: 'Control 4 planets outside your home system', short: '4 planets abroad' },
+  { id: 'spend_6_resources', text: 'Spend 6 resources in a single round', short: '6 resources in a round' },
+  { id: 'trade_three_times', text: 'Trade three times, at the trade posts or with your opponent', short: '3 trades' },
+  { id: 'more_ships', text: 'Have more ships on the board than your opponent', short: 'More ships' },
 ]
 
-export const MANDATE = {
-  id: 'first_strike' as const,
+export const FIRST_STRIKE: ObjectiveDef = {
+  id: 'first_strike',
   short: 'First Strike',
-  text: 'First Strike: win a space combat in the Mecatol Rex system or in the enemy home system',
+  text: 'First Strike: be the first to win a space combat in the Mecatol Rex system',
+}
+
+export const FOOTHOLD: ObjectiveDef = {
+  id: 'foothold',
+  short: 'Foothold',
+  text: 'Foothold: take a planet in your opponent’s home system',
+}
+
+/** The two cards outside the pool: the race, then the secret every player starts with. */
+export const MANDATES: ObjectiveDef[] = [FIRST_STRIKE, FOOTHOLD]
+export const MANDATE_IDS: readonly string[] = MANDATES.map(m => m.id)
+
+export function objectiveDef(id: string): ObjectiveDef | undefined {
+  return PUBLIC_OBJECTIVES.find(o => o.id === id) ?? MANDATES.find(m => m.id === id)
 }

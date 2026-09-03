@@ -1,4 +1,4 @@
-import { PUBLIC_OBJECTIVES } from '../data/objectives'
+import { objectiveDef } from '../data/objectives'
 import { otherSeat } from './actionPhase'
 import { distributeTokens } from './economy'
 import { addVp, controlledPlanets, controlsMecatol, scoreObjective, scoreable } from './objectives'
@@ -42,7 +42,9 @@ export function victoryCheck(state: GameState): Seat | null {
 /** R3.3 steps 2 and 4 to 6, run once both players have submitted their status move. */
 export function finishStatusPhase(state: GameState, seed: number): GameState {
   let next = state
-  const revealed = PUBLIC_OBJECTIVES[state.round]
+  // R7: one objective off the shuffled pool per round; the pool runs out before round 6 does
+  const nextId = state.objectiveOrder[state.round]
+  const revealed = nextId === undefined ? undefined : objectiveDef(nextId)
   if (state.round < 6 && revealed && !next.publicObjectives.includes(revealed.id)) {
     next = {
       ...next,
@@ -57,7 +59,7 @@ export function finishStatusPhase(state: GameState, seed: number): GameState {
   for (const seat of [0, 1] as const) {
     players[seat] = {
       ...players[seat], strategyCards: [], passed: false, inheritanceExhausted: false,
-      mandateEarnedThisRound: false, spentInOneProductionThisRound: 0, tradedThisRound: { west: false, east: false },
+      resourcesSpentThisRound: 0, tradedThisRound: { west: false, east: false },
     }
   }
   // R3.1: the played cards come back with bonus 0, the unpicked ones keep the trade goods they collected
