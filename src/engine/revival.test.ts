@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { applyMove } from './index'
-import { carriedIds, cardsUsed, deepFreeze, hitsIn, toActionPhase, withPlanetOwner, withPlayer, withTechs, withUnits } from './testUtils'
-import type { GameState, Result, UnitType } from './types'
+import { homeSystemId } from '../data/map'
+import { otherSeat } from './actionPhase'
+import { applyMove, legalMoves } from './index'
+import { tokensGained } from './statusPhase'
+import { carriedIds, cardsUsed, deepFreeze, hitsIn, toActionPhase, toStatusPhase, withCards, withPlanetOwner, withPlayer, withTechs, withUnits } from './testUtils'
+import type { GameState, Result, Seat, UnitType } from './types'
 
 const ok = (r: Result<GameState>): GameState => {
   if (!r.ok) throw new Error(r.error)
@@ -18,6 +21,16 @@ function invading(defenders: number, seed = 3): GameState {
   const started = ok(applyMove(deepFreeze(s), { type: 'startTactical', systemId: 'quann' }, seed))
   const moved = ok(applyMove(started, { type: 'endMovement' }, seed))
   return ok(applyMove(moved, { type: 'land', planetId: 'quann', infantryIds: carriedIds(moved, 'quann', 0) }, seed))
+}
+
+/** Both players through a status phase, all new tokens into the tactic pool. */
+function runStatus(state: GameState): GameState {
+  const step = (s: GameState): GameState => {
+    const seat = s.active
+    const t = s.players[seat].tokens
+    return ok(applyMove(s, { type: 'status', params: { tokens: { ...t, tactic: t.tactic + tokensGained(s, seat) } } }, 7))
+  }
+  return step(step(toStatusPhase(state)))
 }
 
 describe('R4.3 step 4 Infantry II revival', () => {
@@ -77,6 +90,23 @@ describe('R4.3 step 4 Infantry II revival', () => {
     expect(partial.players[0]).toMatchObject({ pendingInfantry: 0, reinforcements: expect.objectContaining({ infantry: 0 }) })
     expect(partial.systems['home-n'].planets[0].ground.filter(u => u.owner === 0)).toHaveLength(6)
   })
+  it('R3.3/R4.3: pending infantry survive the status phase and arrive when the next action phase opens', () => {
+    const s = withPlayer(withPlayer(toActionPhase(), 0, { pendingInfantry: 1 }), 1, { pendingInfantry: 1 })
+    let next = runStatus(s)
+    expect(next.players.map(p => p.pendingInfantry)).toEqual([1, 1])
+    expect(next.phase).toBe('strategy')
+    while (next.phase === 'strategy') next = ok(applyMove(next, legalMoves(next)[0], 0))
+    const first: Seat = next.active
+    expect(next.players[first].pendingInfantry).toBe(0)
+    expect(next.players[otherSeat(first)].pendingInfantry).toBe(1)   // the opponent waits for its own turn
+    expect(next.systems[homeSystemId(first)].planets.some(p => p.ground.some(u => u.owner === first))).toBe(true)
+  })
+  it('R3.2/R4.3: answering a strategy card is not a turn, so nothing returns yet', () => {
+    const s = withPlayer(withCards(withCards(toActionPhase(), 1, []), 0, ['trade']), 1, { pendingInfantry: 1 })
+    const played = ok(applyMove(s, { type: 'strategic', card: 'trade' }, 0))
+    expect(played.active).toBe(1)
+    expect(played.players[1].pendingInfantry).toBe(1)                // the window is a response, not a turn
+    const answered = ok(applyMove(played, { type: 'secondary', card: 'trade', accept: false }, 0))
+    expect(answered.players[1].pendingInfantry).toBe(0)              // now seat 1 takes its turn
+  })
 })
-
-// Task 7b (after Plan 3 Tasks 2-6): round-boundary revival via pickStrategyCard and the secondary window
