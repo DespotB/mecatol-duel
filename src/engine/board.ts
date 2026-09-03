@@ -64,22 +64,58 @@ export function freeFighterSlots(state: GameState, seat: Seat, systemId: string)
   return state.systems[systemId].planets.some(p => p.structures.some(u => u.type === 'spacedock' && u.owner === seat)) ? 3 : 0
 }
 
+/**
+ * R3.2/R4.4: excess fighters and carried infantry beyond capacity (0 if none), and whether that excess is a
+ * hard block (capacity exceeded with no Fighter II rescue). The one piece of capacity/fleet-pool arithmetic
+ * shared by `checkFleet` and the production fighter trim, so both apply identical math.
+ */
+function fleetExcess(space: Unit[], seat: Seat, stats: StatsOwner, fighterIi: boolean, freeSlots: number): { excess: number; blocked: boolean } {
+  const mine = space.filter(u => u.owner === seat)
+  const fighters = mine.filter(u => u.type === 'fighter').length
+  const infantry = mine.filter(u => u.type === 'infantry').length
+  const cap = capacity(space, seat, stats) + Math.min(freeSlots, fighters)
+  let excess = fighters + infantry - cap
+  if (excess > 0) {
+    // R3.2: only Fighter II turns excess fighters into a fleet pool question instead of an illegal move
+    if (!fighterIi || excess > fighters) return { excess, blocked: true }
+  } else excess = 0
+  return { excess, blocked: false }
+}
+
 /** Capacity for carried fighters and infantry plus the fleet pool for non-fighter ships (Armada +2). */
 export function checkFleet(state: GameState, seat: Seat, systemId: string): Result<true> {
   const player = state.players[seat]
   const stats: StatsOwner = { faction: player.faction, techs: player.techs }
   const space = state.systems[systemId].space
-  const mine = space.filter(u => u.owner === seat)
-  const fighters = mine.filter(u => u.type === 'fighter').length
-  const infantry = mine.filter(u => u.type === 'infantry').length
-  const cap = capacity(space, seat, stats) + Math.min(freeFighterSlots(state, seat, systemId), fighters)
-  let excess = fighters + infantry - cap
-  if (excess > 0) {
-    // R3.2: only Fighter II turns excess fighters into a fleet pool question instead of an illegal move
-    if (!player.techs.includes('fighter_ii') || excess > fighters) return { ok: false, error: `capacity exceeded in ${systemId}` }
-  } else excess = 0
+  const { excess, blocked } = fleetExcess(space, seat, stats, player.techs.includes('fighter_ii'), freeFighterSlots(state, seat, systemId))
+  if (blocked) return { ok: false, error: `capacity exceeded in ${systemId}` }
   if (nonFighterShips(space, seat) + excess > fleetPoolLimit(player)) return { ok: false, error: `fleet pool exceeded in ${systemId}` }
   return { ok: true, value: true }
+}
+
+/**
+ * R4.4: the most fighters that can be added on top of `extraShips` (new non-fighter ships produced in the
+ * same order, which pool their capacity with the existing fleet) without failing `checkFleet`'s capacity and
+ * fleet-pool arithmetic. Newly produced infantry never belongs in `extraShips` — it lands on the dock's
+ * planet, not in the system's space. Mirrors `checkFleet`'s math exactly, so a production order trimmed to
+ * this room always passes the final `checkFleet` call.
+ */
+export function maxFightersAllowed(state: GameState, seat: Seat, systemId: string, extraShips: Unit[]): number {
+  const player = state.players[seat]
+  const stats: StatsOwner = { faction: player.faction, techs: player.techs }
+  const space = [...state.systems[systemId].space, ...extraShips]
+  const freeSlots = freeFighterSlots(state, seat, systemId)
+  const fighterIi = player.techs.includes('fighter_ii')
+  const pool = fleetPoolLimit(player)
+  let room = 0
+  for (let n = 0; n <= 200; n++) {
+    const probeFighters: Unit[] = Array.from({ length: n }, (): Unit => ({ id: -1, type: 'fighter', owner: seat, damaged: false }))
+    const probe = [...space, ...probeFighters]
+    const { excess, blocked } = fleetExcess(probe, seat, stats, fighterIi, freeSlots)
+    if (blocked || nonFighterShips(probe, seat) + excess > pool) break
+    room = n
+  }
+  return room
 }
 
 /**

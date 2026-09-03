@@ -1,19 +1,10 @@
 import type { StatsOwner } from '../data/units'
-import { checkFleet, freeFighterSlots } from './board'
-import { capacity, payCost, productionCost, productionLimit } from './economy'
+import { checkFleet, maxFightersAllowed } from './board'
+import { payCost, productionCost, productionLimit } from './economy'
 import { unitsOf } from './setup'
-import type { GameState, Result, Seat, Unit, UnitType } from './types'
+import type { GameState, Result, Unit, UnitType } from './types'
 
 export const PRODUCIBLE: readonly UnitType[] = ['infantry', 'fighter', 'destroyer', 'cruiser', 'carrier', 'dreadnought', 'warsun', 'flagship']
-
-/** R4.4: how many more fighters the system can hold, capacity plus the Space Dock II slots. */
-function fighterRoom(state: GameState, seat: Seat, systemId: string): number {
-  const player = state.players[seat]
-  const stats: StatsOwner = { faction: player.faction, techs: player.techs }
-  const space = state.systems[systemId].space
-  const carried = space.filter(u => u.owner === seat && (u.type === 'fighter' || u.type === 'infantry')).length
-  return Math.max(0, capacity(space, seat, stats) + freeFighterSlots(state, seat, systemId) - carried)
-}
 
 export function produce(state: GameState, units: Partial<Record<UnitType, number>>, planets: string[], tradeGoods: number): Result<GameState> {
   const tac = state.tactical
@@ -29,11 +20,15 @@ export function produce(state: GameState, units: Partial<Record<UnitType, number
     if (type === 'warsun' && !player.techs.includes('war_sun')) return { ok: false, error: 'R4.4: a War Sun needs the War Sun technology' }
     if (player.reinforcements[type] < n) return { ok: false, error: `not enough ${type} in the reinforcements` }
   }
-  // R4.4: fighters above the capacity are simply not produced
+  // R4.4: fighters above the capacity plus Space Dock II's free slots are simply not produced. The new
+  // non-fighter ships in this same order pool their capacity too, so they count toward the room before trimming.
   const wanted = units.fighter ?? 0
-  const room = fighterRoom(state, seat, tac.systemId)
+  const extraShips: Unit[] = (Object.entries(units) as [UnitType, number][])
+    .filter(([type, n]) => n > 0 && type !== 'fighter' && type !== 'infantry')
+    .flatMap(([type, n]) => Array.from({ length: n }, (): Unit => ({ id: -1, type, owner: seat, damaged: false })))
+  const room = maxFightersAllowed(state, seat, tac.systemId, extraShips)
   const trimmedFighters = Math.max(0, wanted - room)
-  const order: Partial<Record<UnitType, number>> = trimmedFighters ? { ...units, fighter: room } : units
+  const order: Partial<Record<UnitType, number>> = trimmedFighters ? { ...units, fighter: Math.min(wanted, room) } : units
   const entries = (Object.entries(order) as [UnitType, number][]).filter(([, n]) => n > 0)
   if (!entries.length) return { ok: false, error: 'nothing to produce' }
   const flagships = order.flagship ?? 0
