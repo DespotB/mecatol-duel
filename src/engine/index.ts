@@ -29,7 +29,8 @@ export function applyMove(state: GameState, move: Move, seed: number): Result<Ga
     if (!result.ok) return result
     return { ok: true, value: { ...result.value, log: [...result.value.log, { t: 'move', seat: state.active, move }] } }
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : String(e) }
+    // an exception is an engine bug, not a rules rejection; `internal` keeps the two apart for callers
+    return { ok: false, error: e instanceof Error ? e.message : String(e), internal: true }
   }
 }
 

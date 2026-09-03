@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { unitStats } from '../data/units'
+import { checkFleet } from './board'
 import { capacity, fleetPoolLimit, nonFighterShips, productionCost } from './economy'
 import { applyMove, legalMoves, validateMove } from './index'
 import { movableShips } from './movement'
@@ -48,14 +49,13 @@ function invariants(state: GameState): void {
     expect(Math.min(p.tokens.tactic, p.tokens.fleet, p.tokens.strategy)).toBeGreaterThanOrEqual(0)
     for (const n of Object.values(p.reinforcements)) expect(n).toBeGreaterThanOrEqual(0)
   }
+  // the engine's own capacity and fleet-pool rule, so the smoke run can never drift from checkFleet
   for (const sys of Object.values(state.systems)) {
     if (state.tactical?.step === 'spaceCombat' && state.tactical.systemId === sys.id) continue   // cargo is trimmed when the combat ends
     for (const seat of [0, 1] as Seat[]) {
-      const mine = sys.space.filter(u => u.owner === seat)
-      if (!mine.length) continue
-      const stats = { faction: state.players[seat].faction, techs: state.players[seat].techs }
-      const loose = state.players[seat].techs.includes('fighter_ii') ? 0 : mine.filter(u => u.type === 'fighter').length
-      expect(mine.filter(u => u.type === 'infantry').length + loose).toBeLessThanOrEqual(capacity(sys.space, seat, stats))
+      if (!sys.space.some(u => u.owner === seat)) continue
+      const fleet = checkFleet(state, seat, sys.id)
+      expect(fleet.ok || fleet.error).toBe(true)
     }
   }
 }
@@ -178,6 +178,8 @@ describe('tactical legal moves', () => {
         attempts++
         const r = applyMove(s, fill(s, move, rng), 1000 + i)
         if (r.ok) { next = r.value; break }
+        // a thrown error is an engine bug, not a rules rejection: fail loudly instead of counting it as soft
+        if (r.internal) throw new Error(`internal engine error on ${move.type}: ${r.error}`)
         rejected++
       }
       expect(next).not.toBeNull()

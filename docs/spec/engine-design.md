@@ -5,13 +5,14 @@ The rules engine is a pure TypeScript module in `src/engine/`: no React, no DOM,
 ## Contract
 
 ```ts
-export type Result<T> = { ok: true; value: T } | { ok: false; error: string }
+export type Result<T> = { ok: true; value: T } | { ok: false; error: string; internal?: boolean }
 export function applyMove(state: GameState, move: Move, seed: number): Result<GameState>
 export function legalMoves(state: GameState): Move[]
 export function createGame(config: GameConfig, seed: number): GameState
 ```
 
 - `applyMove` never mutates its input; it returns a new state (structural sharing is fine, use plain object spreads).
+- A rejected move comes back as `{ ok: false, error }`. `internal: true` marks the rare case where the engine threw instead of rejecting: an engine bug, never a rules question, so callers may treat it as fatal.
 - All randomness inside a move comes from `seed` (a 32-bit integer) through `mulberry32`; the same state, move and seed always give the same result. Dice are `1 + floor(rng() * 10)`.
 - `legalMoves` enumerates concrete moves for the active player; the UI builds its interaction from this list (highlighted systems, enabled buttons). Three kinds are templates whose parameters the UI fills in: `moveShips` (`moves: []`), `produce` (`units: {}`, `planets: []`, `tradeGoods: 0`) and `land` (pre-filled with every carried infantry, any subset is legal). `validateMove(state, move)` matches those three by `move.type` and every other kind structurally.
 - The game log is part of the state (`state.log`), append-only, one entry per move plus one per dice roll, so replays and the online transport need only the move list and seeds.

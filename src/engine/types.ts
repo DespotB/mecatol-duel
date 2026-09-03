@@ -1,4 +1,6 @@
-export type Result<T> = { ok: true; value: T } | { ok: false; error: string }
+// `internal` marks an error that came out of a thrown exception rather than a rules rejection: an engine bug,
+// never a legal-move question. Callers may treat it as fatal.
+export type Result<T> = { ok: true; value: T } | { ok: false; error: string; internal?: boolean }
 
 export type Seat = 0 | 1
 export type Owner = Seat | 'guardian'
