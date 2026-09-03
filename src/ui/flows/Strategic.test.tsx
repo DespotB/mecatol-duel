@@ -134,4 +134,46 @@ describe('strategic actions', () => {
     expect(screen.getByTestId('tokens-0-fleet').textContent).toBe('4')
     expect(screen.getByTestId('turn-1').textContent).toBe('Your turn')
   })
+
+  it('R7: a paid objective is skipped by default and scores only once it is paid for', () => {
+    // the home planet is 5 resources, Sakulag another 2, so six can be raised out of the two of them
+    const owned = withPlanetOwner({ ...toActionPhase(), publicObjectives: ['pay_6_resources'] }, 'sakulag', 'sakulag', 0)
+    renderWithSession(toStatusPhase(owned), <BoardScreen />)
+    expect(screen.getByTestId('status-scoring').textContent).toContain('Nothing to score.')
+    expect(screen.getByTestId('status-paid').textContent).toContain('Pay 6 resources')
+    fireEvent.click(screen.getByTestId('btn-pay-pay_6_resources'))
+    expect(screen.getByTestId('pay-total').textContent).toBe('0 of 6')
+    fireEvent.click(screen.getByTestId('token-tactic-plus'))
+    fireEvent.click(screen.getByTestId('token-tactic-plus'))
+    // an unfinished payment may not be confirmed; the engine would only reject it
+    expect(screen.getByTestId('btn-status-confirm').hasAttribute('disabled')).toBe(true)
+    fireEvent.click(screen.getByTestId('pay-000'))
+    fireEvent.click(screen.getByTestId('pay-sakulag'))
+    expect(screen.getByTestId('pay-total').textContent).toBe('7 of 6')
+    fireEvent.click(screen.getByTestId('btn-status-confirm'))
+    expect(screen.getByTestId('vp-0').textContent).toBe('1 of 7')
+  })
+
+  it('R7: an untouched paid objective is simply not scored, and nothing is taken for it', () => {
+    const owned = withPlanetOwner({ ...toActionPhase(), publicObjectives: ['pay_6_resources'] }, 'sakulag', 'sakulag', 0)
+    renderWithSession(toStatusPhase(owned), <BoardScreen />)
+    fireEvent.click(screen.getByTestId('token-tactic-plus'))
+    fireEvent.click(screen.getByTestId('token-tactic-plus'))
+    fireEvent.click(screen.getByTestId('btn-status-confirm'))
+    expect(screen.getByTestId('vp-0').textContent).toBe('0 of 7')
+    expect(screen.getByTestId('turn-1').textContent).toBe('Your turn')
+  })
+
+  it('R7: the time objective spells out what it costs and the store takes it off the clock', () => {
+    const s = { ...toActionPhase(), publicObjectives: ['pay_time_20'] }
+    const view = renderWithSession(toStatusPhase(s), <BoardScreen />, { clockMs: [865000, 900000] })
+    // 14:25 left, a fifth of it is 2:53
+    expect(screen.getByTestId('btn-pay-pay_time_20').textContent).toBe('Pay 02:53 of your 14:25')
+    fireEvent.click(screen.getByTestId('btn-pay-pay_time_20'))
+    fireEvent.click(screen.getByTestId('token-tactic-plus'))
+    fireEvent.click(screen.getByTestId('token-tactic-plus'))
+    fireEvent.click(screen.getByTestId('btn-status-confirm'))
+    expect(screen.getByTestId('vp-0').textContent).toBe('1 of 7')
+    expect(view.store().session?.clockMs).toEqual([692000, 900000])       // 865 seconds less 173
+  })
 })

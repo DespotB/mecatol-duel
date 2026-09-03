@@ -1,12 +1,29 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { objectiveCost } from '../data/objectives'
 import { applyMove, createGame, deriveSeed, legalMoves } from '../engine'
 import type { GameConfig, GameState, Move, Seat } from '../engine/types'
+import { timeCost } from './format'
 import { moveCount, undoable } from './history'
 import { deleteGame, hasGame, newGameCode, saveGame } from './persist'
 import { gamePath, navigate } from './route'
 
 export type { GameConfig } from '../engine/types'
+
+/**
+ * R7: the engine is time-free, so an objective whose price is clock time is settled here, by the side that
+ * owns the clock. The move was accepted, which is what makes the debt real; the seat is the one that submitted
+ * it, and the cost is read off the clock as it stood before the move.
+ */
+function clockAfter(move: Move, seat: Seat, clockMs: [number, number]): [number, number] {
+  if (move.type !== 'status') return clockMs
+  const out: [number, number] = [clockMs[0], clockMs[1]]
+  for (const request of move.params.score ?? []) {
+    const cost = objectiveCost(request.objectiveId)
+    if (cost?.kind === 'time') out[seat] = Math.max(0, out[seat] - timeCost(out[seat], cost.fraction))
+  }
+  return out
+}
 
 /** The turn is spent and nothing free is left: only ending it remains, so the UI does not ask. */
 function onlyEndTurn(state: GameState): boolean {
@@ -100,6 +117,7 @@ export function GameProvider({ children, ticking = true }: { children: ReactNode
     setSession({
       ...session,
       state: next,
+      clockMs: clockAfter(move, session.state.active, session.clockMs),
       history: keep ? [...session.history, session.state] : [],
       handoff: next.active !== session.state.active && next.winner === null ? next.active : null,
     })

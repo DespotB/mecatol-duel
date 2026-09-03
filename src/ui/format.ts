@@ -24,6 +24,14 @@ export function formatClock(ms: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
 
+/**
+ * R7: what an objective that is paid for in clock time costs right now, rounded down to the whole second so
+ * the dialog can promise a figure and the store takes exactly that one. The engine never sees a clock.
+ */
+export function timeCost(remainingMs: number, fraction: number): number {
+  return Math.floor(Math.max(0, remainingMs) * fraction / 1000) * 1000
+}
+
 function ago(count: number, unit: string): string {
   return `${String(count)} ${unit}${count === 1 ? '' : 's'} ago`
 }

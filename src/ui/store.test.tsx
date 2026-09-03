@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import * as engine from '../engine'
 import { applyMove, createGame, deriveSeed } from '../engine'
-import { cardsUsed, toActionPhase, toStatusPhase } from '../engine/testUtils'
+import { cardsUsed, toActionPhase, toStatusPhase, withPlayer } from '../engine/testUtils'
 import { GameProvider, useGame } from './store'
 import type { GameConfig, Session } from './store'
 import type { StrategyCardId } from '../engine/types'
@@ -121,6 +121,34 @@ describe('the hot-seat store', () => {
     expect(result.current.session?.clockMs[seat]).toBe(59000)
     expect(result.current.session?.clockMs[seat === 0 ? 1 : 0]).toBe(60000)
     vi.useRealTimers()
+  })
+
+  it('R7: the store takes a fifth of the seat\'s clock for the objective that is paid in time', () => {
+    const { result } = renderHook(() => useGame(), { wrapper: wrapper(false) })
+    const state = { ...toStatusPhase(toActionPhase()), publicObjectives: ['pay_time_20'] }
+    act(() => { result.current.resume(session(state, [865000, 900000])) })
+    expect(result.current.session?.state.active).toBe(0)
+    act(() => {
+      result.current.apply({ type: 'status', params: { tokens: { tactic: 5, fleet: 3, strategy: 2 }, score: [{ objectiveId: 'pay_time_20' }] } })
+    })
+    expect(result.current.session?.state.players[0].vp).toBe(1)
+    // 14:25 left, a fifth of it is 2:53, rounded down to the second; the other clock is untouched
+    expect(result.current.session?.clockMs).toEqual([692000, 900000])
+  })
+
+  it('R7: an objective paid in resources costs resources, never a second off the clock', () => {
+    const { result } = renderHook(() => useGame(), { wrapper: wrapper(false) })
+    const base = withPlayer(toStatusPhase(toActionPhase()), 0, { tradeGoods: 1 })
+    act(() => { result.current.resume(session({ ...base, publicObjectives: ['pay_6_resources'] }, [865000, 900000])) })
+    act(() => {
+      result.current.apply({
+        type: 'status',
+        params: { tokens: { tactic: 5, fleet: 3, strategy: 2 }, score: [{ objectiveId: 'pay_6_resources', planets: ['000'], tradeGoods: 1 }] },
+      })
+    })
+    expect(result.current.session?.state.players[0].vp).toBe(1)
+    expect(result.current.session?.state.players[0].tradeGoods).toBe(0)
+    expect(result.current.session?.clockMs).toEqual([865000, 900000])
   })
 
   it('R6: the clock stops while the handoff overlay is up and once the game is over', () => {

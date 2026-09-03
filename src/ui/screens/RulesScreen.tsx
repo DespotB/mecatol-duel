@@ -185,7 +185,11 @@ export function RulesScreen() {
             reached 7 after the round 6 status phase, the higher score wins. A tie goes to whoever holds
             Mecatol Rex, then to whoever controls more planets, then to the speaker{"'"}s opponent.
           </p>
-          <p>The public objectives. One is revealed per round, in an order the game shuffles at setup:</p>
+          <p>
+            The pool of public objectives. Every game draws six of them at setup and reveals one per round, so
+            what you race for changes from game to game. Two of them carry a price on top of being fulfilled:
+            you pay it in the status phase, or you leave the point where it is.
+          </p>
           <ol className="objlist">
             {PUBLIC_OBJECTIVES.map(objective => (
               <li key={objective.id}>
