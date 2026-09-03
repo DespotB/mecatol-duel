@@ -31,7 +31,7 @@ const HINTS: Record<string, string> = {
 }
 
 export function BoardScreen() {
-  const { session, legal, apply } = useGame()
+  const { session, legal, apply, clockRunning } = useGame()
   const [mode, setMode] = useState<ActionMode>(null)
   // `?panel=log` is a dev-only manual/visual QA hook (see App.tsx's demo bootstrap) so a headless
   // screenshot can land on the open log panel without a click.
@@ -50,7 +50,7 @@ export function BoardScreen() {
     <>
       <div className="app" data-testid="board-screen" inert={session.handoff !== null}>
         <div className="space"><div className="stars" /><div className="neb" /><div className="swirl" /><div className="limb" /><div className="dust" /></div>
-        <TopBar state={state} clockMs={session.clockMs} clockMinutes={session.minutes} handoff={session.handoff} onPick={onPick} />
+        <TopBar state={state} clockMs={session.clockMs} clockMinutes={session.minutes} clockRunning={clockRunning} onPick={onPick} />
         <SidePanel state={state} seat={0} />
         <SidePanel state={state} seat={1} />
         <BoardMap

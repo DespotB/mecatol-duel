@@ -7,10 +7,10 @@ import type { GameState, Seat, StrategyCardId } from '../../engine/types'
 
 const ALL_CARDS: StrategyCardId[] = ['leadership', 'diplomacy', 'trade', 'warfare', 'technology', 'imperial']
 
-function PlayerBlock({ state, seat, clockMs, clockMaxMs, handoff }: { state: GameState; seat: Seat; clockMs: number; clockMaxMs: number; handoff: Seat | null }) {
+function PlayerBlock({ state, seat, clockMs, clockMaxMs, clockRunning }: { state: GameState; seat: Seat; clockMs: number; clockMaxMs: number; clockRunning: boolean }) {
   const player = state.players[seat]
   const active = state.active === seat && state.winner === null
-  const running = active && state.phase === 'action' && handoff === null
+  const running = active && clockRunning
   return (
     <div className={`pblock${seat === 1 ? ' right' : ''}`} data-testid={`player-${seat}`}>
       <div className="portrait">
@@ -96,16 +96,16 @@ function Objectives({ state }: { state: GameState }) {
 }
 
 export function TopBar(
-  { state, clockMs, clockMinutes, handoff, onPick }:
-  { state: GameState; clockMs: [number, number]; clockMinutes: number; handoff: Seat | null; onPick?: (card: StrategyCardId) => void },
+  { state, clockMs, clockMinutes, clockRunning, onPick }:
+  { state: GameState; clockMs: [number, number]; clockMinutes: number; clockRunning: boolean; onPick?: (card: StrategyCardId) => void },
 ) {
   const clockMaxMs = clockMinutes * 60000
   return (
     <div className="topbar">
-      <PlayerBlock state={state} seat={0} clockMs={clockMs[0]} clockMaxMs={clockMaxMs} handoff={handoff} />
+      <PlayerBlock state={state} seat={0} clockMs={clockMs[0]} clockMaxMs={clockMaxMs} clockRunning={clockRunning} />
       <StrategyStrip state={state} onPick={onPick} />
       <Objectives state={state} />
-      <PlayerBlock state={state} seat={1} clockMs={clockMs[1]} clockMaxMs={clockMaxMs} handoff={handoff} />
+      <PlayerBlock state={state} seat={1} clockMs={clockMs[1]} clockMaxMs={clockMaxMs} clockRunning={clockRunning} />
     </div>
   )
 }
