@@ -5,6 +5,7 @@ import type { MovementObstacle } from '../../engine'
 import { spriteUrl } from '../art'
 import { systemLabel, unitLabel } from '../format'
 import { PANEL_SCALE, spriteSize } from '../sprites'
+import { useModelStyle } from '../modelStyle'
 import { Stepper } from './Stepper'
 import { useGame } from '../store'
 import type { GameState, Seat, Unit, UnitType } from '../../engine/types'
@@ -52,6 +53,7 @@ const OBSTACLE_TEXT: Record<MovementObstacle, (target: string) => string> = {
 
 export function MovementPanel() {
   const { session, legal, apply } = useGame()
+  const { style } = useModelStyle()
   const [picked, setPicked] = useState<Picked>({})
   const [cargo, setCargo] = useState<Record<string, Cargo>>({})
   if (!session) return null
@@ -123,12 +125,12 @@ export function MovementPanel() {
               <div className="mvunits">
                 {SHIP_ORDER.filter(type => movers.has(type)).map(type => {
                   const units = movers.get(type) ?? []
-                  const size = spriteSize(type, PANEL_SCALE)
+                  const size = spriteSize(type, PANEL_SCALE, style)
                   const capacity = capacityOf(type)
                   const count = pickedAt(from)[type] ?? 0
                   return (
                     <div className={`mvu${count > 0 ? ' on' : ''}`} key={type} data-testid={`ship-card-${from}-${type}`}>
-                      <span className="ico"><img src={spriteUrl(player.color, type)} alt="" width={size.width} height={size.height} /></span>
+                      <span className="ico"><img src={spriteUrl(player.color, type, style)} alt="" width={size.width} height={size.height} /></span>
                       <div className="n">{unitLabel(type, player)}</div>
                       <div className="s">{capacity > 0 ? `Carries ${capacity} each` : 'No capacity'}</div>
                       <Stepper id={`ship-${from}-${type}`} value={count} max={units.length} onChange={n => setShips(type, n)} />
@@ -145,13 +147,13 @@ export function MovementPanel() {
               </div>
               <div className="mvunits">
                 {CARGO_ORDER.map(type => {
-                  const size = spriteSize(type, PANEL_SCALE)
+                  const size = spriteSize(type, PANEL_SCALE, style)
                   const available = pool[type].length
                   const value = want[type]
                   const other = type === 'fighter' ? want.infantry : want.fighter
                   return (
                     <div className={`mvu cargo${value > 0 ? ' on' : ''}`} key={type} data-testid={`cargo-card-${from}-${type}`}>
-                      <span className="ico"><img src={spriteUrl(player.color, type)} alt="" width={size.width} height={size.height} /></span>
+                      <span className="ico"><img src={spriteUrl(player.color, type, style)} alt="" width={size.width} height={size.height} /></span>
                       <div className="n">{unitLabel(type, player)}</div>
                       <div className="s">Needs a ride</div>
                       <Stepper id={`cargo-${from}-${type}`} value={value} max={Math.min(available, room - other)}

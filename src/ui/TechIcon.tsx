@@ -1,6 +1,7 @@
 import { techDef } from '../data/techs'
 import { spriteUrl, techIconUrl } from './art'
 import { spriteSize } from './sprites'
+import { useModelStyle } from './modelStyle'
 import type { Color, TechColor } from '../engine/types'
 
 const COLOUR_NAME: Record<TechColor, string> = {
@@ -17,12 +18,13 @@ export function TechColourIcon({ colour, size = 18 }: { colour: TechColor; size?
  * a unit upgrade, which is what makes a Dreadnought II readable at a glance next to a Neural Motivator.
  */
 export function TechIcon({ techId, colour: playerColour, size = 18 }: { techId: string; colour: Color; size?: number }) {
+  const { style } = useModelStyle()
   const def = techDef(techId)
   if (def.unit) {
-    const box = spriteSize(def.unit, size * 1.15)
+    const box = spriteSize(def.unit, size * 1.15, style)
     return (
       <span className="ticon unit" style={{ width: size, height: size }}>
-        <img src={spriteUrl(playerColour, def.unit)} alt={def.name} width={box.width} height={box.height} />
+        <img src={spriteUrl(playerColour, def.unit, style)} alt={def.name} width={box.width} height={box.height} />
       </span>
     )
   }

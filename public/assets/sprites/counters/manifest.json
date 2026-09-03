@@ -1,0 +1,55 @@
+{
+ "style": "Async TI counters, flat top down",
+ "units": {
+  "cruiser": {
+   "pxPerModelUnit": 186.74,
+   "spriteW": 268,
+   "spriteH": 268
+  },
+  "carrier": {
+   "pxPerModelUnit": 168.17,
+   "spriteW": 280,
+   "spriteH": 276
+  },
+  "destroyer": {
+   "pxPerModelUnit": 86.86,
+   "spriteW": 204,
+   "spriteH": 196
+  },
+  "dreadnought": {
+   "pxPerModelUnit": 113.46,
+   "spriteW": 308,
+   "spriteH": 308
+  },
+  "fighter": {
+   "pxPerModelUnit": 69.29,
+   "spriteW": 128,
+   "spriteH": 124
+  },
+  "flagship": {
+   "pxPerModelUnit": 106.68,
+   "spriteW": 320,
+   "spriteH": 324
+  },
+  "infantry": {
+   "pxPerModelUnit": 73.14,
+   "spriteW": 156,
+   "spriteH": 172
+  },
+  "pds": {
+   "pxPerModelUnit": 64.08,
+   "spriteW": 132,
+   "spriteH": 148
+  },
+  "spacedock": {
+   "pxPerModelUnit": 73.65,
+   "spriteW": 168,
+   "spriteH": 172
+  },
+  "warsun": {
+   "pxPerModelUnit": 70.89,
+   "spriteW": 224,
+   "spriteH": 260
+  }
+ }
+}
