@@ -35,8 +35,11 @@ export const TECHS: TechDef[] = [
 ]
 
 const BY_ID = new Map(TECHS.map(t => [t.id, t]))
+export function findTech(id: string): TechDef | undefined {
+  return BY_ID.get(id)
+}
 export function techDef(id: string): TechDef {
-  const t = BY_ID.get(id)
+  const t = findTech(id)
   if (!t) throw new Error(`unknown tech ${id}`)
   return t
 }

@@ -1,4 +1,4 @@
-import { TECHS, techDef } from '../data/techs'
+import { TECHS, findTech, techDef } from '../data/techs'
 import type { FactionId, TechColor } from './types'
 
 type TechOwner = { faction: FactionId; techs: string[] }
@@ -17,6 +17,7 @@ function availableTo(player: TechOwner, techId: string): boolean {
 }
 
 export function canResearch(player: TechOwner, techId: string, ignorePrereqs = false): boolean {
+  if (!findTech(techId)) return false
   if (player.techs.includes(techId) || !availableTo(player, techId)) return false
   if (ignorePrereqs) return true
   const have = colourCounts(player.techs)

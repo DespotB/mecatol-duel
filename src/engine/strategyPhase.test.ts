@@ -48,4 +48,8 @@ describe('R3.1 strategy phase', () => {
     const g = createGame(config, 1)
     expect(applyMove(g, { type: 'pass' }, 0).ok).toBe(false)
   })
+  it('an unknown strategy card is rejected rather than throwing', () => {
+    const g = createGame(config, 1)
+    expect(applyMove(g, { type: 'pickStrategyCard', card: 'nonsense' as never }, 0).ok).toBe(false)
+  })
 })

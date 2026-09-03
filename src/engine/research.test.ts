@@ -45,4 +45,9 @@ describe('R5 technology', () => {
     expect(canResearch(l, 'war_sun', true)).toBe(true)
     expect(canResearch(l, 'neural_motivator', true)).toBe(false)
   })
+  it('an unknown tech id cannot be researched instead of throwing', () => {
+    const p = { faction: 'l1z1x' as const, techs: [] as string[] }
+    expect(canResearch(p, 'nonsense')).toBe(false)
+    expect(canResearch(p, 'nonsense', true)).toBe(false)
+  })
 })
