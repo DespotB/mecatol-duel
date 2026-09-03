@@ -193,12 +193,13 @@ button{font-family:inherit}
 .post .station.west{background:linear-gradient(120deg,#3a475f,#9fb0c8 50%,#2d3850);clip-path:polygon(10% 50%,28% 22%,72% 22%,90% 50%,72% 78%,28% 78%)}
 .post .station.east{background:radial-gradient(circle at 40% 35%,#e8cf8a,#6b4a17 70%);border-radius:50%;clip-path:polygon(0 30%,100% 30%,100% 70%,0 70%)}
 
-/* drawers and dialogs */
-.scrim{position:absolute;left:0;top:118px;width:1440px;height:698px;background:rgba(3,5,12,.52);z-index:15}
-.drawer{position:absolute;left:250px;width:940px;z-index:20}
+/* drawers and dialogs — children of `.stage`, so every offset below is stage-relative, never page-relative */
+.scrim{position:absolute;inset:0;background:rgba(3,5,12,.52);z-index:15}
+.drawer{position:absolute;left:50%;transform:translateX(-50%);width:min(940px,100%);z-index:20}
 .drawer .in{padding:12px 16px 14px}
-.drawer.bottom{top:466px}
-.drawer.full{top:126px}
+.drawer.bottom{bottom:0;max-height:100%;overflow:auto}
+.drawer.full{top:8px;bottom:8px}
+.drawer.full>.in{display:flex;flex-direction:column;overflow:hidden}
 .dhead{display:flex;align-items:center;gap:14px;margin-bottom:10px}
 .dhead .sub{font:500 12px/1 var(--body);color:#d8d2c2}
 .dhead .sub b{color:var(--gold-hi);font-weight:600}
@@ -217,8 +218,11 @@ button{font-family:inherit}
 .pay{display:flex;align-items:center;gap:5px;height:26px;padding:0 9px 0 6px;border:1px solid var(--hair);background:rgba(0,0,0,.35);font:600 12px/1 var(--hud);color:#e9e4d6;cursor:pointer}
 .pay.on{border-color:var(--gold);background:rgba(201,162,77,.16);color:var(--gold-hi)}
 .pay:disabled{opacity:.45;cursor:default}
-.tcols{display:flex;gap:8px}
+.tcols{display:flex;gap:8px;max-width:100%;overflow-x:auto}
 .tcol{width:166px;flex:none;max-height:656px;overflow-y:auto;overflow-x:hidden}
+/* inside the full-height drawer the columns take the height they are given instead of a fixed cap */
+.drawer.full .tcols{flex:1;min-height:0}
+.drawer.full .tcol{max-height:100%}
 .tcol.units{width:210px}
 .tcol h4{margin:0 0 6px;display:flex;align-items:center;gap:6px;font:600 11px/1 var(--hud);letter-spacing:.08em;text-transform:uppercase;color:var(--gold)}
 .tc{position:relative;margin-bottom:6px;border:1px solid rgba(255,255,255,.10);background:#000;overflow:hidden;width:100%;padding:0;cursor:pointer}
@@ -228,11 +232,12 @@ button{font-family:inherit}
 .tc.now{border-color:var(--gold)}
 .tc.sel{border-color:var(--gold-hi);box-shadow:0 0 0 2px rgba(232,207,138,.55)}
 .tc.owned .cap{color:var(--gold-hi)}
-.dialog{position:absolute;left:370px;top:220px;width:700px;z-index:25}
+/* a dialog taller than the stage scrolls inside its frame rather than being clipped by it */
+.dialog{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(700px,calc(100% - 16px));max-height:100%;overflow:auto;z-index:25}
 .dialog .in{padding:14px 16px 16px}
 .rowline{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap}
 .overlay{position:fixed;inset:0;background:rgba(3,5,12,.94);z-index:40;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px}
-.logpanel{position:absolute;left:250px;top:126px;width:520px;height:640px;overflow:auto;z-index:30}
+.logpanel{position:absolute;left:0;top:8px;bottom:8px;width:min(520px,60%);overflow:auto;z-index:30}
 .logpanel .in{padding:12px 14px}
 .logline{font:500 12px/1.5 var(--body);color:#d8d2c2;border-bottom:1px solid rgba(201,162,77,.14);padding:2px 0}
 .logline.roll{color:var(--gold-hi)}
@@ -292,7 +297,7 @@ button{font-family:inherit}
 .sw.purple{background:#8a47c9}.sw.black{background:#2a2e36}.sw.orange{background:#e8842a}.sw.pink{background:#e067b0}
 .chosen{font:600 12px var(--hud);letter-spacing:.08em;text-transform:uppercase;color:#8fb4ff}
 /* error boundary */
-.crash{position:relative;width:1440px;min-height:900px;margin:0 auto;display:flex;align-items:center;justify-content:center;z-index:1}
+.crash{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:1}
 .crashbox{position:relative;z-index:1;width:640px}
 .crashbox .in{padding:28px 32px 30px;display:flex;flex-direction:column;align-items:flex-start;gap:16px}
 .crashbox .title{font-size:34px}
