@@ -40,8 +40,8 @@ function invariants(state: GameState, landed: Map<string, Set<Seat>>): void {
       }
       if (state.tactical?.step === 'spaceCombat' && state.tactical.systemId === sys.id) continue   // cargo is trimmed when combat ends
       if (!sys.space.some(u => u.owner === seat)) continue
-      // the engine's own capacity and fleet-pool rule (Space Dock II free slots included), so the smoke run
-      // can never drift from checkFleet
+      // the engine's own capacity and fleet-pool rule (a dock's free slots, I or II, included), so the smoke
+      // run can never drift from checkFleet
       expect(checkFleet(state, seat, sys.id).ok).toBe(true)
     }
   }
@@ -106,17 +106,15 @@ function playGame(seed: number): GameRun {
         else rejectedConcrete++
         continue
       }
-      // a planet that changes hands stops counting as "landed"; a fresh owner must land afresh to hold it
+      // a planet that changes hands stops counting as "landed"; whoever now owns it took control this move
+      // (`resolveControl` is the sole place that sets `owner`, from a `land`, `bombard` or `groundCombatRound`
+      // move that clears the last defender while an earlier landing already stands alone on the planet)
       for (const sys of Object.values(r.value.systems)) {
         for (const planet of sys.planets) {
-          if (planet.owner !== state.systems[sys.id].planets.find(p => p.id === planet.id)?.owner) landed.delete(planet.id)
+          if (planet.owner === state.systems[sys.id].planets.find(p => p.id === planet.id)?.owner) continue
+          landed.delete(planet.id)
+          if (planet.owner !== null) landed.set(planet.id, new Set([planet.owner]))
         }
-      }
-      if (move.type === 'land') {
-        const seat = state.active
-        const set = landed.get(move.planetId) ?? new Set<Seat>()
-        set.add(seat)
-        landed.set(move.planetId, set)
       }
       signatures.add(signature(move))
       next = r.value
@@ -200,10 +198,14 @@ describe('legal moves in every phase', () => {
   })
 })
 
-const SEEDS: readonly number[] = [1, 2, 3, 5, 8, 13, 21, 34, 55, 89]
+// seeds 90 and 94 are appended (outside the Fibonacci run) because none of the original ten seeds reaches a
+// bombard or a groundCombatRound once Space Dock I grants its free fighter slots too: the fix shifts the
+// deterministic playthroughs enough that the coverage test below needs two more seeds to still see every
+// move kind at least once.
+const SEEDS: readonly number[] = [1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 90, 94]
 const RUNS = new Map<number, GameRun>()
 
-/** The ten smoke games are shared by the tests below, so each seed is actually played only once. */
+/** The eleven smoke games are shared by the tests below, so each seed is actually played only once. */
 function runGame(seed: number): GameRun {
   const cached = RUNS.get(seed)
   if (cached) return cached
@@ -235,7 +237,9 @@ const COUNTERS: readonly [string, RegExp][] = [
 ]
 
 describe('R3.1 to R3.3 full game', () => {
-  it('plays ten seeded games to the end and keeps every invariant', () => {
+  // this first test pays for every seed's full playthrough (the rest reuse RUNS); two extra seeds (see SEEDS
+  // above) push it close to the default 5s timeout under parallel load, so it gets a generous one of its own.
+  it('plays every seeded game to the end and keeps every invariant', { timeout: 30000 }, () => {
     let byPoints = 0
     let byRound6 = 0
     for (const seed of SEEDS) {
@@ -259,9 +263,9 @@ describe('R3.1 to R3.3 full game', () => {
         byRound6++
       }
     }
-    expect(byPoints + byRound6).toBe(10)
+    expect(byPoints + byRound6).toBe(SEEDS.length)
   })
-  it('the ten seeds exercise every reachable move kind, every card and the log events behind them', () => {
+  it('the seeds exercise every reachable move kind, every card and the log events behind them', () => {
     const union = new Set<string>()
     const counters = new Map<string, number>()
     let templateAttempts = 0

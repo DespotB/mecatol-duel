@@ -46,14 +46,25 @@ describe('R3.2 movement', () => {
     const smaller = activate(withUnits(base, 'bereg', 0, ['cruiser', 'fighter']), 0, 'bereg')
     expect(move(smaller, shipId(smaller, 'home-n', 'fighter'), 'home-n').ok).toBe(true)   // 1 + 2 = 3
   })
-  it('R3.2 step 2: fighters left behind by a departing carrier are trimmed to the origin\'s remaining capacity', () => {
-    // home-n starts with an L1Z1X Super-Dreadnought (capacity 2) and 3 fighters; the carrier moving away alone
-    // leaves only capacity 2 behind, so 1 of the 3 stranded fighters must be destroyed and returned to reinforcements.
+  it('R3.2 step 2: fighters left behind by a departing carrier stay if the origin\'s dock covers them', () => {
+    // home-n starts with an L1Z1X Super-Dreadnought (capacity 2), its own space dock and 3 fighters; the
+    // carrier moving away alone leaves only capacity 2 behind, but the dock's 3 free fighter slots (R4.4,
+    // Space Dock I or II) cover all 3 stranded fighters, so none are destroyed.
     const s = activate(toActionPhase(), 0, 'bereg')
     const before = s.players[0].reinforcements.fighter
     const r = move(s, shipId(s, 'home-n', 'carrier'), 'home-n')
     if (!r.ok) throw new Error(r.error)
-    expect(r.value.systems['home-n'].space.filter(u => u.owner === 0 && u.type === 'fighter')).toHaveLength(2)
+    expect(r.value.systems['home-n'].space.filter(u => u.owner === 0 && u.type === 'fighter')).toHaveLength(3)
+    expect(r.value.players[0].reinforcements.fighter).toBe(before)
+  })
+  it('R3.2 step 2: fighters left behind by a departing carrier are trimmed once they exceed the dock\'s cover too', () => {
+    // 3 more fighters on top of the 3 that start at home-n: 6 total stranded once the carrier leaves, but the
+    // remaining dreadnought's capacity (2) plus the dock's 3 free slots only cover 5, so 1 is destroyed.
+    const s = activate(withUnits(toActionPhase(), 'home-n', 0, ['fighter', 'fighter', 'fighter']), 0, 'bereg')
+    const before = s.players[0].reinforcements.fighter
+    const r = move(s, shipId(s, 'home-n', 'carrier'), 'home-n')
+    if (!r.ok) throw new Error(r.error)
+    expect(r.value.systems['home-n'].space.filter(u => u.owner === 0 && u.type === 'fighter')).toHaveLength(5)
     expect(r.value.players[0].reinforcements.fighter).toBe(before + 1)
   })
   it('R1 anomaly: the asteroid field can only be entered with Antimass Deflectors', () => {
