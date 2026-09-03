@@ -1,4 +1,3 @@
-import { MECATOL_ID } from '../data/map'
 import { PUBLIC_OBJECTIVES } from '../data/objectives'
 import { otherSeat } from './actionPhase'
 import { distributeTokens } from './economy'
@@ -6,6 +5,9 @@ import { addVp, controlledPlanets, controlsMecatol, scoreObjective, scoreable } 
 import { deriveSeed } from './rng'
 import { ALL_STRATEGY_CARDS, rollGuardianFleet } from './setup'
 import type { GameState, Result, Seat, StatusParams, System } from './types'
+
+// R3.3 step 5 / R4.2: seed salt for the status-phase guardian reroll, kept distinct from other seeded rolls
+const GUARDIAN_REROLL_SALT = 91
 
 /** R3.3 step 3: two command tokens, three with Hyper Metabolism. */
 export function tokensGained(state: GameState, seat: Seat): number {
@@ -62,7 +64,7 @@ export function finishStatusPhase(state: GameState, seed: number): GameState {
   const strategyPool = ALL_STRATEGY_CARDS.map(id => ({ id, bonus: next.strategyPool.find(c => c.id === id)?.bonus ?? 0 }))
   next = { ...next, systems, players, strategyPool, tactical: null, pendingSecondary: null }
   // R3.3 step 5 / R4.2: a fresh guardian fleet as long as nobody controls Mecatol Rex
-  if (!next.systems[MECATOL_ID].planets.some(p => p.owner !== null)) next = rollGuardianFleet(next, deriveSeed(seed, 91))
+  if (!controlsMecatol(next, 0) && !controlsMecatol(next, 1)) next = rollGuardianFleet(next, deriveSeed(seed, GUARDIAN_REROLL_SALT))
   const winner = victoryCheck(next)
   if (winner !== null) {
     return { ...next, phase: 'ended', winner, draft: [], log: [...next.log, { t: 'info', text: `seat ${winner} wins with ${next.players[winner].vp} VP` }] }
