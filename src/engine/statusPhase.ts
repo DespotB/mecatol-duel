@@ -5,7 +5,7 @@ import { distributeTokens } from './economy'
 import { addVp, controlledPlanets, controlsMecatol, scoreObjective, scoreable } from './objectives'
 import { deriveSeed } from './rng'
 import { ALL_STRATEGY_CARDS, rollGuardianFleet } from './setup'
-import type { GameState, Result, Seat, StatusParams } from './types'
+import type { GameState, Result, Seat, StatusParams, System } from './types'
 
 /** R3.3 step 3: two command tokens, three with Hyper Metabolism. */
 export function tokensGained(state: GameState, seat: Seat): number {
@@ -48,7 +48,7 @@ export function finishStatusPhase(state: GameState, seed: number): GameState {
       log: [...next.log, { t: 'info', text: `objective revealed: ${revealed.text}` }],
     }
   }
-  const systems = Object.fromEntries(Object.entries(next.systems).map(([id, sys]) => [id, {
+  const systems: Record<string, System> = Object.fromEntries(Object.entries(next.systems).map(([id, sys]): [string, System] => [id, {
     ...sys, activatedBy: [], planets: sys.planets.map(p => ({ ...p, exhausted: false })),
   }]))
   const players = [...next.players] as GameState['players']
