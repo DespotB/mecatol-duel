@@ -42,7 +42,7 @@ Snake draft: speaker picks one card, the other player picks two, the speaker pic
 ### 3.2 Action phase
 Players alternate turns in initiative order. On a turn the active player performs exactly one of: tactical action, strategic action, component action, pass. After passing, a player takes no more turns this round; the other player continues until they also pass. A player may not pass while they still hold an unused strategy card (they must play it first).
 
-Tactical action (system must not already contain the player's own command token unless the system is their home system... rule as in TI4: cannot activate a system that already contains one of your command tokens):
+Tactical action (a system that already contains one of your command tokens cannot be activated, your home system included):
 1. Activation: spend one tactic token into the system.
 2. Movement: move ships from other systems into the active system. A ship may move only if its move value covers the path length; it may not move through a system containing enemy ships (guardian ships count as enemy); wormholes make their two systems adjacent; anomaly rules of section 1. Gravity Drive: one ship gets +1 move this activation. Ships with capacity carry fighters and infantry from systems along their path; capacity may not be exceeded at the end of movement. A ship in a system that contains the player's own command token from an earlier activation may not move (it was already used, TI4 rule: ships in systems with the player's token cannot move out).
 3. Space combat if enemy or guardian ships are present (section 4).
@@ -92,7 +92,7 @@ Research via Technology strategy card (primary: one technology; secondary: one t
 - Diplomacy uses the errata text (ready up to 2 exhausted planets you control; the opponent places a command token from reinforcements in the chosen system, which they then cannot activate this round).
 - Emergency shipyard: once per game, component action: spend one strategy token and 4 resources to place a space dock on a planet you control, only if you control no space dock.
 - No action cards, no promissory notes, no agenda phase, no secret objectives in v1.
-- Chess clock: 15 minutes per player, running only during the player's own turns in the action phase. At zero the player automatically passes for the rest of the round and receives 3 extra minutes at the start of each later round. The engine records elapsed time per move; enforcement is done by the UI/server.
+- Chess clock: 15 minutes per player, running only during the player's own turns in the action phase. At zero the player automatically passes for the rest of the round and receives 3 extra minutes at the start of each later round. The engine is time-free; the transport records a timestamp per move (see lobby-architecture.md) and enforces the clock.
 
 ## 7. Objectives and victory
 - Public objectives, one revealed per round in order: (1) Own 3 technologies. (2) Control 4 planets outside your home system. (3) Have 3 or more non-fighter ships in the Mecatol Rex system. (4) Spend 6 resources in a single production. (5) Control 5 planets. (6) Own 2 technologies of the same colour. Each is worth 1 VP, scored once per player in a status phase (objective 4 is scored in the status phase of the round in which it was fulfilled).
