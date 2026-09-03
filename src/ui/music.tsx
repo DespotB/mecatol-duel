@@ -42,25 +42,31 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const [index, setIndex] = useState(() => Math.floor(Math.random() * TRACKS.length))
   const audio = useRef<HTMLAudioElement | null>(null)
 
+  // Playback starts inside the click itself: a browser only accepts `play()` while the page has just been
+  // interacted with, so going through an effect would be a needless step away from the gesture.
   const toggle = useCallback(() => {
+    const element = audio.current
     setOn(prev => {
       const next = !prev
       try { window.localStorage.setItem(KEY, next ? 'on' : 'off') } catch { /* still switches for this session */ }
+      if (element) {
+        element.volume = VOLUME
+        if (next) void element.play().catch(() => undefined)
+        else element.pause()
+      }
       return next
     })
   }, [])
 
+  // the track changed under a running soundtrack, or the page came back with music remembered as on
   useEffect(() => {
     const element = audio.current
     if (!element) return
     element.volume = VOLUME
-    if (!on) {
-      element.pause()
-      return
-    }
-    // a browser may refuse until the page has been clicked; then start on the first gesture instead
+    if (!on) return
     const start = () => { void element.play().catch(() => undefined) }
     void element.play().catch(() => {
+      // remembered from an earlier visit: the browser waits for this page to be touched at all
       window.addEventListener('pointerdown', start, { once: true })
       window.addEventListener('keydown', start, { once: true })
     })
