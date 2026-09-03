@@ -45,7 +45,7 @@ function isLegacy(value: unknown): value is Legacy {
     && Array.isArray(p.history)
     // R7 changed the objectives and with them the shape of a player, so a game saved under version 1 is
     // not readable any more and is dropped rather than crashed into
-    && typeof p.state === 'object' && p.state !== null && (p.state.version === 2 || p.state.version === 3)
+    && typeof p.state === 'object' && p.state !== null && [2, 3].includes((p.state as { version: number }).version)
 }
 
 function isSummary(value: unknown): value is GameSummary {
