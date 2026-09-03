@@ -58,7 +58,8 @@ export function distributeTokens(state: GameState, seat: Seat, wanted: Player['t
   const total = TOKEN_POOLS.reduce((sum, pool) => sum + target[pool], 0)
   if (total !== current.tactic + current.fleet + current.strategy + gained) return { ok: false, error: `distribute exactly ${gained} new command tokens` }
   const players = [...state.players] as GameState['players']
-  players[seat] = { ...players[seat], tokens: target }
+  // `target` may be the caller's own `params.tokens` object, so the sheet goes into the state as a copy
+  players[seat] = { ...players[seat], tokens: { ...target } }
   return { ok: true, value: { ...state, players } }
 }
 
