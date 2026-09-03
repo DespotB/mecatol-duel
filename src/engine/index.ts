@@ -64,7 +64,7 @@ export { canInheritance, canShipyard, inheritanceTechs, postDef, postLinked, shi
 export { capacity, cheapestPlanets, fleetPoolLimit, productionCost, productionLimit, readyInfluence, readyResources } from './economy'
 export { bombardablePlanets, groundCombatPending, landablePlanets } from './invasion'
 export { movableShips, movementObstacle, shipsThatCanReach } from './movement'
-export { CHARTER_TRADE_GOODS, TIME_TRADE_VP, postAbilityOptions, postAbilityReady } from './postAbilities'
+export { CHARTER_TRADE_GOODS, TIME_TRADE_VP, postAbilityOptions, postAbilityReady, refitValue } from './postAbilities'
 export type { MovementObstacle } from './movement'
 export { controlledPlanets, controlsMecatol, scoreable } from './objectives'
 export { PRODUCIBLE } from './production'

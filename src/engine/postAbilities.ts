@@ -135,7 +135,7 @@ function charter(state: GameState, seat: Seat, params: PostAbilityParams): Resul
  * a dreadnought is worth eight of them. This is deliberately not `productionCost`, which rounds a part-order
  * up to a whole cost; a refit weighs hulls, it does not buy them.
  */
-function refitValue(type: UnitType, stats: StatsOwner): number {
+export function refitValue(type: UnitType, stats: StatsOwner): number {
   const s = unitStats(type, stats)
   return s.cost / s.producedPerCost
 }

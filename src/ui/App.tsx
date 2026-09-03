@@ -7,6 +7,7 @@ import { GameOverScreen } from './screens/GameOverScreen'
 import { RulesScreen } from './screens/RulesScreen'
 import { SetupScreen } from './screens/SetupScreen'
 import { UnknownGameScreen } from './screens/UnknownGameScreen'
+import type { PostId } from '../data/posts'
 import type { GameConfig } from './store'
 import type { Move, StrategyCardId } from '../engine/types'
 import { ModelStyleProvider } from './modelStyle'
@@ -30,11 +31,18 @@ function useDemoBootstrap() {
     const params = new URLSearchParams(window.location.search)
     if (params.get('demo') !== '1') return
     const panel = params.get('panel')
+    // `&posts=tessik,kesh` is the same kind of hook for R8: it names the pair of trade posts to draw and
+    // hands seat 0 Sakulag, so one hyperlane is lit and the other three are cold in the same shot.
+    const posts = params.get('posts')
     // `&panel=handoff` / `&panel=log` are manual/visual QA hooks: they resume straight into a state
     // that already shows the overlay or has log entries, so a headless screenshot needs no clicks.
-    if (panel === 'handoff' || panel === 'log') {
-      void import('../engine/testUtils').then(({ cardsUsed, toActionPhase }) => {
-        const state = toActionPhase(1, 0)
+    if (panel === 'handoff' || panel === 'log' || posts !== null) {
+      void import('../engine/testUtils').then(({ cardsUsed, toActionPhase, withPlanetOwner }) => {
+        let state = toActionPhase(1, 0)
+        if (posts !== null) {
+          const [west, east] = posts.split(',') as PostId[]
+          state = withPlanetOwner({ ...state, posts: { west, east } }, 'sakulag', 'sakulag', 0)
+        }
         resume(panel === 'handoff'
           ? { code: DEMO_CODE, seed: 1, minutes: 15, state: cardsUsed(state), history: [], clockMs: [900000, 900000], handoff: 1 }
           : { code: DEMO_CODE, seed: 1, minutes: 15, state, history: [], clockMs: [900000, 900000], handoff: null })

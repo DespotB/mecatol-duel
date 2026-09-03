@@ -20,4 +20,8 @@ describe('undo inside your own turn', () => {
     expect(undoable(base, { ...base, active: 1 })).toBe(false)
     expect(undoable(base, withRoll(base))).toBe(false)
   })
+  it('R8: a post ability is final, like a die roll, because it is once per round for the table', () => {
+    expect(undoable(base, { ...base, postAbilityUsed: { west: true, east: false } })).toBe(false)
+    expect(undoable(base, { ...base, postAbilityUsed: { west: false, east: true } })).toBe(false)
+  })
 })

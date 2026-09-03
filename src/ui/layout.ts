@@ -1,3 +1,6 @@
+/** The map box every position below is authored in; `useViewportScale` zooms it, it never changes size. */
+export const MAP_W = 940
+export const MAP_H = 698
 export const TILE_W = 232
 export const TILE_H = 201
 export interface Point { left: number; top: number }
@@ -209,7 +212,57 @@ export const SIGIL_SPOT: Point = { left: 150, top: 20 }
 export const SIGIL_SIZE = 30
 export const WORMHOLE_SIZE = 26
 
+/**
+ * The two trade posts live in the margins the flower leaves free: the tiles occupy x180 to x760 of the
+ * 940-wide map box, so 180 px are open on either side. A post takes 156 of them, which is what the rendered
+ * model needs to read as a model rather than an icon, and the 24 that are left are the corridor the
+ * hyperlanes run through before they disappear under a hexagon. Vertically the block is centred on the map,
+ * level with Mecatol Rex.
+ */
+export const POST_W = 156
+export const POST_H = 322
+/**
+ * The block sits so that the seam between the model and its card lands on the map's own centre line, level
+ * with Mecatol Rex and exactly between the two tiles the post serves: that is where a lane can leave it and
+ * meet both hexagons on a slanted edge instead of running straight into the one nearest point of the near
+ * one, which would leave nothing of it to see.
+ */
 export const POST_POS: Record<'west' | 'east', Point> = {
-  west: { left: 16, top: 254 },
-  east: { left: 776, top: 254 },
+  west: { left: 0, top: 203 },
+  east: { left: MAP_W - POST_W, top: 203 },
+}
+/** The model box at the top of the block; the render is letterboxed into it, so every post keeps its ratio. */
+export const POST_ART_W = 150
+export const POST_ART_H = 146
+
+/** Where a hyperlane leaves the post: the inner edge of the block, at the foot of the model it serves. */
+export function postAnchor(post: 'west' | 'east'): Point {
+  const pos = POST_POS[post]
+  return { left: post === 'west' ? pos.left + POST_W : pos.left, top: pos.top + POST_ART_H }
+}
+
+/** The centre of a tile, which is where a hyperlane ends; the tile art covers the last stretch of it. */
+export function tileCentre(systemId: string): Point {
+  const pos = TILE_POS[systemId]
+  return { left: pos.left + TILE_W / 2, top: pos.top + TILE_H / 2 }
+}
+
+/**
+ * R8: the hyperlane from a post to one of the two systems it serves. A straight line between the two
+ * anchors would run through the gap between the tiles as a spoke; the lane bows away from the map's
+ * middle instead, so the two lanes of one post read as a fan of routes rather than as a pair of rails.
+ * Everything is in design pixels and derived from the tile and post constants: the map is scaled with a
+ * CSS zoom at runtime, so nothing here may ever be measured off the DOM.
+ */
+export const LANE_BOW = 32
+export function lanePath(post: 'west' | 'east', systemId: string): string {
+  const from = postAnchor(post)
+  const to = tileCentre(systemId)
+  const midX = (from.left + to.left) / 2
+  const midY = (from.top + to.top) / 2
+  // the bow points away from the horizontal centre line the post sits on, upwards for the upper system
+  const away = Math.sign(to.top - from.top) || 1
+  const cx = midX + (post === 'west' ? -LANE_BOW / 2 : LANE_BOW / 2)
+  const cy = midY + away * LANE_BOW
+  return `M ${String(from.left)} ${String(from.top)} Q ${String(cx)} ${String(cy)} ${String(to.left)} ${String(to.top)}`
 }

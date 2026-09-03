@@ -13,9 +13,16 @@ export function rollCount(state: GameState): number {
  * and a turn that has already passed to the other seat is closed. Undo never crosses a phase boundary
  * either: a move that closes the strategy phase (or any other phase) is final even when the seat that
  * becomes active happens to coincide with the seat that was active before it.
+ *
+ * R8: a post's special ability is final for the same reason dice are. It is once per round for the whole
+ * table, so taking it back would buy a free look at what the ability does and let the other seat be locked
+ * out and unlocked at will; the layover and the time trade also move the chess clock, which the game state
+ * does not carry and an undo therefore could not put back.
  */
 export function undoable(previous: GameState, next: GameState): boolean {
   return next.active === previous.active && next.phase === previous.phase && rollCount(next) === rollCount(previous)
+    && next.postAbilityUsed.west === previous.postAbilityUsed.west
+    && next.postAbilityUsed.east === previous.postAbilityUsed.east
 }
 
 /** The dice of the last move: the trailing run of roll entries in the log. */

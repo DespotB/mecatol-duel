@@ -23,16 +23,18 @@ export interface ProductionPickerProps {
   limit: number
   units: Partial<Record<UnitType, number>>
   onUnits: (units: Partial<Record<UnitType, number>>) => void
+  /** Which unit kinds to offer; production offers all of them, R8's refit only the ships. */
+  types?: readonly UnitType[]
 }
 
 /** R4.4: the unit reference cards with a count under each, shared by the tactical production and Warfare. */
-export function ProductionPicker({ state, seat, limit, units, onUnits }: ProductionPickerProps) {
+export function ProductionPicker({ state, seat, limit, units, onUnits, types = PRODUCIBLE }: ProductionPickerProps) {
   const player = state.players[seat]
   const stats = { faction: player.faction, techs: player.techs }
   const total = unitTotal(units)
   return (
     <div className="ucards" data-testid="production-picker">
-      {DISPLAY_ORDER.filter(type => PRODUCIBLE.includes(type)).map(type => {
+      {DISPLAY_ORDER.filter(type => types.includes(type)).map(type => {
         const printed = unitStats(type, stats)
         const count = units[type] ?? 0
         const room = Math.min(limit - total + count, player.reinforcements[type])
