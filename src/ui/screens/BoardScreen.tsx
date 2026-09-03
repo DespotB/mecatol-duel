@@ -6,6 +6,11 @@ import { SidePanel } from '../hud/SidePanel'
 import { TopBar } from '../hud/TopBar'
 import { useGame } from '../store'
 import type { StrategyCardId } from '../../engine/types'
+// tactical flows (Task 4a)
+import { CombatDialog } from '../flows/CombatDialog'
+import { InvasionPanel } from '../flows/InvasionPanel'
+import { MovementPanel } from '../flows/MovementPanel'
+import { ProduceDrawer } from '../flows/ProduceDrawer'
 
 const HINTS: Record<string, string> = {
   tactical: 'Tactical action. Choose a system to activate.',
@@ -40,6 +45,13 @@ export function BoardScreen() {
         selectable={selectable}
         onSelect={systemId => { if (apply({ type: 'startTactical', systemId })) setMode(null) }}
       />
+      {/* tactical flows (Task 4a) */}
+      <>
+        {state.tactical?.step === 'movement' ? <MovementPanel /> : null}
+        {state.tactical?.step === 'spaceCombat' ? <CombatDialog /> : null}
+        {state.tactical?.step === 'invasion' ? <InvasionPanel /> : null}
+        {state.tactical && (state.tactical.step === 'production' || state.tactical.step === 'done') ? <ProduceDrawer /> : null}
+      </>
       <ActionBar mode={mode} onMode={setMode} hint={hint} onLog={() => setShowLog(!showLog)} />
     </div>
   )
