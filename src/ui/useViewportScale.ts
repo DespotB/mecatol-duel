@@ -58,6 +58,37 @@ export function viewportScale(width: number, height: number): ViewportScale {
   return { k, s }
 }
 
+/** the lobby page's own design frame */
+const PAGE_W = 1440
+const PAGE_H = 900
+
+const FIT_MIN = 0.5
+const FIT_MAX = 2
+
+/**
+ * The lobby page is authored in the same 1440x900 frame but is one block rather than docked regions, so
+ * it simply scales until it fills the shorter of the two axes: the credits line then sits just above the
+ * bottom edge, which is what the design was drawn for.
+ */
+export function fitScale(width: number, height: number): number {
+  return round3(clamp(FIT_MIN, Math.min(width / PAGE_W, height / PAGE_H), FIT_MAX))
+}
+
+export function useFitScale(): number {
+  const [fit, setFit] = useState(() => typeof window === 'undefined' ? 1 : fitScale(window.innerWidth, window.innerHeight))
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const onResize = () => {
+      const next = fitScale(window.innerWidth, window.innerHeight)
+      setFit(prev => prev === next ? prev : next)
+    }
+    window.addEventListener('resize', onResize)
+    onResize()
+    return () => { window.removeEventListener('resize', onResize) }
+  }, [])
+  return fit
+}
+
 const FALLBACK: ViewportScale = { k: 1, s: 1 }
 
 export function useViewportScale(): ViewportScale {

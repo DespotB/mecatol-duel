@@ -5,6 +5,7 @@ import { techDef } from '../../data/techs'
 import { navigate, seedFromRoute, useHashRoute } from '../route'
 import { spriteSize } from '../sprites'
 import { useGame } from '../store'
+import { useFitScale } from '../useViewportScale'
 import '../setup.css'
 import type { CSSProperties, ReactElement } from 'react'
 import type { Color, FactionId, Seat, TechColor, UnitType } from '../../engine/types'
@@ -89,6 +90,8 @@ function factionTitle(name: string): (string | ReactElement)[] {
 export function SetupScreen() {
   const { start, session } = useGame()
   const route = useHashRoute()
+  // the page is drawn for a 1440x900 frame; scale it until it fills the viewport (credits line at the foot)
+  const fit = useFitScale()
   const [names, setNames] = useState<[string, string]>(['Player 1', 'Player 2'])
   const [factions, setFactions] = useState<[FactionId, FactionId]>(['l1z1x', 'letnev'])
   const [colours, setColours] = useState<[Color, Color]>(['blue', 'red'])
@@ -118,7 +121,7 @@ export function SetupScreen() {
   }
 
   return (
-    <div className="setup lobbyui" data-testid="setup-screen">
+    <div className="setup lobbyui" data-testid="setup-screen" style={{ zoom: fit }}>
       <div className="space">
         <div className="base" /><div className="stars" /><div className="galaxy a" /><div className="galaxy b" />
         <div className="veil" /><div className="dust" /><div className="limb" /><div className="vig" />
