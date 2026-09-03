@@ -1,7 +1,7 @@
 import { isShip, unitStats } from '../data/units'
 import { destroyUnits, dieRolls, hasTech, removeUnits, rollHits, rollRevival, statsOwner } from './board'
 import { deriveSeed, mulberry32, type Rng } from './rng'
-import type { DieRoll, GameState, Owner, Planet, Result, Seat, Unit, UnitType } from './types'
+import type { DieRoll, GameState, Owner, Planet, Result, Seat, TacticalContext, Unit, UnitType } from './types'
 
 /**
  * All dice draws in an invasion use mulberry32(deriveSeed(seed, salt)) with disjoint salts, so a single seed
@@ -254,6 +254,21 @@ export function groundCombatRound(state: GameState, seed: number): Result<GameSt
     next = bombardment(next, tac.systemId, planetId, seat, seed, GROUND_SALT_BASE + 3 * round + 2, `Harrow bombardment of ${planetId}`)
   }
   return { ok: true, value: resolveControl(next, tac.systemId, planetId, seat) }
+}
+
+/**
+ * R4.3: the invasion step only opens when there is something to do in it, that is infantry in space that
+ * could land, an enemy planet worth bombarding, or a ground combat already under way. A player who only
+ * moved ships into an empty system is not asked about an invasion that cannot happen; the tactical action
+ * goes straight on to production, or ends if there is no space dock of theirs in the system.
+ */
+export function afterSpaceStep(state: GameState, systemId: string, seat: Seat): TacticalContext {
+  const opened: TacticalContext = { systemId, step: 'invasion', invasion: { planetId: null, landed: [], bombarded: [], round: 0 } }
+  const staged: GameState = { ...state, active: seat, tactical: opened }
+  const worth = landablePlanets(staged).length > 0 || bombardablePlanets(staged).length > 0 || groundCombatPending(staged)
+  if (worth) return opened
+  const dock = state.systems[systemId].planets.some(p => p.structures.some(u => u.type === 'spacedock' && u.owner === seat))
+  return { systemId, step: dock ? 'production' : 'done' }
 }
 
 export function endInvasion(state: GameState): Result<GameState> {

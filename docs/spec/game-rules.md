@@ -46,7 +46,7 @@ Tactical action (a system that already contains one of your command tokens canno
 1. Activation: spend one tactic token into the system.
 2. Movement: move ships from other systems into the active system. A ship may move only if its move value covers the path length; it may not move through a system containing enemy ships (guardian ships count as enemy); wormholes make their two systems adjacent. Gravity Drive: one ship gets +1 move this activation. Ships with capacity carry fighters and infantry from the system they start in; capacity may not be exceeded at the end of movement. Fighter II: fighters may move without being transported, and fighters in excess of capacity count against the fleet pool instead of being destroyed (TI4 rule). A ship in a system that contains the player's own command token from an earlier activation may not move (it was already used, TI4 rule: ships in systems with the player's token cannot move out).
 3. Space combat if enemy or guardian ships are present (section 4).
-4. Invasion: bombardment, then landing infantry on planets, ground combat, control (section 4.3).
+4. Invasion: bombardment, then landing infantry on planets, ground combat, control (section 4.3). The step is skipped entirely when it has nothing to offer, that is when the player has no ground forces in the system's space, no enemy planet there can be bombarded and no ground combat is pending; the action then goes straight to production.
 5. Production if the player has a space dock in the active system (section 4.4).
 
 Strategic action: play the primary ability of one of your unused strategy cards; the opponent may then use the secondary by spending one strategy token. The card is then used for the round.

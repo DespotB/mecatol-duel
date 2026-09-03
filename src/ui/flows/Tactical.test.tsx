@@ -80,8 +80,8 @@ describe('the tactical action', () => {
   it('R4.4: produces at the space dock, pays with a planet and exhausts it', () => {
     renderWithSession(toActionPhase(), <BoardScreen />)
     activate('home-n')
+    // R4.3: nothing to land or bombard at home, so ending the movement goes straight to production
     fireEvent.click(screen.getByTestId('btn-end-movement'))
-    fireEvent.click(screen.getByTestId('btn-end-invasion'))
     expect(screen.getByTestId('produce-drawer')).toBeTruthy()
     expect(screen.getByTestId('produce-limit').textContent).toBe('7')
     fireEvent.click(screen.getByTestId('step-infantry-plus'))

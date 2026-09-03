@@ -4,6 +4,7 @@ import { otherSeat } from './actionPhase'
 import { neighbours } from './adjacency'
 import { destroyUnits, dieRolls, hasTech, rollHits, shipsOf, statsOwner, trimCargo } from './board'
 import { fleetPoolLimit, nonFighterShips } from './economy'
+import { afterSpaceStep } from './invasion'
 import { deriveSeed, mulberry32 } from './rng'
 import type { CombatState, DieRoll, GameState, HitGroup, HitMode, Owner, PendingHits, Result, Seat, Unit, UnitType } from './types'
 
@@ -367,7 +368,7 @@ export function afterSpaceCannonOnly(state: GameState, systemId: string, seat: S
   const trimmed = trimCargo(state, systemId, seat)
   return {
     ...trimmed,
-    tactical: { systemId: tac.systemId, step: 'invasion', invasion: { planetId: null, landed: [], bombarded: [], round: 0 } },
+    tactical: afterSpaceStep(state, tac.systemId, seat),
   }
 }
 
@@ -568,7 +569,7 @@ function finish(state: GameState, ctx: Ctx): GameState {
   }
   if (!defenderShips) {
     const won = wonBy(state, ctx, ctx.attacker)
-    return endCombat({ ...won, tactical: { ...tac, step: 'invasion', combat, invasion: { planetId: null, landed: [], bombarded: [], round: 0 } } }, ctx)
+    return endCombat({ ...won, tactical: { ...afterSpaceStep(won, tac.systemId, ctx.attacker), combat } }, ctx)
   }
   if (combat.retreating === ctx.attacker && combat.retreatTo) return withdraw({ ...state, tactical: { ...tac, combat } }, ctx, combat.retreatTo)
   return { ...state, tactical: { ...tac, combat } }

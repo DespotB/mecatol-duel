@@ -237,7 +237,7 @@ describe('R4.3: the invasion step only opens when there is something to invade',
     expect(step(r.value)).toBe('invasion')
   })
   it('opens it when an enemy planet in the system can be bombarded', () => {
-    const held = withPlanetOwner(withUnits(toActionPhase(), 'bereg', 1, ['infantry'], 'bereg'), 'bereg', 1)
+    const held = withPlanetOwner(withUnits(toActionPhase(), 'bereg', 1, ['infantry'], 'bereg'), 'bereg', 'bereg', 1)
     const moved = activate(held, 'bereg')
     const dread = shipId(moved, 'home-n', 'dreadnought')
     const r = applyMove(moved, { type: 'moveShips', moves: [{ unitId: dread, from: 'home-n', carrying: [] }] }, 0)

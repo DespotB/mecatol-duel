@@ -105,12 +105,12 @@ describe('R3.2 movement', () => {
     const full = activate(withUnits(toActionPhase(), 'starpoint', 1, ['cruiser', 'cruiser', 'cruiser', 'cruiser', 'cruiser']), 1, 'starpoint')
     expect(move(full, shipId(full, 'home-s', 'destroyer', 1), 'home-s').ok).toBe(false)
   })
-  it('endMovement goes to the space combat when enemy ships are present, otherwise to the invasion', () => {
+  it('endMovement goes to the space combat when enemy ships are present, otherwise past it', () => {
     const empty = activate(toActionPhase(), 0, 'bereg')
     const r = applyMove(empty, { type: 'endMovement' }, 0)
     if (!r.ok) throw new Error(r.error)
-    expect(r.value.tactical?.step).toBe('invasion')
-    expect(r.value.tactical?.invasion).toEqual({ planetId: null, landed: [], bombarded: [], round: 0 })
+    // R4.3: nothing moved in, so there is neither an invasion nor a production to hold the turn open
+    expect(r.value.tactical?.step).toBe('done')
     const mecatol = activate(withUnits(toActionPhase(), 'home-n', 0, ['destroyer']), 0, 'mecatol')
     const moved = move(mecatol, shipId(mecatol, 'home-n', 'destroyer'), 'home-n')
     if (!moved.ok) throw new Error(moved.error)
@@ -119,7 +119,7 @@ describe('R3.2 movement', () => {
     expect(combat.value.tactical?.step).toBe('spaceCombat')
     expect(combat.value.tactical?.combat).toEqual({ round: 0, attacker: 0, defender: 'guardian', retreating: null, retreatTo: null, lastRolls: [], pending: [] })
   })
-  it('R4.1 step 1: endMovement resolves space cannon offense when only a PDS defends an otherwise empty system, then continues to the invasion', () => {
+  it('R4.1 step 1: endMovement resolves space cannon offense when only a PDS defends an otherwise empty system', () => {
     const withPds = withUnits(withPlanetOwner(toActionPhase(), 'bereg', 'bereg', 1), 'bereg', 1, ['pds'], 'bereg')
     const s = activate(withUnits(withPds, 'home-n', 0, ['destroyer', 'destroyer']), 0, 'bereg')
     const ids = s.systems['home-n'].space.filter(u => u.owner === 0 && u.type === 'destroyer').map(u => u.id)
@@ -127,12 +127,12 @@ describe('R3.2 movement', () => {
     if (!moved.ok) throw new Error(moved.error)
     const after = applyMove(moved.value, { type: 'endMovement' }, 5)
     if (!after.ok) throw new Error(after.error)
-    expect(after.value.tactical?.step).toBe('invasion')
+    expect(after.value.tactical?.step).toBe('done')   // two destroyers and no infantry: nothing to invade with
     const entries = after.value.log.filter(e => e.t === 'roll' && e.context === 'space cannon offense')
     expect(entries).toHaveLength(1)
     expect(after.value.systems.bereg.space.filter(u => u.owner === 0)).toHaveLength(2 - hitsIn(after.value, 'space cannon offense'))
   })
-  it('R4.1 step 1 and 4: a mixed fleet assigns the PDS hits itself, and the invasion waits for it', () => {
+  it('R4.1 step 1 and 4: a mixed fleet assigns the PDS hits itself before the action moves on', () => {
     const withPds = withUnits(withPlanetOwner(toActionPhase(), 'bereg', 'bereg', 1), 'bereg', 1, ['pds'], 'bereg')
     const s = activate(withUnits(withPds, 'home-n', 0, ['destroyer']), 0, 'bereg')
     const carrier = shipId(s, 'home-n', 'carrier')
@@ -148,7 +148,7 @@ describe('R3.2 movement', () => {
     const after = applyMove(stopped.value, { type: 'assignHits', destroy: [destroyer], sustain: [] }, 3)
     if (!after.ok) throw new Error(after.error)
     expect(after.value.systems.bereg.space.filter(u => u.owner === 0).map(u => u.type)).toEqual(['carrier'])
-    expect(after.value.tactical?.step).toBe('invasion')
+    expect(after.value.tactical?.step).toBe('done')   // the carrier arrived empty, so there is nothing to land
     expect(after.value.tactical?.combat).toBeUndefined()
   })
   it('R4.1 step 1: cargo orphaned by the space cannon in the PDS-only branch is destroyed with its carrier', () => {
