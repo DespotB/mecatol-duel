@@ -6,7 +6,7 @@ import { useGame } from '../store'
 import type { Player } from '../../engine/types'
 
 export function StatusDialog() {
-  const { session, legal, apply } = useGame()
+  const { session, apply } = useGame()
   const [tokens, setTokens] = useState<Player['tokens'] | null>(null)
   if (!session) return null
   const state = session.state
