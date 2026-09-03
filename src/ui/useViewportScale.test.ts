@@ -4,6 +4,8 @@ import { act, renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { useViewportScale, viewportScale } from './useViewportScale'
 
+const round3 = (value: number) => Math.round(value * 1000) / 1000
+
 function resizeTo(width: number, height: number) {
   Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: width })
   Object.defineProperty(window, 'innerHeight', { configurable: true, writable: true, value: height })
@@ -16,23 +18,30 @@ describe('viewportScale', () => {
     expect(viewportScale(1440, 900)).toEqual({ k: 1, s: 1 })
   })
 
-  it('shrinks by the tighter of the two axes', () => {
-    // min(1280/1440, 720/900) = min(0.889, 0.8)
+  it('keeps the bars and columns at their designed size and shrinks only the board', () => {
+    // the heads-up display is not what zooms out: the window is smaller, so the camera moves away from the map
     const { k, s } = viewportScale(1280, 720)
-    expect(k).toBe(0.8)
-    // the stage is then 1600-500 wide and 900-202 tall in design pixels, so the board still fits 1:1
-    expect(s).toBe(1)
+    expect(k).toBe(1)
+    expect(s).toBe(round3(Math.min((1280 - 500) / 940, (720 - 202) / 698)))
+    expect(s).toBeLessThan(1)
   })
 
-  it('caps the bar scale at 1.25 and grows the board into the free stage', () => {
+  it('never grows the bars, only the board', () => {
     const { k, s } = viewportScale(2560, 1440)
-    expect(k).toBe(1.25)
-    // min((2048-500)/940, (1152-202)/698) = min(1.647, 1.361)
-    expect(s).toBeCloseTo(1.361, 2)
+    expect(k).toBe(1)
+    // min((2560-500)/940, (1440-202)/698) = min(2.191, 1.774)
+    expect(s).toBeCloseTo(1.774, 2)
+  })
+
+  it('gives the chrome up only once the stage would fall below its minimum', () => {
+    // 1060x582 is the last size that still leaves a 560x380 stage at full size
+    expect(viewportScale(1060, 582).k).toBe(1)
+    expect(viewportScale(900, 582).k).toBeLessThan(1)
+    expect(viewportScale(1060, 480).k).toBeLessThan(1)
   })
 
   it('never shrinks the bars below 0.55', () => {
-    expect(viewportScale(640, 400).k).toBe(0.55)
+    expect(viewportScale(400, 300).k).toBe(0.55)
   })
 
   it('rounds both factors to three decimals', () => {
@@ -54,9 +63,9 @@ describe('useViewportScale', () => {
     const { result } = renderHook(() => useViewportScale())
     expect(result.current.k).toBe(1)
     act(() => {
-      resizeTo(1280, 720)
+      resizeTo(800, 520)
       window.dispatchEvent(new Event('resize'))
     })
-    expect(result.current.k).toBe(0.8)
+    expect(result.current.k).toBeLessThan(1)
   })
 })
