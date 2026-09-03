@@ -103,9 +103,18 @@ export function RulesScreen() {
 
           <Group label="Technology">
             <p>
-              The full base tech tree, minus PDS II. Space Dock II and the War Sun are still in it, so a War
-              Sun needs the War Sun technology before you can build one, and it costs 12. Inheritance Systems
+              The full base tech tree, minus PDS II and minus the War Sun technology. A War Sun needs no
+              research here: you may build one from the first round, and it costs 12. Inheritance Systems
               works as the L1Z1X component action. Exhaust it, spend 2 resources, ignore the prerequisites.
+            </p>
+          </Group>
+
+          <Group label="Combat">
+            <p>
+              Both sides roll at the same time, and then each player assigns the hits their own fleet takes.
+              Sustain damage is your decision, not the engine's: you may take a hit on an undamaged
+              dreadnought, war sun or flagship instead of losing a ship. Hits that must go to a non-fighter
+              ship still do, and when there is nothing to decide the engine resolves the hits for you.
             </p>
           </Group>
 
