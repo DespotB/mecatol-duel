@@ -18,6 +18,22 @@ describe('hot-seat persistence', () => {
     expect(loaded?.state.systems['home-n'].space).toHaveLength(5)
     expect(loaded?.handoff).toBeNull()
   })
+  it('R3.2: a game saved before turnDone existed loads with the flag cleared, not rejected', () => {
+    // exactly what a deployed payload from before this change looks like: no `turnDone`, in the state and in
+    // every history entry the undo stack still holds
+    saveSession({ ...session, history: [session.state] })
+    const legacy = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '') as {
+      state: Record<string, unknown>; history: Record<string, unknown>[]
+    }
+    delete legacy.state.turnDone
+    delete legacy.history[0].turnDone
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(legacy))
+    const loaded = loadSession()
+    expect(loaded).not.toBeNull()
+    expect(loaded?.state.turnDone).toBe(false)
+    expect(loaded?.history[0].turnDone).toBe(false)
+    expect(loaded?.state.phase).toBe('action')          // the rest of the game survives untouched
+  })
   it('ignores an empty, broken or foreign payload', () => {
     expect(loadSession()).toBeNull()
     window.localStorage.setItem(STORAGE_KEY, 'not json')
