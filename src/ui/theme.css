@@ -49,11 +49,22 @@ button{font-family:inherit}
 .chip.red{color:#f1a3a3;border-color:rgba(214,59,59,.7);background:rgba(214,59,59,.16)}
 .chip.gold{color:var(--gold-hi);border-color:var(--hair);background:rgba(201,162,77,.10)}
 .chip.lock{color:#b9b3a2;border-color:rgba(160,150,120,.45);background:rgba(120,110,80,.12)}
-.btn{display:inline-flex;align-items:center;justify-content:center;height:34px;padding:0 18px;border:1px solid var(--gold);color:var(--gold-hi);
-  font:600 13px/1 var(--hud);letter-spacing:.08em;text-transform:uppercase;background:rgba(201,162,77,.06);cursor:pointer;
+/*
+ * The gold edge is the button's own background with the face inset a pixel on top of it, not a CSS border:
+ * a border stops at the box, so the clipped top-left and bottom-right corners would be raw cuts with no gold
+ * along them. The face is opaque because the gold sits directly behind it.
+ */
+.btn{display:inline-flex;align-items:center;justify-content:center;height:34px;padding:0 18px;border:0;color:var(--gold-hi);
+  font:600 13px/1 var(--hud);letter-spacing:.08em;text-transform:uppercase;cursor:pointer;position:relative;z-index:0;
+  background:linear-gradient(160deg,var(--gold-hi) 0%,var(--gold) 45%,var(--gold-sh) 100%);
   clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)}
-.btn.quiet{border-color:rgba(201,162,77,.55);color:var(--gold);background:transparent}
-.btn.gold{background:linear-gradient(180deg,var(--gold-hi) 0%,var(--gold) 55%,#a8842f 100%);color:#15110a;border-color:var(--gold-hi)}
+.btn::before{content:"";position:absolute;inset:1px;z-index:-1;
+  background:linear-gradient(rgba(201,162,77,.07),rgba(201,162,77,.07)),#0b1122;
+  clip-path:polygon(5.3px 0,100% 0,100% calc(100% - 5.3px),calc(100% - 5.3px) 100%,0 100%,0 5.3px)}
+.btn:hover::before{background:linear-gradient(rgba(201,162,77,.14),rgba(201,162,77,.14)),#0b1122}
+.btn.quiet{background:linear-gradient(160deg,rgba(232,207,138,.6),rgba(201,162,77,.5) 45%,rgba(122,92,30,.6) 100%);color:var(--gold)}
+.btn.gold{background:var(--gold-hi);color:#15110a}
+.btn.gold::before,.btn.gold:hover::before{background:linear-gradient(180deg,var(--gold-hi) 0%,var(--gold) 55%,#a8842f 100%)}
 .btn:disabled{opacity:.42;cursor:default}
 .btn.small{height:26px;padding:0 10px;font-size:12px}
 .field{height:32px;padding:0 10px;border:1px solid var(--hair);background:rgba(0,0,0,.35);color:var(--text);font:500 14px var(--body)}
