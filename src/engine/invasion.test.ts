@@ -158,6 +158,13 @@ describe('R4.3 invasion', () => {
     expect(groundOf(after, 'bereg', 'bereg', 0)).toHaveLength(wiped ? 0 : 1)
     expect(after.tactical?.invasion?.planetId).toBe(wiped ? null : 'bereg')
   })
+  it('R4.3 step 1: the second bombardment of an invasion rolls its own dice, not a replay of the first', () => {
+    const one = withUnits(invasion('bereg', ['dreadnought'], 0), 'bereg', 1, ['infantry', 'infantry'], 'bereg')
+    const both = withUnits(one, 'bereg', 1, ['infantry', 'infantry'], 'lirta-iv')
+    const after = apply(apply(both, { type: 'bombard', planetId: 'bereg' }, 5), { type: 'bombard', planetId: 'lirta-iv' }, 5)
+    const rolls = (context: string) => after.log.flatMap(e => e.t === 'roll' && e.context === context ? e.rolls.map(r => r.value) : [])
+    expect(rolls('bombardment of bereg')).not.toEqual(rolls('bombardment of lirta-iv'))
+  })
   it('R4.3 step 4: no landing at all while a ground combat is running, and the enumerator offers none', () => {
     const base = withUnits(invasion('bereg', ['carrier'], 4), 'bereg', 1, ['infantry', 'infantry', 'infantry'], 'bereg')
     const landed = apply(base, { type: 'land', planetId: 'bereg', infantryIds: carriedIds(base, 'bereg', 0).slice(0, 2) })

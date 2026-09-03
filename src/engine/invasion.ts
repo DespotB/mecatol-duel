@@ -5,14 +5,16 @@ import type { DieRoll, GameState, Owner, Planet, Result, Seat, Unit, UnitType } 
 
 /**
  * All dice draws in an invasion use mulberry32(deriveSeed(seed, salt)) with disjoint salts, so a single seed
- * replays deterministically and every die can be reconstructed from the log: bombard() always uses BOMBARD_SALT
- * (a planet can only be bombarded once per invasion, guarded by `bombarded`); land()'s space cannon defense
- * always uses LANDING_DEFENSE_SALT (one landing call per move). Ground combat is the one action repeated many
- * times within a single invasion, so its rolls are scoped by `tactical.invasion.round`: round r uses
- * GROUND_SALT_BASE + 3r (attacker), + 3r + 1 (defender) and + 3r + 2 (Harrow bombardment, L1Z1X only), which
- * start at 20 and so never collide with BOMBARD_SALT or LANDING_DEFENSE_SALT.
+ * replays deterministically and every die can be reconstructed from the log: bombard() uses
+ * BOMBARD_SALT_BASE + the number of planets already bombarded this invasion, so the second bombardment of an
+ * invasion never replays the first one's dice (each planet is bombarded at most once, guarded by `bombarded`,
+ * and a system holds at most two planets); land()'s space cannon defense always uses LANDING_DEFENSE_SALT (one
+ * landing call per move). Ground combat is the one action repeated many times within a single invasion, so its
+ * rolls are scoped by `tactical.invasion.round`: round r uses GROUND_SALT_BASE + 3r (attacker), + 3r + 1
+ * (defender) and + 3r + 2 (Harrow bombardment, L1Z1X only), which start at 20 and so never collide with the
+ * bombardment or landing defense salts.
  */
-const BOMBARD_SALT = 1
+const BOMBARD_SALT_BASE = 10
 const LANDING_DEFENSE_SALT = 2
 const GROUND_SALT_BASE = 20
 
@@ -150,7 +152,7 @@ export function bombard(state: GameState, planetId: string, seed: number): Resul
   if (!state.systems[tac.systemId].space.some(u => u.owner === seat && isShip(u.type) && unitStats(u.type, sOwner).bombardment)) {
     return { ok: false, error: 'no unit with BOMBARDMENT in the system' }
   }
-  const bombed = bombardment(state, tac.systemId, planetId, seat, seed, BOMBARD_SALT, `bombardment of ${planetId}`)
+  const bombed = bombardment(state, tac.systemId, planetId, seat, seed, BOMBARD_SALT_BASE + inv.bombarded.length, `bombardment of ${planetId}`)
   const next: GameState = { ...bombed, tactical: { ...tac, invasion: { ...inv, bombarded: [...inv.bombarded, planetId] } } }
   // A pre-existing attacker presence on the planet (from an earlier turn) may now stand alone if this clears the last defender.
   return { ok: true, value: resolveControl(next, tac.systemId, planetId, seat) }

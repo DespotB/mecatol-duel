@@ -18,7 +18,7 @@ const MODE_RANK: Record<HitMode, number> = { noFighters: 0, preferNonFighters: 1
  * All dice draws in a combat use mulberry32(deriveSeed(seed, salt)) with disjoint salts, so a single seed
  * replays deterministically and every die can be reconstructed from the log: anti-fighter barrage uses
  * AFB_SALT_BASE and AFB_SALT_BASE + 1 (one per side); space cannon offense starts at SPACE_CANNON_SALT_BASE
- * and takes one salt per shooting owner (at most three in this duel engine, so it cannot reach the AFB
+ * and takes one salt per shooting owner (at most two in this duel engine, so it cannot reach the AFB
  * salts); round r >= 1 combat rolls use 4r + 10 (attacker) and 4r + 11 (defender), which start at 14 and so
  * never collide with either pre-combat step.
  */
