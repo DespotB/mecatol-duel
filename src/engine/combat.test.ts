@@ -216,6 +216,19 @@ describe('R4.1 space combat', () => {
     const after = fightToEnd(combat('mecatol', ['dreadnought', 'dreadnought', 'cruiser'], ['fighter'], 1, 'guardian'), 200)
     expect(after.players[0].mandateEarnedThisRound).toBe(owned(after, 'mecatol', 0).length > 0)
   })
+  it('R7 Mandate: the defender that wipes the attacker at Mecatol Rex earns the mandate as well', () => {
+    const after = fightToEnd(combat('mecatol', ['fighter'], ['dreadnought', 'dreadnought', 'dreadnought'], 1, 1), 500)
+    expect(owned(after, 'mecatol', 0)).toHaveLength(0)
+    expect(after.tactical?.step).toBe('done')
+    expect(after.players[1].mandateEarnedThisRound).toBe(true)
+    expect(after.players[0].mandateEarnedThisRound).toBe(false)
+  })
+  it('R7 Mandate: the defender that wins in the attacker\'s home system earns the mandate', () => {
+    const after = fightToEnd(combat('home-n', ['fighter'], ['dreadnought', 'dreadnought', 'dreadnought'], 1, 1), 600)
+    expect(owned(after, 'home-n', 0)).toHaveLength(0)
+    expect(after.players[1].mandateEarnedThisRound).toBe(true)
+    expect(after.players[0].mandateEarnedThisRound).toBe(false)
+  })
   it('R4.1 step 5: the retreat is announced before a round and carried out after it', () => {
     expect(applyMove(combat('bereg', ['dreadnought'], ['dreadnought'], 1), { type: 'retreat', to: 'home-n' }, 0).ok).toBe(false)
     const later = combat('bereg', ['dreadnought'], ['dreadnought'], 2)

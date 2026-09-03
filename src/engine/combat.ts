@@ -214,11 +214,22 @@ function antiFighterBarrage(state: GameState, ctx: Ctx, seed: number): GameState
   return next
 }
 
-function markMandate(state: GameState, ctx: Ctx): GameState {
-  if (ctx.systemId !== MECATOL_ID && systemDef(ctx.systemId).home !== otherSeat(ctx.attacker)) return state
+/**
+ * R7 Mandate First Strike: whoever wins a space combat in Mecatol Rex or in the other seat's home system earns
+ * the mandate for the round, attacker or defender alike. Guardians never earn it.
+ */
+function markMandate(state: GameState, ctx: Ctx, winner: Seat): GameState {
+  if (ctx.systemId !== MECATOL_ID && systemDef(ctx.systemId).home !== otherSeat(winner)) return state
   const players = [...state.players] as GameState['players']
-  players[ctx.attacker] = { ...players[ctx.attacker], mandateEarnedThisRound: true }
-  return { ...state, players, log: [...state.log, { t: 'info', text: `Mandate First Strike earned by seat ${ctx.attacker}` }] }
+  players[winner] = { ...players[winner], mandateEarnedThisRound: true }
+  return { ...state, players, log: [...state.log, { t: 'info', text: `Mandate First Strike earned by seat ${winner}` }] }
+}
+
+/** The winner's log line plus the mandate; a guardian victory earns and logs neither. */
+function wonBy(state: GameState, ctx: Ctx, winner: Owner): GameState {
+  if (winner === 'guardian') return state
+  const marked = markMandate(state, ctx, winner)
+  return { ...marked, log: [...marked.log, { t: 'info', text: `space combat in ${ctx.systemId} won by seat ${winner}` }] }
 }
 
 /** Cargo above the remaining capacity is destroyed when the combat is over. */
@@ -253,10 +264,13 @@ function finish(state: GameState, ctx: Ctx, rolls: DieRoll[]): GameState {
   const attackerShips = shipsOf(sys, ctx.attacker).length
   const defenderShips = shipsOf(sys, ctx.defender).length
   const combat = { ...tac.combat, round: ctx.round + 1, lastRolls: rolls }
-  if (!attackerShips) return endCombat({ ...state, tactical: { ...tac, step: 'done', combat } }, ctx)
+  if (!attackerShips) {
+    // the defender holding the field wins the combat and earns the same mandate the attacker would have
+    const done = defenderShips ? wonBy(state, ctx, ctx.defender) : state
+    return endCombat({ ...done, tactical: { ...tac, step: 'done', combat } }, ctx)
+  }
   if (!defenderShips) {
-    let won = markMandate(state, ctx)
-    won = { ...won, log: [...won.log, { t: 'info', text: `space combat in ${ctx.systemId} won by seat ${ctx.attacker}` }] }
+    const won = wonBy(state, ctx, ctx.attacker)
     return endCombat({ ...won, tactical: { ...tac, step: 'invasion', combat, invasion: { planetId: null, landed: [], bombarded: [], round: 0 } } }, ctx)
   }
   if (combat.retreating === ctx.attacker && combat.retreatTo) return withdraw({ ...state, tactical: { ...tac, combat } }, ctx, combat.retreatTo)
