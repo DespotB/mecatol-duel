@@ -1,8 +1,8 @@
 import { isShip, unitStats, type StatsOwner } from '../data/units'
 import { neighbours } from './adjacency'
 import { checkFleet, statsOwner, trimCargo } from './board'
-import { spaceCannonOffense } from './combat'
-import type { GameState, Result, Seat, System, Unit } from './types'
+import { afterSpaceCannonOnly, spaceCannonOffense } from './combat'
+import type { CombatState, GameState, Result, Seat, System, Unit } from './types'
 
 export interface MoveSpec { unitId: number; from: string; carrying: number[] }
 
@@ -151,13 +151,18 @@ export function endMovement(state: GameState, seed: number): Result<GameState> {
   const mine = sys.space.filter(u => u.owner === seat && isShip(u.type))
   const foes = sys.space.filter(u => u.owner !== seat && isShip(u.type))
   if (mine.length && foes.length) {
-    const combat = { round: 0, attacker: seat, defender: foes[0].owner, retreating: null, retreatTo: null, lastRolls: [] }
+    const combat: CombatState = { round: 0, attacker: seat, defender: foes[0].owner, retreating: null, retreatTo: null, lastRolls: [], pending: [] }
     return { ok: true, value: { ...state, tactical: { ...tac, step: 'spaceCombat', combat } } }
   }
   // R4.1 step 1: a defending PDS still fires even when there are no enemy ships to trigger a full space combat.
-  // R3.2/16.2: a cannon hit can destroy the carrier of arriving cargo, so the cargo is trimmed the same way the
-  // end of a space combat trims it — there is no combat here to do it later.
-  const enemyPds = mine.length > 0 && sys.planets.some(p => p.structures.some(u => u.owner !== seat && unitStats(u.type, statsOwner(state, u.owner)).spaceCannon))
-  const next = enemyPds ? trimCargo(spaceCannonOffense(state, tac.systemId, seat, seed), tac.systemId, seat) : state
-  return { ok: true, value: { ...next, tactical: { ...tac, step: 'invasion', invasion: { planetId: null, landed: [], bombarded: [], round: 0 } } } }
+  const gunner = sys.planets.flatMap(p => p.structures).find(u => u.owner !== seat && unitStats(u.type, statsOwner(state, u.owner)).spaceCannon)
+  if (!mine.length || !gunner) {
+    return { ok: true, value: { ...state, tactical: { ...tac, step: 'invasion', invasion: { planetId: null, landed: [], bombarded: [], round: 0 } } } }
+  }
+  // the cannon hits are the arriving player's to assign, so the movement step borrows a combat state to hold the
+  // queue; `afterSpaceCannonOnly` drops it again, whether the assignment happens now or in an `assignHits` move
+  const holder: CombatState = { round: 0, attacker: seat, defender: gunner.owner, retreating: null, retreatTo: null, lastRolls: [], pending: [] }
+  const fired = spaceCannonOffense({ ...state, tactical: { ...tac, combat: holder } }, tac.systemId, seat, seed)
+  if (fired.tactical?.combat?.pending.length) return { ok: true, value: fired }
+  return { ok: true, value: afterSpaceCannonOnly(fired, tac.systemId, seat) }
 }

@@ -1,5 +1,5 @@
 import { activatableSystems, canPass } from './actionPhase'
-import { canMunitions, retreatTargets } from './combat'
+import { canMunitions, defaultAssignment, pendingFor, retreatTargets } from './combat'
 import { SHIPYARD_COST, canInheritance, canShipyard, inheritanceTechs, shipyardPlanets, tradePostOptions } from './componentActions'
 import { cheapestPlanets, productionCost, productionLimit, readyInfluence } from './economy'
 import { PRODUCIBLE } from './production'
@@ -140,6 +140,8 @@ function secondaryMoves(state: GameState, seat: Seat, card: StrategyCardId): Mov
 
 export function legalMoves(state: GameState): Move[] {
   if (state.winner !== null || state.phase === 'ended') return []
+  // R4.1 step 4: queued hits block everything else, and the offer is a complete pick so it can be played as it is
+  if (pendingFor(state)) return [{ type: 'assignHits', ...defaultAssignment(state) }]
   if (state.phase === 'strategy') {
     const seat = state.draft[0]
     if (seat === undefined || seat !== state.active) return []
@@ -209,12 +211,14 @@ function matches(candidate: Move, move: Move): boolean {
     case 'tradePost':
       return candidate.type === 'tradePost' && candidate.post === move.post
     default:
-      // moveShips, produce, status and the closing moves are identified by their kind alone
+      // moveShips, produce, assignHits, status and the closing moves are identified by their kind alone; the
+      // picks of an assignment are checked by its handler, which is the only place that knows the queue
       return true
   }
 }
 
 export function validateMove(state: GameState, move: Move): Result<true> {
+  if (pendingFor(state) && move.type !== 'assignHits') return { ok: false, error: 'hits must be assigned first' }
   const ok = legalMoves(state).some(candidate => matches(candidate, move))
   return ok ? { ok: true, value: true } : { ok: false, error: `illegal move ${move.type}` }
 }

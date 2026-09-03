@@ -1,5 +1,5 @@
 import { endTactical, pass, startTactical } from './actionPhase'
-import { combatRound, retreat } from './combat'
+import { assignHits, combatRound, pendingFor, retreat } from './combat'
 import { research, shipyard, tradePost } from './componentActions'
 import { bombard, endInvasion, groundCombatRound, land } from './invasion'
 import { endMovement, moveShips } from './movement'
@@ -11,6 +11,8 @@ import type { GameState, Move, Result } from './types'
 
 export function applyMove(state: GameState, move: Move, seed: number): Result<GameState> {
   if (state.winner !== null) return { ok: false, error: 'game over' }
+  // R4.1 step 4: while hits wait to be assigned, assigning them is the only thing anybody may do
+  if (pendingFor(state) && move.type !== 'assignHits') return { ok: false, error: 'hits must be assigned first' }
   // the move is logged before it is dispatched, so it always precedes the dice rolls it produced; a rejected
   // move returns the error and the caller keeps its untouched state, log entry included
   const logged: GameState = { ...state, log: [...state.log, { t: 'move', seat: state.active, move, seed }] }
@@ -23,6 +25,7 @@ export function applyMove(state: GameState, move: Move, seed: number): Result<Ga
       case 'moveShips': return moveShips(logged, move.moves)
       case 'endMovement': return endMovement(logged, seed)
       case 'combatRound': return combatRound(logged, move.munitions, seed)
+      case 'assignHits': return assignHits(logged, move.destroy, move.sustain, seed)
       case 'retreat': return retreat(logged, move.to)
       case 'bombard': return bombard(logged, move.planetId, seed)
       case 'land': return land(logged, move.planetId, move.infantryIds, seed)
@@ -53,7 +56,7 @@ export type * from './types'
 
 // Read-only queries the UI derives its controls from. Re-exports only: no new logic, no behaviour change.
 export { activatableSystems, canPass, otherSeat } from './actionPhase'
-export { canMunitions, retreatTargets } from './combat'
+export { actingSeat, assignmentComplete, assignmentTargets, canMunitions, pendingFor, retreatTargets } from './combat'
 export { canInheritance, canShipyard, inheritanceTechs, shipyardPlanets, tradePostOptions } from './componentActions'
 export { capacity, cheapestPlanets, fleetPoolLimit, productionCost, productionLimit, readyInfluence, readyResources } from './economy'
 export { bombardablePlanets, groundCombatPending, landablePlanets } from './invasion'

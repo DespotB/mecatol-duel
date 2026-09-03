@@ -101,7 +101,7 @@ describe('the tactical action', () => {
     s = withPlayer(s, 1, { tradeGoods: 2 })
     s = withTactical(s, {
       systemId: 'bereg', step: 'spaceCombat',
-      combat: { round: 0, attacker: 0, defender: 1, retreating: null, retreatTo: null, lastRolls: [] },
+      combat: { round: 0, attacker: 0, defender: 1, retreating: null, retreatTo: null, lastRolls: [], pending: [] },
     })
     renderWithSession(s, <BoardScreen />)
     expect(screen.getByTestId('combat-round').textContent).toBe('Round 0')

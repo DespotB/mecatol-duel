@@ -1,4 +1,5 @@
 import { unitStats } from '../data/units'
+import { assignmentComplete, assignmentTargets } from './combat'
 import { capacity, cheapestPlanets, fleetPoolLimit, nonFighterShips, productionCost } from './economy'
 import { applyMove } from './index'
 import { movableShips } from './movement'
@@ -135,9 +136,20 @@ export function shuffle<T>(list: T[], rng: () => number): T[] {
 
 /**
  * Turns a template move into a concrete one; falls back to the closing move of the step. Only `moveShips`
- * and `produce` need this, every other enumerated move already carries usable parameters.
+ * and `produce` need this, every other enumerated move already carries usable parameters. `assignHits` is
+ * re-picked rather than filled in: the enumerator offers one complete answer, and a driver that always played
+ * that one would never prove another legal answer is accepted.
  */
 export function fillTemplate(state: GameState, move: Move, rng: () => number): Move {
+  if (move.type === 'assignHits') {
+    // R4.1 step 4: destroy ships until the batch is covered, never sustain; the offered pick is the fallback
+    const destroy: number[] = []
+    for (const unit of assignmentTargets(state).destroy) {
+      if (assignmentComplete(state, destroy, [])) break
+      destroy.push(unit.id)
+    }
+    return assignmentComplete(state, destroy, []) ? { type: 'assignHits', destroy, sustain: [] } : move
+  }
   const tac = state.tactical
   const seat = state.active
   const player = state.players[seat]

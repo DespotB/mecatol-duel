@@ -2,10 +2,10 @@
 import { describe, expect, it } from 'vitest'
 import { unitStats } from '../data/units'
 import { checkFleet, trimCargo } from './board'
-import { applyCombatHits, assignHits, type HitGroup, type MunitionsRequest } from './combat'
-import { applyMove } from './index'
-import { deepFreeze, hitsIn, toActionPhase, withPlanetOwner, withPlayer, withTechs, withUnits } from './testUtils'
-import type { GameState, Owner, Unit, UnitType } from './types'
+import { applyCombatHits, assignmentComplete, assignmentTargets, autoAssign, isForcedAssignment, pendingFor, type HitGroup, type MunitionsRequest } from './combat'
+import { applyMove, legalMoves, validateMove } from './index'
+import { deepFreeze, hitsIn, shipId, toActionPhase, withPlanetOwner, withPlayer, withTechs, withUnits } from './testUtils'
+import type { GameState, Move, Owner, Seat, Unit, UnitType } from './types'
 
 const letnev = { faction: 'letnev' as const, techs: [] as string[] }
 
@@ -16,7 +16,7 @@ function combat(systemId: string, attacker: UnitType[], defenderUnits: UnitType[
   const s = withUnits(withUnits(cleared, systemId, 0, attacker), systemId, defender, defenderUnits)
   return deepFreeze({
     ...s,
-    tactical: { systemId, step: 'spaceCombat', combat: { round, attacker: 0, defender, retreating: null, retreatTo: null, lastRolls: [] } },
+    tactical: { systemId, step: 'spaceCombat', combat: { round, attacker: 0, defender, retreating: null, retreatTo: null, lastRolls: [], pending: [] } },
   })
 }
 
@@ -26,9 +26,33 @@ const fight = (state: GameState, seed = 7, munitions?: MunitionsRequest) => {
   return r.value
 }
 
+/** Puts a batch of hits into the queue by hand, for the cases a real combat resolves without asking. */
+function queue(state: GameState, owner: Seat, groups: HitGroup[], context = 'combat round 1'): GameState {
+  const tac = state.tactical
+  if (!tac?.combat) throw new Error('the fixture has no combat')
+  return deepFreeze({ ...state, tactical: { ...tac, combat: { ...tac.combat, pending: [{ owner, groups, context }] } } })
+}
+
+const assign = (state: GameState, destroy: number[], sustain: number[], seed = 7) => {
+  const r = applyMove(deepFreeze(state), { type: 'assignHits', destroy, sustain }, seed)
+  if (!r.ok) throw new Error(r.error)
+  return r.value
+}
+
+/** Plays the enumerated assignment until the queue is empty, the way a player would answer it. */
+const settle = (state: GameState, seed: number) => {
+  let s = state
+  for (let i = 0; i < 20 && pendingFor(s); i++) {
+    const move = legalMoves(s).find(m => m.type === 'assignHits')
+    if (!move) throw new Error('no assignHits offered while hits are pending')
+    s = assign(s, move.destroy, move.sustain, seed)
+  }
+  return s
+}
+
 const fightToEnd = (state: GameState, seed: number) => {
   let s = state
-  for (let i = 0; i < 40 && s.tactical?.step === 'spaceCombat'; i++) s = fight(s, seed + i)
+  for (let i = 0; i < 40 && s.tactical?.step === 'spaceCombat' && !pendingFor(s); i++) s = settle(fight(s, seed + i), seed + i)
   return s
 }
 
@@ -37,31 +61,31 @@ const units = (spec: [UnitType, boolean][]): Unit[] => spec.map(([type, damaged]
 
 describe('R4.1 dice', () => {
   it('sustain damage cancels first, then the destruction order applies', () => {
-    const one = assignHits(units([['dreadnought', false], ['fighter', false], ['cruiser', false]]), [{ count: 1, mode: 'any' }], letnev, false)
+    const one = autoAssign(units([['dreadnought', false], ['fighter', false], ['cruiser', false]]), [{ count: 1, mode: 'any' }], letnev, false)
     expect(one.destroyed).toHaveLength(0)
     expect(one.units.find(u => u.type === 'dreadnought')?.damaged).toBe(true)
-    const three = assignHits(units([['dreadnought', true], ['fighter', false], ['cruiser', false], ['carrier', false]]), [{ count: 3, mode: 'any' }], letnev, false)
+    const three = autoAssign(units([['dreadnought', true], ['fighter', false], ['cruiser', false], ['carrier', false]]), [{ count: 3, mode: 'any' }], letnev, false)
     expect(three.destroyed.map(u => u.type)).toEqual(['fighter', 'cruiser', 'carrier'])
   })
   it('Non-Euclidean Shielding cancels 2 hits with one sustain', () => {
-    const plain = assignHits(units([['dreadnought', false], ['fighter', false]]), [{ count: 2, mode: 'any' }], letnev, false)
+    const plain = autoAssign(units([['dreadnought', false], ['fighter', false]]), [{ count: 2, mode: 'any' }], letnev, false)
     expect(plain.destroyed.map(u => u.type)).toEqual(['fighter'])
-    const nes = assignHits(units([['dreadnought', false], ['fighter', false]]), [{ count: 2, mode: 'any' }], letnev, true)
+    const nes = autoAssign(units([['dreadnought', false], ['fighter', false]]), [{ count: 2, mode: 'any' }], letnev, true)
     expect(nes.destroyed).toHaveLength(0)
     expect(nes.units.find(u => u.type === 'dreadnought')?.damaged).toBe(true)
   })
   it('preferNonFighters hits ([0.0.1] and L1Z1X dreadnoughts) skip fighters while non-fighters remain', () => {
-    const mixed = assignHits(units([['fighter', false], ['cruiser', false]]), [{ count: 1, mode: 'preferNonFighters' }], letnev, false)
+    const mixed = autoAssign(units([['fighter', false], ['cruiser', false]]), [{ count: 1, mode: 'preferNonFighters' }], letnev, false)
     expect(mixed.destroyed.map(u => u.type)).toEqual(['cruiser'])
-    const only = assignHits(units([['fighter', false], ['fighter', false]]), [{ count: 1, mode: 'preferNonFighters' }], letnev, false)
+    const only = autoAssign(units([['fighter', false], ['fighter', false]]), [{ count: 1, mode: 'preferNonFighters' }], letnev, false)
     expect(only.destroyed.map(u => u.type)).toEqual(['fighter'])
     expect(only.lost).toBe(0)
   })
   it('R4.1 step 6: noFighters hits (Graviton Laser System) that cannot be assigned are lost', () => {
-    const mixed = assignHits(units([['fighter', false], ['cruiser', false]]), [{ count: 2, mode: 'noFighters' }], letnev, false)
+    const mixed = autoAssign(units([['fighter', false], ['cruiser', false]]), [{ count: 2, mode: 'noFighters' }], letnev, false)
     expect(mixed.destroyed.map(u => u.type)).toEqual(['cruiser'])
     expect(mixed.lost).toBe(1)
-    const fighters = assignHits(units([['fighter', false], ['fighter', false]]), [{ count: 2, mode: 'noFighters' }], letnev, false)
+    const fighters = autoAssign(units([['fighter', false], ['fighter', false]]), [{ count: 2, mode: 'noFighters' }], letnev, false)
     expect(fighters.destroyed).toHaveLength(0)
     expect(fighters.units).toHaveLength(2)
     expect(fighters.lost).toBe(2)
@@ -99,6 +123,116 @@ describe('R4.1 dice', () => {
   })
 })
 
+describe('R4.1 step 4: the owner assigns the hits', () => {
+  it('a real choice queues the hits instead of assigning them', () => {
+    const s = combat('bereg', ['cruiser', 'cruiser'], ['dreadnought', 'fighter', 'fighter'], 1)
+    const after = fight(s, 3)   // seed 3: the attacker scores one hit, the defender none
+    expect(owned(after, 'bereg', 1)).toHaveLength(3)                    // nothing destroyed
+    expect(owned(after, 'bereg', 1).some(u => u.damaged)).toBe(false)   // and nothing sustained
+    const pending = after.tactical?.combat?.pending ?? []
+    expect(pending).toHaveLength(1)
+    expect(pending[0].owner).toBe(1)
+    expect(pending[0].groups.filter(g => g.count > 0)).toEqual([{ count: 1, mode: 'any' }])
+    const moves = legalMoves(after)
+    expect(moves.some(m => m.type === 'assignHits')).toBe(true)
+    expect(moves.some(m => m.type === 'combatRound')).toBe(false)
+    expect(after.tactical?.combat?.round).toBe(1)                       // the round is not over until the hits are assigned
+  })
+  it('the queue is the only thing on offer while it is filled', () => {
+    const s = fight(combat('bereg', ['cruiser', 'cruiser'], ['dreadnought', 'fighter', 'fighter'], 1), 3)
+    expect(legalMoves(s).map(m => m.type)).toEqual(['assignHits'])
+    for (const move of [{ type: 'combatRound' }, { type: 'endTactical' }, { type: 'pass' }, { type: 'retreat', to: 'home-n' }] as Move[]) {
+      const rejected = validateMove(s, move)
+      expect(rejected.ok ? '' : rejected.error).toBe('hits must be assigned first')
+      const applied = applyMove(s, move, 3)
+      expect(applied.ok ? '' : applied.error).toBe('hits must be assigned first')
+    }
+  })
+  it('the picks have to be the assigning seat\'s own ships and cannot be both destroyed and sustained', () => {
+    const s = fight(combat('bereg', ['cruiser', 'cruiser'], ['dreadnought', 'fighter', 'fighter'], 1), 3)
+    const dread = shipId(s, 'bereg', 'dreadnought', 1)
+    const reject = (destroy: number[], sustain: number[]) => {
+      const r = applyMove(s, { type: 'assignHits', destroy, sustain }, 3)
+      return r.ok ? '' : r.error
+    }
+    expect(reject([shipId(s, 'bereg', 'cruiser', 0)], [])).toBe('not your hits')
+    expect(reject([9999], [])).toBe('no ship 9999 in bereg')
+    expect(reject([dread], [dread])).toBe('a ship cannot be picked twice')
+    expect(reject([], [shipId(s, 'bereg', 'fighter', 1)])).toBe('a fighter cannot sustain damage')
+    expect(reject([], [])).toBe('the hits are not assigned completely')
+    expect(reject([dread, shipId(s, 'bereg', 'fighter', 1)], [])).toBe('the hits are not assigned completely')   // one hit, two ships
+    const damaged = assign(s, [], [dread])
+    expect(owned(damaged, 'bereg', 1).find(u => u.type === 'dreadnought')?.damaged).toBe(true)
+    expect(pendingFor(damaged)).toBeNull()
+    expect(damaged.tactical?.combat?.round).toBe(2)   // the round is finished by the last assignment
+    expect(damaged.log.some(e => e.t === 'info' && e.text === 'B assigns 1 hits: dreadnought sustains')).toBe(true)
+  })
+  it('R4.1 step 4: a sustained ship can be destroyed later, but not by the same batch', () => {
+    const s = fight(combat('bereg', ['cruiser', 'cruiser'], ['dreadnought', 'fighter', 'fighter'], 1), 3)
+    const dread = shipId(s, 'bereg', 'dreadnought', 1)
+    const damaged = assign(s, [], [dread])
+    const next = queue(damaged, 1, [{ count: 1, mode: 'any' }])   // one more hit, with the dreadnought damaged
+    expect(assignmentTargets(next).sustain).toHaveLength(0)       // it cannot sustain twice
+    expect(assignmentComplete(next, [dread], [])).toBe(true)      // but it is still a ship the hit may destroy
+    expect(owned(assign(next, [dread], []), 'bereg', 1).map(u => u.type)).toEqual(['fighter', 'fighter'])
+  })
+  it('R4.1 step 4: each sustain absorbs one hit, two with Non-Euclidean Shielding', () => {
+    const two = queue(combat('bereg', ['cruiser'], ['dreadnought', 'fighter'], 1), 1, [{ count: 2, mode: 'any' }])
+    const dread = shipId(two, 'bereg', 'dreadnought', 1)
+    const fighter = shipId(two, 'bereg', 'fighter', 1)
+    expect(assignmentComplete(two, [], [dread])).toBe(false)               // one sustain leaves a hit over
+    expect(assignmentComplete(two, [fighter], [dread])).toBe(true)
+    expect(assignmentComplete(two, [fighter, dread], [])).toBe(true)       // losing both is a legal answer as well
+    const shielded = withTechs(two, 1, ['non_euclidean_shielding'])
+    expect(assignmentComplete(shielded, [], [dread])).toBe(true)           // one sustain cancels both hits
+    expect(assignmentComplete(shielded, [fighter], [dread])).toBe(false)   // and then the fighter absorbs nothing
+  })
+  it('R4.1 step 6: a restricted hit has to be taken by a non-fighter ship while there is one', () => {
+    const s = queue(combat('bereg', ['cruiser'], ['fighter', 'fighter', 'cruiser'], 1), 1, [{ count: 1, mode: 'noFighters' }])
+    const cruiser = shipId(s, 'bereg', 'cruiser', 1)
+    expect(assignmentTargets(s).destroy.map(u => u.id)).toEqual([cruiser])   // the fighters are no legal target
+    expect(assignmentComplete(s, [cruiser], [])).toBe(true)
+    expect(assignmentComplete(s, [shipId(s, 'bereg', 'fighter', 1)], [])).toBe(false)
+    expect(assignmentComplete(s, [], [])).toBe(false)
+    expect(isForcedAssignment(units([['fighter', false], ['fighter', false], ['cruiser', false]]), [{ count: 1, mode: 'noFighters' }], letnev, false)).toBe(true)
+  })
+  it('rule 4: batches with no decision in them are assigned by the engine and never queued', () => {
+    const hit: HitGroup[] = [{ count: 1, mode: 'any' }]
+    // three hits against two ships: everything dies whatever is picked, and the third hit is lost
+    expect(isForcedAssignment(units([['cruiser', false], ['fighter', false]]), [{ count: 3, mode: 'any' }], letnev, false)).toBe(true)
+    expect(isForcedAssignment(units([['fighter', false], ['fighter', false], ['fighter', false]]), [{ count: 2, mode: 'any' }], letnev, false)).toBe(true)
+    // a restricted hit with nothing to take it is lost, so there is nothing to decide either
+    expect(isForcedAssignment(units([['fighter', false], ['fighter', false]]), hit.map(g => ({ ...g, mode: 'noFighters' as const })), letnev, false)).toBe(true)
+    expect(isForcedAssignment(units([['cruiser', false], ['fighter', false]]), hit, letnev, false)).toBe(false)      // two classes: a choice
+    expect(isForcedAssignment(units([['dreadnought', false]]), hit, letnev, false)).toBe(false)                      // sustain or die: a choice
+    expect(isForcedAssignment(units([['dreadnought', true], ['dreadnought', true]]), hit, letnev, false)).toBe(true) // damaged twins: none
+  })
+  it('R4.1 step 4: the guardian fleet assigns its own hits, the seat still assigns theirs', () => {
+    const s = combat('mecatol', ['dreadnought', 'fighter'], ['cruiser', 'fighter'], 1, 'guardian')
+    const after = fight(s, 12)   // seed 12: one hit each way
+    // resolved without asking; the hit came from an L1Z1X dreadnought, so it had to take the non-fighter ship
+    expect(owned(after, 'mecatol', 'guardian').map(u => u.type)).toEqual(['fighter'])
+    expect(after.log.some(e => e.t === 'info' && e.text === '1 hits assigned automatically in mecatol')).toBe(true)
+    const queued = after.tactical?.combat?.pending ?? []
+    expect(queued.map(p => p.owner)).toEqual([0])                                      // and only the seat is asked
+    expect(assignmentTargets(after).sustain.map(u => u.type)).toEqual(['dreadnought'])
+    const settled = settle(after, 12)
+    expect(pendingFor(settled)).toBeNull()
+    expect(settled.tactical?.combat?.round).toBe(2)
+  })
+  it('R4.1 step 6: a round 0 that stops on a space cannon hit runs its remaining steps after the assignment', () => {
+    const base = combat('bereg', ['dreadnought', 'fighter'], ['destroyer'], 0)
+    const s = withUnits(base, 'bereg', 1, ['pds'], 'bereg')
+    const stopped = fight(s, 1)   // seed 1: the PDS scores the hit the attacker now has to place
+    expect(pendingFor(stopped)).toMatchObject({ owner: 0, context: 'space cannon offense' })
+    expect(stopped.log.some(e => e.t === 'roll' && e.context === 'anti-fighter barrage')).toBe(false)
+    expect(stopped.tactical?.combat?.round).toBe(0)
+    const after = assign(stopped, [shipId(stopped, 'bereg', 'fighter', 0)], [])
+    expect(after.log.some(e => e.t === 'roll' && e.context === 'anti-fighter barrage')).toBe(true)
+    expect(after.tactical?.combat?.round).toBe(1)   // the pre-combat sequence ran to its end
+  })
+})
+
 describe('R4.1 space combat', () => {
   it('R4.1 step 1: every PDS that is not the active player fires, guardian defender included', () => {
     const base = combat('mecatol', ['fighter', 'fighter', 'fighter'], ['cruiser'], 0, 'guardian')
@@ -116,6 +250,7 @@ describe('R4.1 space combat', () => {
     const after = fight(s)
     expect(after.log.some(e => e.t === 'roll' && e.context === 'space cannon offense')).toBe(true)
     expect(owned(after, 'bereg', 0).filter(u => u.type === 'fighter')).toHaveLength(2)
+    expect(pendingFor(after)).toBeNull()   // nothing could take those hits, so there is nothing to assign
   })
   it('R4.1 step 2: anti-fighter barrage only destroys fighters', () => {
     const s = combat('bereg', ['fighter', 'fighter', 'cruiser'], ['destroyer'], 0)
@@ -135,11 +270,20 @@ describe('R4.1 space combat', () => {
     expect(order).toEqual(['cannon', 'assault', 'barrage'])
     expect(owned(after, 'bereg', 1).filter(u => u.type === 'destroyer')).toHaveLength(1)
   })
-  it('R4.1 step 6: Assault Cannon destroys one non-fighter ship of the opponent', () => {
+  it('R4.1 step 6: Assault Cannon is one restricted hit and the victim\'s owner answers it', () => {
     const s = withTechs(combat('bereg', ['cruiser', 'cruiser', 'cruiser'], ['dreadnought', 'fighter'], 0), 0, ['assault_cannon'])
-    const after = fight(s)
-    expect(owned(after, 'bereg', 1).map(u => u.type)).toEqual(['fighter'])
-    expect(after.players[1].reinforcements.dreadnought).toBe(s.players[1].reinforcements.dreadnought + 1)
+    const queued = fight(s)
+    expect(owned(queued, 'bereg', 1)).toHaveLength(2)   // nothing is destroyed before the owner has picked
+    expect(pendingFor(queued)).toMatchObject({ owner: 1, groups: [{ count: 1, mode: 'noFighters' }], context: 'assault cannon' })
+    const dread = shipId(queued, 'bereg', 'dreadnought', 1)
+    const destroyed = assign(queued, [dread], [])
+    expect(owned(destroyed, 'bereg', 1).map(u => u.type)).toEqual(['fighter'])
+    expect(destroyed.players[1].reinforcements.dreadnought).toBe(s.players[1].reinforcements.dreadnought + 1)
+    // the fighter is no legal target for a restricted hit, and sustaining it is the owner's other option
+    const sustained = assign(queued, [], [dread])
+    expect(owned(sustained, 'bereg', 1).find(u => u.type === 'dreadnought')?.damaged).toBe(true)
+    expect(sustained.tactical?.combat?.round).toBe(1)   // and the pre-combat steps ran on to the end of round 0
+    expect(applyMove(queued, { type: 'assignHits', destroy: [shipId(queued, 'bereg', 'fighter', 1)], sustain: [] }, 7).ok).toBe(false)
   })
   it('R4.1 step 3: a combat round rolls every ship, logs both sides and is deterministic for a seed', () => {
     const s = combat('bereg', ['cruiser', 'cruiser'], ['carrier'], 1)

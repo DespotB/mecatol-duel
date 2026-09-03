@@ -198,14 +198,14 @@ describe('legal moves in every phase', () => {
   })
 })
 
-// seeds 90 and 94 are appended (outside the Fibonacci run) because none of the original ten seeds reaches a
-// bombard or a groundCombatRound once Space Dock I grants its free fighter slots too: the fix shifts the
-// deterministic playthroughs enough that the coverage test below needs two more seeds to still see every
-// move kind at least once.
-const SEEDS: readonly number[] = [1, 2, 3, 5, 8, 13, 21, 29, 34, 55, 89, 90, 94]
+// seeds 90, 94 and 140 are appended (outside the Fibonacci run) because the Fibonacci ones alone no longer
+// reach a bombard or a groundCombatRound: every rules fix shifts the deterministic playthroughs (Space Dock I
+// granting its free fighter slots, then R4.1 step 4 handing the hit assignment to the players), and the
+// coverage test below needs the extra seeds to still see every move kind at least once.
+const SEEDS: readonly number[] = [1, 2, 3, 5, 8, 13, 21, 29, 34, 55, 89, 90, 94, 140]
 const RUNS = new Map<number, GameRun>()
 
-/** The eleven smoke games are shared by the tests below, so each seed is actually played only once. */
+/** The smoke games are shared by the tests below, so each seed is actually played only once. */
 function runGame(seed: number): GameRun {
   const cached = RUNS.get(seed)
   if (cached) return cached
@@ -215,9 +215,9 @@ function runGame(seed: number): GameRun {
 }
 
 const ALL_MOVE_TYPES: readonly Move['type'][] = [
-  'pickStrategyCard', 'startTactical', 'moveShips', 'endMovement', 'combatRound', 'retreat', 'bombard', 'land',
-  'groundCombatRound', 'endInvasion', 'produce', 'endTactical', 'strategic', 'secondary', 'research', 'shipyard',
-  'tradePost', 'pass', 'status',
+  'pickStrategyCard', 'startTactical', 'moveShips', 'endMovement', 'combatRound', 'assignHits', 'retreat', 'bombard',
+  'land', 'groundCombatRound', 'endInvasion', 'produce', 'endTactical', 'strategic', 'secondary', 'research',
+  'shipyard', 'tradePost', 'pass', 'status',
 ]
 const ALL_CARDS: readonly StrategyCardId[] = ['leadership', 'diplomacy', 'trade', 'warfare', 'technology', 'imperial']
 
