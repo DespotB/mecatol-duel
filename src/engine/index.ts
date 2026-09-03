@@ -35,7 +35,11 @@ export function applyMove(state: GameState, move: Move, seed: number): Result<Ga
       case 'shipyard': return shipyard(logged, move.planetId, move.planets, move.tradeGoods)
       case 'tradePost': return tradePost(logged, move.post, move.commodities)
       case 'status': return status(logged, move.params, seed)
-      default: return { ok: false, error: `not implemented: ${move.type}` }
+      default: {
+        // every Move kind is dispatched above; this only runs for a malformed move from outside the type system
+        const unknown: never = move
+        return { ok: false, error: `not implemented: ${String((unknown as { type?: string }).type)}` }
+      }
     }
   } catch (e) {
     // an exception is an engine bug, not a rules rejection; `internal` keeps the two apart for callers
