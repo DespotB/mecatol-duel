@@ -23,7 +23,7 @@ export function ProduceDrawer() {
     return sum + (planet ? planet.resources : 0)
   }, 0) + tradeGoods
   return (
-    <div className="drawer bottom cut" data-testid="produce-drawer">
+    <div className="drawer bottom wide cut" data-testid="produce-drawer">
       <div className="in">
         <div className="dhead">
           <span className="tab">Production at {systemLabel(systemId)}</span>
@@ -37,7 +37,7 @@ export function ProduceDrawer() {
               Confirm production
             </button>
             <button type="button" className="btn quiet" data-testid="btn-end-tactical"
-              disabled={!legal.some(m => m.type === 'endTactical')} onClick={() => apply({ type: 'endTactical' })}>End turn</button>
+              disabled={!legal.some(m => m.type === 'endTactical')} onClick={() => apply({ type: 'endTactical' })}>End tactical action</button>
           </div>
         </div>
         <ProductionPicker state={state} seat={seat} limit={limit} units={units} onUnits={setUnits} />
