@@ -51,6 +51,13 @@ describe('hot-seat courtesies', () => {
     expect(screen.queryByTestId('log-panel')).toBeNull()
   })
 
+  it('keeps the wording of a device that plays both seats', () => {
+    renderWithSession(cardsUsed(toActionPhase()), <BoardScreen />, { seats: [0, 1] })
+    fireEvent.click(screen.getByTestId('btn-pass'))
+    expect(screen.getByTestId('handoff').textContent).toContain('Pass the device to B')
+    expect(screen.getByTestId('handoff-continue').textContent).toBe('I am B')
+  })
+
   it('writes the session to localStorage after every move', () => {
     const { store } = renderWithSession(cardsUsed(toActionPhase()), <BoardScreen />)
     fireEvent.click(screen.getByTestId('btn-pass'))
@@ -58,5 +65,33 @@ describe('hot-seat courtesies', () => {
     expect(raw).not.toBeNull()
     expect(raw).toContain('"seed":7')
     expect(store().session?.state.players[0].passed).toBe(true)
+  })
+})
+
+describe('the interstitial worded from the claim', () => {
+  it('says "Your turn" to a browser that holds one seat, for that seat', () => {
+    renderWithSession(toActionPhase(), <BoardScreen />, { seats: [1], handoff: 1 })
+    const overlay = screen.getByTestId('handoff')
+    expect(overlay.textContent).toContain('Your turn')
+    expect(overlay.textContent).not.toContain('Pass the device')
+    expect(overlay.getAttribute('aria-label')).toBe('Your turn')
+    expect(screen.getByTestId('handoff-continue').textContent).toBe('Continue')
+    expect(screen.getByTestId('board-screen').hasAttribute('inert')).toBe(true)
+    fireEvent.click(screen.getByTestId('handoff-continue'))
+    expect(screen.queryByTestId('handoff')).toBeNull()
+    expect(screen.getByTestId('board-screen').hasAttribute('inert')).toBe(false)
+  })
+
+  it('never shows it for the seat that just moved', () => {
+    renderWithSession(toActionPhase(), <BoardScreen />, { seats: [1], handoff: 0 })
+    expect(screen.queryByTestId('handoff')).toBeNull()
+    // and the board behind it stays live, because there is nothing in front of it
+    expect(screen.getByTestId('board-screen').hasAttribute('inert')).toBe(false)
+  })
+
+  it('never shows it to a watcher', () => {
+    renderWithSession(toActionPhase(), <BoardScreen />, { seats: [], handoff: 0 })
+    expect(screen.queryByTestId('handoff')).toBeNull()
+    expect(screen.getByTestId('board-screen').hasAttribute('inert')).toBe(false)
   })
 })
