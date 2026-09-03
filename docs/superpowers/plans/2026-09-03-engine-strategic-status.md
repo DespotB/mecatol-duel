@@ -2068,6 +2068,308 @@ git commit -m "feat(engine): legal moves for every phase, structural validation 
 
 ---
 
+### Task 7: Infantry II revival
+
+**Files:**
+- Modify: `src/engine/types.ts` (`Player.pendingInfantry`)
+- Modify: `src/engine/setup.ts` (initialise the field)
+- Modify: `src/engine/board.ts` (`rollRevival`)
+- Modify: `src/engine/invasion.ts` (one wrapper around the four points where ground forces die)
+- Modify: `src/engine/actionPhase.ts` (`reviveInfantry`, `passTurn`, `pass`)
+- Modify: `src/engine/strategyPhase.ts` (revive when the action phase opens)
+- Modify: `docs/spec/engine-design.md` (State shape)
+- Test: `src/engine/revival.test.ts`
+
+**Interfaces:**
+- One new field, `Player.pendingInfantry: number`, initialised to 0 in `setup.makePlayer` and mirrored into the `State shape` block of `docs/spec/engine-design.md`. It is **not** reset in the status phase: infantry that rolled their return keep waiting across the round boundary.
+- Produces in `board.ts`:
+  ```ts
+  export function rollRevival(state: GameState, destroyed: Unit[], seed: number): GameState
+  ```
+  R4.3 step 4: for each seat that owns `infantry_ii`, one die per destroyed infantry of that seat, a 6 or higher adds one to `pendingInfantry`. One `roll` log entry per seat with the context `Infantry II revival`, so a test can count the hits without knowing the seed. Seats without the technology roll nothing and log nothing.
+- Produces in `actionPhase.ts`:
+  ```ts
+  export function reviveInfantry(state: GameState, seat: Seat): GameState
+  ```
+  Places `pendingInfantry` infantry on the first planet of the seat's home system that the seat controls and resets the counter. The units come out of `reinforcements.infantry`; what the reinforcements cannot cover, and everything if the seat controls no planet at home, is lost. `passTurn` calls it for the seat that receives the turn (which is the current seat again when the opponent has passed), `pass` calls it for the seat it hands the turn to, and `strategyPhase.pickStrategyCard` calls it for the seat that opens the action phase of the new round. The secondary window does **not** call it: answering a strategy card is not a turn.
+- The invasion hooks all go through one wrapper, so the three kill sites of `invasion.ts` (bombardment, space cannon defense on the landing party, both sides of a ground combat round) keep their existing salts and gain a derived child seed for the revival roll.
+
+- [ ] **Step 1: Write the failing test**
+
+```ts
+// src/engine/revival.test.ts
+import { homeSystemId } from '../data/map'
+import { describe, expect, it } from 'vitest'
+import { otherSeat } from './actionPhase'
+import { applyMove, legalMoves } from './index'
+import { tokensGained } from './statusPhase'
+import { carriedIds, cardsUsed, deepFreeze, hitsIn, toActionPhase, toStatusPhase, withCards, withPlanetOwner, withPlayer, withTechs, withUnits } from './testUtils'
+import type { GameState, Result, Seat, UnitType } from './types'
+
+const ok = (r: Result<GameState>): GameState => {
+  if (!r.ok) throw new Error(r.error)
+  return r.value
+}
+const revivalRolls = (state: GameState): number => state.log.filter(e => e.t === 'roll' && e.context === 'Infantry II revival').length
+
+/** Seat 0 lands two infantry on Quann against `defenders` infantry of seat 1. */
+function invading(defenders: number, seed = 3): GameState {
+  let s = withTechs(toActionPhase(), 0, ['infantry_ii'])
+  s = withPlanetOwner(s, 'quann', 'quann', 1)
+  s = withUnits(s, 'quann', 1, Array<UnitType>(defenders).fill('infantry'), 'quann')
+  s = withUnits(s, 'quann', 0, ['carrier', 'infantry', 'infantry'])
+  const started = ok(applyMove(deepFreeze(s), { type: 'startTactical', systemId: 'quann' }, seed))
+  const moved = ok(applyMove(started, { type: 'endMovement' }, seed))
+  return ok(applyMove(moved, { type: 'land', planetId: 'quann', infantryIds: carriedIds(moved, 'quann', 0) }, seed))
+}
+
+/** Both players through a status phase, all new tokens into the tactic pool. */
+function runStatus(state: GameState): GameState {
+  const step = (s: GameState): GameState => {
+    const seat = s.active
+    const t = s.players[seat].tokens
+    return ok(applyMove(s, { type: 'status', params: { tokens: { ...t, tactic: t.tactic + tokensGained(s, seat) } } }, 7))
+  }
+  return step(step(toStatusPhase(state)))
+}
+
+describe('R4.3 step 4 Infantry II revival', () => {
+  it('R4.3 step 4: infantry lost in ground combat roll to return, but only with Infantry II', () => {
+    let s = invading(6)
+    for (let i = 0; i < 20 && s.systems.quann.planets[0].ground.some(u => u.owner === 0); i++) {
+      s = ok(applyMove(s, { type: 'groundCombatRound' }, 30 + i))
+    }
+    expect(revivalRolls(s)).toBeGreaterThan(0)                       // six defenders at 8+ wipe two attackers
+    expect(s.players[0].pendingInfantry).toBe(hitsIn(s, 'Infantry II revival'))
+    expect(s.players[1].pendingInfantry).toBe(0)                     // seat 1 has no Infantry II
+  })
+  it('R4.3 step 4: bombardment and space cannon defense roll for the same return', () => {
+    let s = withTechs(toActionPhase(), 1, ['infantry_ii'])
+    s = withPlanetOwner(s, 'quann', 'quann', 1)
+    s = withUnits(s, 'quann', 1, ['infantry', 'infantry', 'infantry'], 'quann')
+    s = withUnits(s, 'quann', 0, ['dreadnought'])
+    const started = ok(applyMove(deepFreeze(s), { type: 'startTactical', systemId: 'quann' }, 4))
+    const moved = ok(applyMove(started, { type: 'endMovement' }, 4))
+    const bombed = ok(applyMove(moved, { type: 'bombard', planetId: 'quann' }, 4))
+    const killed = 3 - bombed.systems.quann.planets[0].ground.filter(u => u.owner === 1).length
+    expect(revivalRolls(bombed)).toBe(killed > 0 ? 1 : 0)            // one entry per group that lost infantry
+    expect(bombed.players[1].pendingInfantry).toBe(hitsIn(bombed, 'Infantry II revival'))
+    expect(bombed.players[0].pendingInfantry).toBe(0)
+
+    let t = withTechs(toActionPhase(), 0, ['infantry_ii'])
+    t = withPlanetOwner(t, 'quann', 'quann', 1)
+    t = withUnits(t, 'quann', 1, ['pds'], 'quann')
+    t = withUnits(t, 'quann', 0, ['carrier', 'infantry', 'infantry'])
+    const s2 = ok(applyMove(deepFreeze(t), { type: 'startTactical', systemId: 'quann' }, 6))
+    const m2 = ok(applyMove(s2, { type: 'endMovement' }, 6))
+    const landed = ok(applyMove(m2, { type: 'land', planetId: 'quann', infantryIds: carriedIds(m2, 'quann', 0) }, 6))
+    const lost = 2 - landed.systems.quann.planets[0].ground.filter(u => u.owner === 0).length
+    expect(revivalRolls(landed)).toBe(lost > 0 ? 1 : 0)
+    expect(landed.players[0].pendingInfantry).toBe(hitsIn(landed, 'Infantry II revival'))
+  })
+  it('R4.3 step 4: the infantry come back on a home planet at the start of your next turn', () => {
+    const s = withPlayer(cardsUsed(toActionPhase(1, 1)), 0, { pendingInfantry: 2 })
+    const before = s.players[0].reinforcements.infantry
+    const done = ok(applyMove(s, { type: 'pass' }, 0))                // seat 1 passes, seat 0 is on turn
+    expect(done.active).toBe(0)
+    expect(done.players[0].pendingInfantry).toBe(0)
+    expect(done.players[0].reinforcements.infantry).toBe(before - 2)
+    expect(done.systems['home-n'].planets[0].ground.filter(u => u.owner === 0)).toHaveLength(7)
+  })
+  it('R4.3 step 4: without a home planet or reinforcements the infantry are lost', () => {
+    const base = withPlayer(cardsUsed(toActionPhase(1, 1)), 0, { pendingInfantry: 2 })
+    const homeless = withPlanetOwner(base, 'home-n', '000', null)
+    const lost = ok(applyMove(homeless, { type: 'pass' }, 0))
+    expect(lost.players[0].pendingInfantry).toBe(0)
+    expect(lost.systems['home-n'].planets[0].ground.filter(u => u.owner === 0)).toHaveLength(5)
+    const empty = withPlayer(base, 0, { pendingInfantry: 2, reinforcements: { ...base.players[0].reinforcements, infantry: 1 } })
+    const partial = ok(applyMove(empty, { type: 'pass' }, 0))
+    expect(partial.players[0]).toMatchObject({ pendingInfantry: 0, reinforcements: expect.objectContaining({ infantry: 0 }) })
+    expect(partial.systems['home-n'].planets[0].ground.filter(u => u.owner === 0)).toHaveLength(6)
+  })
+  it('R3.3/R4.3: pending infantry survive the status phase and arrive when the next action phase opens', () => {
+    const s = withPlayer(withPlayer(toActionPhase(), 0, { pendingInfantry: 1 }), 1, { pendingInfantry: 1 })
+    let next = runStatus(s)
+    expect(next.players.map(p => p.pendingInfantry)).toEqual([1, 1])
+    expect(next.phase).toBe('strategy')
+    while (next.phase === 'strategy') next = ok(applyMove(next, legalMoves(next)[0], 0))
+    const first: Seat = next.active
+    expect(next.players[first].pendingInfantry).toBe(0)
+    expect(next.players[otherSeat(first)].pendingInfantry).toBe(1)   // the opponent waits for its own turn
+    expect(next.systems[homeSystemId(first)].planets.some(p => p.ground.some(u => u.owner === first))).toBe(true)
+  })
+  it('R3.2/R4.3: answering a strategy card is not a turn, so nothing returns yet', () => {
+    const s = withPlayer(withCards(withCards(toActionPhase(), 1, []), 0, ['trade']), 1, { pendingInfantry: 1 })
+    const played = ok(applyMove(s, { type: 'strategic', card: 'trade' }, 0))
+    expect(played.active).toBe(1)
+    expect(played.players[1].pendingInfantry).toBe(1)                // the window is a response, not a turn
+    const answered = ok(applyMove(played, { type: 'secondary', card: 'trade', accept: false }, 0))
+    expect(answered.players[1].pendingInfantry).toBe(0)              // now seat 1 takes its turn
+  })
+})
+```
+
+- [ ] **Step 2: Run the test to verify it fails, then commit it**
+
+Run: `npm test -- src/engine/revival.test.ts`
+Expected: FAIL, `pendingInfantry` is not a field of `Player`.
+
+```bash
+git add src/engine/revival.test.ts
+git commit -m "test(engine): Infantry II revival"
+```
+
+- [ ] **Step 3: Add the field**
+
+In `src/engine/types.ts`, extend `Player` after `inheritanceExhausted: boolean; shipyardUsed: boolean`:
+
+```ts
+  pendingInfantry: number          // R4.3 step 4: Infantry II waiting to return at the start of your next turn
+```
+
+In `src/engine/setup.ts`, in `makePlayer`, extend the same line:
+
+```ts
+    inheritanceExhausted: false, shipyardUsed: false, pendingInfantry: 0, reinforcements,
+```
+
+In `docs/spec/engine-design.md`, add the same field to the `Player` interface of the `State shape` block, directly below `inheritanceExhausted: boolean; shipyardUsed: boolean`:
+
+```
+  pendingInfantry: number          // Infantry II waiting to return at the start of your next turn
+```
+
+- [ ] **Step 4: Roll for the return**
+
+In `src/engine/board.ts` extend the rng import to `import { deriveSeed, mulberry32, rollDice, type Rng } from './rng'` and append:
+
+```ts
+/**
+ * R4.3 step 4: every destroyed infantry of a player with Infantry II rolls once, a 6 or higher makes it
+ * return at the start of that player's next turn. One log entry per seat, so the hits can be counted from
+ * the log; a seat without the technology rolls nothing.
+ */
+export function rollRevival(state: GameState, destroyed: Unit[], seed: number): GameState {
+  let next = state
+  for (const seat of [0, 1] as Seat[]) {
+    const lost = destroyed.filter(u => u.owner === seat && u.type === 'infantry')
+    if (!lost.length || !state.players[seat].techs.includes('infantry_ii')) continue
+    const { rolls, hits } = rollHits(mulberry32(deriveSeed(seed, seat)), lost.length, 6, false)
+    const players = [...next.players] as GameState['players']
+    players[seat] = { ...players[seat], pendingInfantry: players[seat].pendingInfantry + hits }
+    next = {
+      ...next, players,
+      log: [...next.log, { t: 'roll', owner: seat, rolls: dieRolls(seat, 'infantry', rolls, 6), context: 'Infantry II revival' }],
+    }
+  }
+  return next
+}
+```
+
+- [ ] **Step 5: Hook the invasion**
+
+In `src/engine/invasion.ts` add `rollRevival` to the `./board` import and, below the salt constants, the wrapper:
+
+```ts
+/**
+ * R4.3 step 4: the revival roll hangs off the salt of the step that killed the infantry, as a derived child
+ * seed, so it never enters the salt space of the invasion itself.
+ */
+const REVIVAL_SALT = 1
+
+function destroyGround(state: GameState, systemId: string, units: Unit[], seed: number, salt: number): GameState {
+  return rollRevival(destroyUnits(state, systemId, units), units, deriveSeed(deriveSeed(seed, salt), REVIVAL_SALT))
+}
+```
+
+Then route the four places where ground forces die through it, leaving everything else untouched:
+
+```ts
+// in bombardment(), the final line
+  return destroyGround(logged, systemId, planet.ground.filter(u => u.owner !== seat).slice(0, hits), seed, salt)
+
+// in land(), inside the space cannon defense branch
+    next = destroyGround(next, tac.systemId, survivors.slice(0, hits), seed, LANDING_DEFENSE_SALT)
+
+// in groundCombatRound(), the two hit applications
+  next = destroyGround(next, tac.systemId, foes.slice(0, a.hits), seed, GROUND_SALT_BASE + 3 * round)
+  next = destroyGround(next, tac.systemId, mine.slice(0, d.hits), seed, GROUND_SALT_BASE + 3 * round + 1)
+```
+
+`destroyUnits` stays imported, `destroyGround` is its only caller now.
+
+- [ ] **Step 6: Bring them back at the start of the turn**
+
+In `src/engine/actionPhase.ts` extend the map import to `import { SYSTEM_IDS, homeSystemId } from '../data/map'`, add `Unit` to the type import, and replace `passTurn` with:
+
+```ts
+/**
+ * R4.3 step 4: infantry that rolled their return arrive on the first planet of the home system the seat
+ * controls. Reinforcements limit how many actually come back, and a seat that controls nothing at home
+ * loses them; the counter is cleared either way.
+ */
+export function reviveInfantry(state: GameState, seat: Seat): GameState {
+  const player = state.players[seat]
+  if (player.pendingInfantry < 1) return state
+  const homeId = homeSystemId(seat)
+  const sys = state.systems[homeId]
+  const target = sys.planets.find(p => p.owner === seat)
+  const count = Math.min(player.pendingInfantry, player.reinforcements.infantry)
+  const players = [...state.players] as GameState['players']
+  if (!target || count < 1) {
+    players[seat] = { ...player, pendingInfantry: 0 }
+    return { ...state, players, log: [...state.log, { t: 'info', text: `seat ${seat} loses ${player.pendingInfantry} returning infantry` }] }
+  }
+  let nextId = state.nextUnitId
+  const revived: Unit[] = []
+  for (let i = 0; i < count; i++) revived.push({ id: nextId++, type: 'infantry', owner: seat, damaged: false })
+  players[seat] = { ...player, pendingInfantry: 0, reinforcements: { ...player.reinforcements, infantry: player.reinforcements.infantry - count } }
+  return {
+    ...state, players, nextUnitId: nextId,
+    systems: {
+      ...state.systems,
+      [homeId]: { ...sys, planets: sys.planets.map(p => p.id === target.id ? { ...p, ground: [...p.ground, ...revived] } : p) },
+    },
+    log: [...state.log, { t: 'info', text: `seat ${seat} returns ${count} infantry to ${target.id}` }],
+  }
+}
+
+/** The turn goes to the other seat unless that seat has already passed; either way a turn starts (R4.3 step 4). */
+export function passTurn(state: GameState): GameState {
+  const other = otherSeat(state.active)
+  const next: Seat = state.players[other].passed ? state.active : other
+  return reviveInfantry({ ...state, active: next }, next)
+}
+```
+
+and in `pass`, replace the last line with:
+
+```ts
+  return { ok: true, value: reviveInfantry({ ...state, players, active: other }, other) }
+```
+
+In `src/engine/strategyPhase.ts` add `import { reviveInfantry } from './actionPhase'` and wrap the state that opens the action phase, replacing the assignment inside `if (draft.length === 0)`:
+
+```ts
+    next = reviveInfantry({ ...next, strategyPool, phase: 'action', active: order[0], players: [{ ...next.players[0], passed: false }, { ...next.players[1], passed: false }] }, order[0])
+```
+
+- [ ] **Step 7: Run the tests to verify they pass**
+
+Run: `npm test`
+Expected: PASS, 6 new tests and every earlier suite, including `invasion`, `actionPhase`, `strategyPhase` and `fullGame`.
+
+- [ ] **Step 8: Type-check, lint and commit**
+
+Run: `npx tsc -p tsconfig.app.json --noEmit && npm run lint`
+
+```bash
+git add src/engine/types.ts src/engine/setup.ts src/engine/board.ts src/engine/invasion.ts src/engine/actionPhase.ts src/engine/strategyPhase.ts src/engine/revival.test.ts docs/spec/engine-design.md
+git commit -m "feat(engine): Infantry II revival with pending infantry returning at the start of a turn"
+```
+
+---
+
 ## Self-review notes
 
 ### Spec coverage

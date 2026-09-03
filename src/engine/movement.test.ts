@@ -136,4 +136,21 @@ describe('R3.2 movement', () => {
     expect(entries).toHaveLength(1)
     expect(after.value.systems.bereg.space.filter(u => u.owner === 0)).toHaveLength(2 - hitsIn(after.value, 'space cannon offense'))
   })
+  it('R4.1 step 1: cargo orphaned by the space cannon in the PDS-only branch is destroyed with its carrier', () => {
+    // seat 1 activates [0.0.0], where the L1Z1X starting PDS defends an otherwise empty system: the cannon
+    // destroys the arriving carrier, so the two infantry it carried have nothing left to ride in.
+    const base = toActionPhase(1, 1)
+    const emptied = deepFreeze({ ...base, systems: { ...base.systems, 'home-n': { ...base.systems['home-n'], space: [] } } })
+    const s = activate(withUnits(emptied, 'bereg', 1, ['carrier', 'infantry', 'infantry']), 1, 'home-n')
+    const troops = s.systems.bereg.space.filter(u => u.owner === 1 && u.type === 'infantry').map(u => u.id)
+    const moved = move(s, shipId(s, 'bereg', 'carrier', 1), 'bereg', troops)
+    if (!moved.ok) throw new Error(moved.error)
+    const before = moved.value.players[1].reinforcements
+    const after = applyMove(moved.value, { type: 'endMovement' }, 3)   // seed 3: the PDS hits
+    if (!after.ok) throw new Error(after.error)
+    expect(hitsIn(after.value, 'space cannon offense')).toBeGreaterThanOrEqual(1)
+    expect(after.value.systems['home-n'].space.filter(u => u.owner === 1)).toHaveLength(0)
+    expect(after.value.players[1].reinforcements.carrier).toBe(before.carrier + 1)
+    expect(after.value.players[1].reinforcements.infantry).toBe(before.infantry + 2)
+  })
 })

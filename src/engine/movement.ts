@@ -126,7 +126,9 @@ export function endMovement(state: GameState, seed: number): Result<GameState> {
     return { ok: true, value: { ...state, tactical: { ...tac, step: 'spaceCombat', combat } } }
   }
   // R4.1 step 1: a defending PDS still fires even when there are no enemy ships to trigger a full space combat.
+  // R3.2/16.2: a cannon hit can destroy the carrier of arriving cargo, so the cargo is trimmed the same way the
+  // end of a space combat trims it — there is no combat here to do it later.
   const enemyPds = mine.length > 0 && sys.planets.some(p => p.structures.some(u => u.owner !== seat && unitStats(u.type, statsOwner(state, u.owner)).spaceCannon))
-  const next = enemyPds ? spaceCannonOffense(state, tac.systemId, seat, seed) : state
+  const next = enemyPds ? trimCargo(spaceCannonOffense(state, tac.systemId, seat, seed), tac.systemId, seat) : state
   return { ok: true, value: { ...next, tactical: { ...tac, step: 'invasion', invasion: { planetId: null, landed: [], bombarded: [], round: 0 } } } }
 }
