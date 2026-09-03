@@ -1,4 +1,5 @@
 import { TRADE_POSTS } from '../data/map'
+import { POSTS, type PostDef } from '../data/posts'
 import { TECHS } from '../data/techs'
 import { ACTION_SPENT } from './actionPhase'
 import { cheapestPlanets, payCost } from './economy'
@@ -19,7 +20,7 @@ export const SHIPYARD_COST = 4
  * middle of a tactical action, inside a secondary window and after the seat has passed for the round.
  * The two real component actions add their own `turnDone` guard on top, because they are actions.
  */
-function turnReady(state: GameState): Result<Seat> {
+export function turnReady(state: GameState): Result<Seat> {
   if (state.phase !== 'action') return { ok: false, error: 'not in the action phase' }
   if (state.tactical) return { ok: false, error: 'finish the tactical action first' }
   if (state.pendingSecondary) return { ok: false, error: 'R3.2: a secondary window is open' }
@@ -117,24 +118,37 @@ export function shipyard(state: GameState, planetId: string, planets: string[], 
   }
 }
 
-/** R8: the posts a seat may still use this round. */
+/** R8: the post in play on that side this round. */
+export function postDef(state: GameState, post: 'west' | 'east'): PostDef {
+  return POSTS[state.posts[post]]
+}
+
+/** R8: whether the seat controls a planet in one of the two systems the post serves. */
+export function postLinked(state: GameState, seat: Seat, post: 'west' | 'east'): boolean {
+  return TRADE_POSTS[post].some(id => state.systems[id].planets.some(p => p.owner === seat))
+}
+
+/** R8: the posts a seat may still sell commodities at this round. */
 export function tradePostOptions(state: GameState, seat: Seat): ('west' | 'east')[] {
   const player = state.players[seat]
   if (player.commodities < 1) return []
-  return (['west', 'east'] as const).filter(post => !player.tradedThisRound[post]
-    && TRADE_POSTS[post].some(id => state.systems[id].planets.some(p => p.owner === seat)))
+  return (['west', 'east'] as const).filter(post => !player.tradedThisRound[post] && postLinked(state, seat, post))
 }
 
-/** R8: at most 2 commodities for 1 trade good each, once per round per post; the turn goes on. */
+/**
+ * R8: commodities for 1 trade good each, once per round per post per player; the turn goes on. How many one
+ * sale takes is the post's own `commodityLimit`, so a Sarnex Wheel takes four from the round it arrives in.
+ */
 export function tradePost(state: GameState, post: 'west' | 'east', commodities: number): Result<GameState> {
   const ready = turnReady(state)
   if (!ready.ok) return ready
   const seat = ready.value
   const player = state.players[seat]
-  if (!Number.isInteger(commodities) || commodities < 1 || commodities > 2) return { ok: false, error: 'R8: 1 or 2 commodities' }
+  const limit = postDef(state, post).commodityLimit
+  if (!Number.isInteger(commodities) || commodities < 1 || commodities > limit) return { ok: false, error: `R8: 1 to ${limit} commodities` }
   if (commodities > player.commodities) return { ok: false, error: 'R8: not enough commodities' }
   if (player.tradedThisRound[post]) return { ok: false, error: `R8: the ${post} post is already used this round` }
-  if (!TRADE_POSTS[post].some(id => state.systems[id].planets.some(p => p.owner === seat))) {
+  if (!postLinked(state, seat, post)) {
     return { ok: false, error: `R8: no planet controlled in a system linked to the ${post} post` }
   }
   const players = [...state.players] as GameState['players']
@@ -147,6 +161,9 @@ export function tradePost(state: GameState, post: 'west' | 'east', commodities: 
   }
   return {
     ok: true,
-    value: { ...state, players, log: [...state.log, { t: 'info', text: `seat ${seat} sells ${commodities} commodities at the ${post} post` }] },
+    value: {
+      ...state, players,
+      log: [...state.log, { t: 'info', text: `seat ${seat} sells ${commodities} commodities at the ${post} post, the ${postDef(state, post).name}` }],
+    },
   }
 }

@@ -1,6 +1,6 @@
 import { ACTION_SPENT, activatableSystems, canPass } from './actionPhase'
 import { canMunitions, defaultAssignment, pendingFor, retreatTargets } from './combat'
-import { SHIPYARD_COST, canInheritance, canShipyard, inheritanceTechs, shipyardPlanets, tradePostOptions } from './componentActions'
+import { SHIPYARD_COST, canInheritance, canShipyard, inheritanceTechs, postDef, shipyardPlanets, tradePostOptions } from './componentActions'
 import { cheapestPlanets, productionCost, productionLimit, readyInfluence } from './economy'
 import { PRODUCIBLE } from './production'
 import { bombardablePlanets, groundCombatPending, landablePlanets } from './invasion'
@@ -138,6 +138,18 @@ function secondaryMoves(state: GameState, seat: Seat, card: StrategyCardId): Mov
   }
 }
 
+/**
+ * R8: the free moves at the two posts, offered before and after the action alike. The sale takes as many
+ * commodities as the post in play allows.
+ */
+function postMoves(state: GameState, seat: Seat): Move[] {
+  const out: Move[] = []
+  for (const post of tradePostOptions(state, seat)) {
+    out.push({ type: 'tradePost', post, commodities: Math.min(postDef(state, post).commodityLimit, state.players[seat].commodities) })
+  }
+  return out
+}
+
 export function legalMoves(state: GameState): Move[] {
   if (state.winner !== null || state.phase === 'ended') return []
   // R4.1 step 4: queued hits block everything else, and the offer is a complete pick so it can be played as it is
@@ -167,10 +179,7 @@ export function legalMoves(state: GameState): Move[] {
   // R3.2/R8: the action is spent but the turn is not over. Only the free moves and the handover are left:
   // no second action, and no `pass` either, because you pass instead of taking an action, never after one.
   if (state.turnDone) {
-    const spent: Move[] = [{ type: 'endTurn' }]
-    for (const post of tradePostOptions(state, seat)) {
-      spent.push({ type: 'tradePost', post, commodities: Math.min(2, state.players[seat].commodities) })
-    }
+    const spent: Move[] = [{ type: 'endTurn' }, ...postMoves(state, seat)]
     return spent
   }
   const out: Move[] = activatableSystems(state, seat).map(id => ({ type: 'startTactical', systemId: id }))
@@ -182,9 +191,7 @@ export function legalMoves(state: GameState): Move[] {
     const planets = cheapestPlanets(state, seat, SHIPYARD_COST) ?? []
     for (const planetId of shipyardPlanets(state, seat)) out.push({ type: 'shipyard', planetId, planets, tradeGoods: 0 })
   }
-  for (const post of tradePostOptions(state, seat)) {
-    out.push({ type: 'tradePost', post, commodities: Math.min(2, state.players[seat].commodities) })
-  }
+  out.push(...postMoves(state, seat))
   if (canPass(state, seat)) out.push({ type: 'pass' })
   return out
 }
