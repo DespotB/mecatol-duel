@@ -3,6 +3,7 @@ import { GameProvider, useGame } from './store'
 import { navigate, useHashRoute } from './route'
 import { BoardScreen } from './screens/BoardScreen'
 import { GameOverScreen } from './screens/GameOverScreen'
+import { RulesScreen } from './screens/RulesScreen'
 import { SetupScreen } from './screens/SetupScreen'
 import type { GameConfig } from './store'
 import type { Move, StrategyCardId } from '../engine/types'
@@ -84,6 +85,8 @@ function Screens() {
   const route = useHashRoute()
   useDemoBootstrap()
   useDemoScript()
+  // a document, not a game screen: readable from the lobby and straight from the URL, running game or not
+  if (route.startsWith('#/rules')) return <RulesScreen />
   if (session && session.state.winner !== null) return <GameOverScreen />
   if (session && route.startsWith('#/play')) return <BoardScreen />
   return <SetupScreen />

@@ -320,6 +320,15 @@ export function SetupScreen() {
                 <div className="sub">Most points after round 6 wins the duel</div>
               </div>
             </div>
+            <div className="cell" data-testid="setup-rules">
+              <div>
+                <div className="lbl"><i className="dia" />Rules</div>
+                <button type="button" className="btn ghost rules" data-testid="btn-rules" onClick={() => navigate('#/rules')}>
+                  What&apos;s different from Twilight Imperium
+                </button>
+                <div className="sub">Six strategy cards, no agenda phase, open objectives</div>
+              </div>
+            </div>
             <button type="button" className="btn gold big" data-testid="btn-start" onClick={onStart}>Play hot-seat</button>
           </div>
         </div>
