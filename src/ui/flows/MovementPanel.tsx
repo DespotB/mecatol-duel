@@ -46,7 +46,7 @@ function availableCargo(state: GameState, seat: Seat, from: string, moving: Unit
 
 const OBSTACLE_TEXT: Record<MovementObstacle, (target: string) => string> = {
   asteroid: target => `${target} is an asteroid field. Ships enter it only with Antimass Deflectors.`,
-  blocked: target => `An enemy fleet sits on the only path into ${target} and stops every ship short of it.`,
+  blocked: target => `A hostile fleet sits on the only path into ${target}. Ships cannot move through one, and the guardians of Mecatol Rex count.`,
   range: target => `No ship of yours is within range of ${target}. Move value 1 reaches the neighbouring systems only.`,
   none: () => 'You have no ship left that could move: they all sit in the active system or in an activated one.',
 }
