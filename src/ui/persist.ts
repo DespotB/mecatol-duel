@@ -1,9 +1,32 @@
 import type { GameState } from '../engine/types'
 import type { Session } from './store'
 
-export const STORAGE_KEY = 'md:local'
+/**
+ * One browser holds many games, one key each. localStorage rather than cookies: a cookie would ride along
+ * with every request to the server, is capped at a few kilobytes and is no less browser-local, so it would
+ * buy nothing here and cost bandwidth. Nothing leaves the device either way, which is exactly the point:
+ * another browser has its own storage and therefore its own games.
+ */
+export const LEGACY_KEY = 'md:local'
+export const INDEX_KEY = 'md:games'
+export const MAX_GAMES = 20
+/** No I, L, O, 0 or 1: a code is read out loud across the table, and those five are misheard. */
+export const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+const CODE_LENGTH = 6
 
-interface Payload {
+export function gameKey(code: string): string {
+  return `md:game:${code}`
+}
+
+/** What the lobby needs to list a game without parsing the whole state. */
+export interface GameSummary {
+  code: string
+  names: [string, string]
+  round: number
+  updatedAt: number
+}
+
+interface Legacy {
   version: 1
   seed: number
   minutes: number
@@ -12,46 +35,151 @@ interface Payload {
   history: GameState[]
 }
 
-function isPayload(value: unknown): value is Payload {
+type Payload = Legacy & GameSummary
+
+function isLegacy(value: unknown): value is Legacy {
   if (typeof value !== 'object' || value === null) return false
-  const p = value as Partial<Payload>
+  const p = value as Partial<Legacy>
   return p.version === 1 && typeof p.seed === 'number' && typeof p.minutes === 'number'
     && Array.isArray(p.clockMs) && p.clockMs.length === 2
     && Array.isArray(p.history)
     && typeof p.state === 'object' && p.state !== null && p.state.version === 1
 }
 
-export function saveSession(session: Session): void {
-  const payload: Payload = {
-    version: 1, seed: session.seed, minutes: session.minutes,
-    clockMs: session.clockMs, state: session.state, history: session.history,
-  }
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
-  } catch {
-    // a full or blocked storage must never break the game in progress
-  }
+function isSummary(value: unknown): value is GameSummary {
+  if (typeof value !== 'object' || value === null) return false
+  const s = value as Partial<GameSummary>
+  return typeof s.code === 'string' && s.code.length > 0
+    && Array.isArray(s.names) && s.names.length === 2
+    && typeof s.names[0] === 'string' && typeof s.names[1] === 'string'
+    && typeof s.round === 'number' && typeof s.updatedAt === 'number'
 }
 
-export function loadSession(): Session | null {
+function isPayload(value: unknown): value is Payload {
+  return isLegacy(value) && isSummary(value)
+}
+
+// Every access is wrapped: a blocked, full or foreign storage must never throw into the UI.
+function read(key: string): unknown {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
+    const raw = window.localStorage.getItem(key)
     if (raw === null) return null
-    const parsed: unknown = JSON.parse(raw)
-    if (!isPayload(parsed)) return null
-    return {
-      seed: parsed.seed, minutes: parsed.minutes, state: parsed.state,
-      history: parsed.history, clockMs: parsed.clockMs, handoff: null,
-    }
+    return JSON.parse(raw) as unknown
   } catch {
     return null
   }
 }
 
-export function clearSession(): void {
+function write(key: string, value: unknown): void {
   try {
-    window.localStorage.removeItem(STORAGE_KEY)
+    window.localStorage.setItem(key, JSON.stringify(value))
+  } catch {
+    // a full or blocked storage must never break the game in progress
+  }
+}
+
+function remove(key: string): void {
+  try {
+    window.localStorage.removeItem(key)
   } catch {
     // nothing to do
   }
+}
+
+function present(key: string): boolean {
+  try {
+    return window.localStorage.getItem(key) !== null
+  } catch {
+    return false
+  }
+}
+
+export function hasGame(code: string): boolean {
+  return present(gameKey(code))
+}
+
+/** Six characters, redrawn while the browser already holds that code; the loop is bounded, never endless. */
+export function newGameCode(exists: (code: string) => boolean): string {
+  const draw = () => {
+    let code = ''
+    for (let i = 0; i < CODE_LENGTH; i += 1) {
+      code += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)]
+    }
+    return code
+  }
+  // `Math.random`, never the engine's seeded RNG: the game seed stays reproducible and independent
+  let code = draw()
+  for (let attempt = 0; attempt < 100 && exists(code); attempt += 1) code = draw()
+  return code
+}
+
+function readIndex(): GameSummary[] {
+  const parsed = read(INDEX_KEY)
+  if (!Array.isArray(parsed)) return []
+  // stable sort: entries written in the same millisecond keep the order they were written in
+  return (parsed as unknown[]).filter(isSummary).sort((a, b) => b.updatedAt - a.updatedAt)
+}
+
+function store(session: Session): void {
+  const summary: GameSummary = {
+    code: session.code,
+    names: [session.state.players[0].name, session.state.players[1].name],
+    round: session.state.round,
+    updatedAt: Date.now(),
+  }
+  const payload: Payload = {
+    ...summary, version: 1, seed: session.seed, minutes: session.minutes,
+    clockMs: session.clockMs, state: session.state, history: session.history,
+  }
+  write(gameKey(session.code), payload)
+  const entries = [summary, ...readIndex().filter(e => e.code !== session.code)]
+  for (const dropped of entries.slice(MAX_GAMES)) remove(gameKey(dropped.code))
+  write(INDEX_KEY, entries.slice(0, MAX_GAMES))
+}
+
+/**
+ * The first version kept one game under `md:local` and no code at all. The first read of any kind turns it
+ * into a coded game, so a player who left a game running before this version simply finds it in the list.
+ */
+function migrate(): void {
+  if (!present(LEGACY_KEY)) return
+  const parsed = read(LEGACY_KEY)
+  if (isLegacy(parsed)) {
+    store({
+      code: newGameCode(hasGame), seed: parsed.seed, minutes: parsed.minutes,
+      state: parsed.state, history: parsed.history, clockMs: parsed.clockMs, handoff: null,
+    })
+  }
+  remove(LEGACY_KEY)
+}
+
+export function listGames(): GameSummary[] {
+  migrate()
+  // an index entry whose payload is gone would be a row that resumes into nothing
+  return readIndex().filter(entry => hasGame(entry.code))
+}
+
+export function latestGameCode(): string | null {
+  return listGames()[0]?.code ?? null
+}
+
+export function saveGame(session: Session): void {
+  migrate()
+  store(session)
+}
+
+export function loadGame(code: string): Session | null {
+  migrate()
+  const parsed = read(gameKey(code))
+  if (!isPayload(parsed)) return null
+  return {
+    code: parsed.code, seed: parsed.seed, minutes: parsed.minutes,
+    state: parsed.state, history: parsed.history, clockMs: parsed.clockMs, handoff: null,
+  }
+}
+
+export function deleteGame(code: string): void {
+  migrate()
+  remove(gameKey(code))
+  write(INDEX_KEY, readIndex().filter(entry => entry.code !== code))
 }

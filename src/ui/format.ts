@@ -24,6 +24,32 @@ export function formatClock(ms: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
 
+function ago(count: number, unit: string): string {
+  return `${String(count)} ${unit}${count === 1 ? '' : 's'} ago`
+}
+
+/**
+ * "2 minutes ago", "yesterday": how long ago a saved game was last touched. Deliberately coarse and
+ * deliberately hand-rolled, because pulling in a date library for eight branches would be absurd. Time
+ * that runs backwards (a clock correction, a stored timestamp from the future) reads as "just now".
+ */
+export function relativeTime(then: number, now: number): string {
+  const minutes = Math.floor(Math.max(0, now - then) / 60000)
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return ago(minutes, 'minute')
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return ago(hours, 'hour')
+  const days = Math.floor(hours / 24)
+  if (days === 1) return 'yesterday'
+  if (days < 7) return ago(days, 'day')
+  const weeks = Math.floor(days / 7)
+  if (weeks === 1) return 'last week'
+  if (weeks < 9) return ago(weeks, 'week')
+  const months = Math.floor(days / 30)
+  if (months < 12) return ago(months, 'month')
+  return 'over a year ago'
+}
+
 /** R5: the label follows the owner's technologies, so an upgraded unit reads II. */
 export function unitLabel(type: UnitType, player: Player): string {
   if (type === 'flagship') return player.faction === 'l1z1x' ? 'Flagship [0.0.1]' : 'Flagship Arc Secundus'

@@ -24,7 +24,7 @@ function wrapper(ticking: boolean) {
 }
 
 function session(state: Session['state'], clockMs: [number, number]): Session {
-  return { seed: 7, minutes: 15, state, history: [], clockMs, handoff: null }
+  return { code: 'TESTAA', seed: 7, minutes: 15, state, history: [], clockMs, handoff: null }
 }
 
 describe('the hot-seat store', () => {

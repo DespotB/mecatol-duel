@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import App from '../App'
 import { FACTIONS } from '../../data/factions'
+import { createGame } from '../../engine'
+import { listGames, saveGame } from '../persist'
 import type { FactionId, UnitType } from '../../engine/types'
 
 function startingCount(faction: FactionId, type: UnitType): number {
@@ -12,6 +14,15 @@ function startingCount(faction: FactionId, type: UnitType): number {
 function renderApp(hash = '#/?seed=7') {
   window.location.hash = hash
   return render(<App ticking={false} />)
+}
+
+/** A game already in this browser's storage, as if it had been started earlier. */
+function savedGame(code: string, north: string, south: string) {
+  const state = createGame({
+    players: [{ faction: 'l1z1x', color: 'blue', name: north }, { faction: 'letnev', color: 'red', name: south }],
+    speaker: 0,
+  }, 7)
+  saveGame({ code, seed: 7, minutes: 15, state, history: [], clockMs: [900000, 900000], handoff: null })
 }
 
 describe('the setup screen', () => {
@@ -113,6 +124,54 @@ describe('the setup screen', () => {
     expect(screen.getByTestId('landing-hotseat').textContent).toContain('chess clock 15 minutes each')
     fireEvent.change(screen.getByTestId('minutes'), { target: { value: '20' } })
     expect(screen.getByTestId('landing-hotseat').textContent).toContain('chess clock 20 minutes each')
+  })
+
+  it('has no saved-games block until this browser holds a game', () => {
+    renderApp()
+    expect(screen.queryByTestId('saved-games')).toBeNull()
+  })
+
+  it('lists the saved games newest first and resumes the one that is picked', () => {
+    savedGame('AAA222', 'Despot', 'Kael')
+    savedGame('BBB333', 'Ada', 'Bo')
+    renderApp()
+    const rows = screen.getAllByTestId(/^saved-game-/)
+    expect(rows.map(row => row.getAttribute('data-testid'))).toEqual(['saved-game-BBB333', 'saved-game-AAA222'])
+    expect(rows[0].textContent).toContain('Ada')
+    expect(rows[0].textContent).toContain('Bo')
+    expect(rows[0].textContent).toContain('BBB333')
+    expect(rows[0].textContent).toContain('Round 1')
+    expect(rows[0].textContent).toContain('just now')
+
+    fireEvent.click(screen.getByTestId('btn-resume-AAA222'))
+    expect(window.location.hash).toBe('#/g/AAA222')
+    expect(screen.getByTestId('board-screen')).toBeTruthy()
+    expect(screen.getByTestId('player-0').textContent).toContain('Despot')
+  })
+
+  it('scales the page down by what the saved-games block adds, rather than scrolling', () => {
+    renderApp()
+    const bare = screen.getByTestId('setup-screen').style.zoom
+    cleanup()
+    savedGame('AAA222', 'Despot', 'Kael')
+    renderApp()
+    const withOne = screen.getByTestId('setup-screen').style.zoom
+    expect(Number(withOne)).toBeGreaterThan(0)
+    expect(Number(withOne)).toBeLessThan(Number(bare))
+    cleanup()
+    savedGame('BBB333', 'Ada', 'Bo')
+    renderApp()
+    expect(Number(screen.getByTestId('setup-screen').style.zoom)).toBeLessThan(Number(withOne))
+  })
+
+  it('deletes one saved game and leaves the others alone', () => {
+    savedGame('AAA222', 'Despot', 'Kael')
+    savedGame('BBB333', 'Ada', 'Bo')
+    renderApp()
+    fireEvent.click(screen.getByTestId('btn-delete-AAA222'))
+    expect(screen.queryByTestId('saved-game-AAA222')).toBeNull()
+    expect(screen.getByTestId('saved-game-BBB333')).toBeTruthy()
+    expect(listGames().map(game => game.code)).toEqual(['BBB333'])
   })
 
   it('credits Fantasy Flight Games and AsyncTI4', () => {

@@ -2,8 +2,9 @@
 import { fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { cardsUsed, toActionPhase } from '../engine/testUtils'
+import { gameKey } from './persist'
 import { BoardScreen } from './screens/BoardScreen'
-import { renderWithSession } from './test/harness'
+import { TEST_CODE, renderWithSession } from './test/harness'
 
 describe('hot-seat courtesies', () => {
   it('asks to pass the device when the seat to act changes', () => {
@@ -43,7 +44,7 @@ describe('hot-seat courtesies', () => {
   it('writes the session to localStorage after every move', () => {
     const { store } = renderWithSession(cardsUsed(toActionPhase()), <BoardScreen />)
     fireEvent.click(screen.getByTestId('btn-pass'))
-    const raw = window.localStorage.getItem('md:local')
+    const raw = window.localStorage.getItem(gameKey(TEST_CODE))
     expect(raw).not.toBeNull()
     expect(raw).toContain('"seed":7')
     expect(store().session?.state.players[0].passed).toBe(true)
