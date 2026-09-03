@@ -29,6 +29,15 @@ describe('the soundtrack', () => {
     expect(screen.getByTestId('btn-music').textContent).toBe('Music on')
   })
 
+  it('the button and the stored setting never disagree, however often it is clicked', () => {
+    render(<MusicProvider><MusicButton /></MusicProvider>)
+    for (const expected of ['on', 'off', 'on']) {
+      fireEvent.click(screen.getByTestId('btn-music'))
+      expect(window.localStorage.getItem('md:music')).toBe(expected)
+      expect(screen.getByTestId('btn-music').textContent).toBe(expected === 'on' ? 'Music on' : 'Music off')
+    }
+  })
+
   it('plays one of the three tracks and steps on when it ends', () => {
     render(<MusicProvider><MusicButton /></MusicProvider>)
     const audio = screen.getByTestId('music')
