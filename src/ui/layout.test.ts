@@ -190,8 +190,9 @@ describe('R8: the trade posts and their hyperlanes', () => {
 
   it('anchors a lane on the post it leaves and the centre of the tile it plugs into', () => {
     // computed from the constants, never measured: the map is scaled with a CSS zoom at runtime
-    expect(postAnchor('west')).toEqual({ left: POST_POS.west.left + POST_W, top: POST_POS.west.top + POST_ART_H })
-    expect(postAnchor('east')).toEqual({ left: POST_POS.east.left, top: POST_POS.east.top + POST_ART_H })
+    // the lane leaves at the middle of the model, so it ends at the station and not in the card's text
+    expect(postAnchor('west')).toEqual({ left: POST_POS.west.left + POST_W, top: POST_POS.west.top + POST_ART_H / 2 })
+    expect(postAnchor('east')).toEqual({ left: POST_POS.east.left, top: POST_POS.east.top + POST_ART_H / 2 })
     expect(tileCentre('sakulag')).toEqual({ left: TILE_POS.sakulag.left + TILE_W / 2, top: TILE_POS.sakulag.top + TILE_H / 2 })
   })
 
