@@ -1,9 +1,9 @@
-import { Fragment, useRef, useState } from 'react'
+import { Fragment, useState } from 'react'
 import { FACTIONS } from '../../data/factions'
 import { SYSTEMS, systemDef } from '../../data/map'
 import { techDef } from '../../data/techs'
 import { relativeTime } from '../format'
-import { deleteGame, listGames } from '../persist'
+import { MAX_GAMES, deleteGame, listGames } from '../persist'
 import { gamePath, navigate, seedFromRoute, useHashRoute } from '../route'
 import { spriteUrl, techIconUrl } from '../art'
 import { spriteSize } from '../sprites'
@@ -35,6 +35,12 @@ const COLOUR_INK: Record<Color, { accent: string; tint: string; glow: string }> 
 }
 const POSITION: [string, string] = ['North', 'South']
 
+/** The mode picker's two options. Hot-seat is first: it is the one a single browser can finish on its own. */
+const MODES: { id: 'hotseat' | 'online'; title: string; sub: string }[] = [
+  { id: 'hotseat', title: 'Play hot-seat', sub: 'Both seats, one device' },
+  { id: 'online', title: 'Play online', sub: 'One seat, send the link' },
+]
+
 // Display order for the fleet row; only the types a starting fleet can actually contain matter here.
 const FLEET_ORDER: UnitType[] = ['dreadnought', 'warsun', 'flagship', 'carrier', 'cruiser', 'destroyer', 'fighter', 'infantry', 'pds', 'spacedock']
 const UNIT_LABEL: Record<UnitType, string> = {
@@ -51,19 +57,6 @@ const BADGE_TYPES: readonly UnitType[] = ['fighter', 'infantry']
 // The row's sprites are sized proportionally to the actual ships via src/ui/sprites.ts, the shared copy of
 // public/assets/sprites/manifest.json's world scale.
 const FLEET_SPRITE_SCALE = 14
-
-/**
- * The lobby is drawn in a 1440x900 frame and `useFitScale` scales that frame to the viewport. The
- * saved-games block makes the page taller than the frame, so the page is scaled down by whatever it adds
- * and keeps fitting instead of growing a scrollbar. The three numbers mirror `.saved` in setup.css.
- */
-const PAGE_H = 900
-/** the block's top margin plus its panel padding */
-const SAVED_BLOCK_H = 68
-/** one `.gamerow` */
-const SAVED_ROW_H = 52
-/** `.glist` stops at three and a half rows and scrolls; the page never grows past that */
-const SAVED_LIST_H = 182
 
 const MAP_NAME = 'Bereg Standoff'
 /** The flower layout of src/data/map.ts, drawn as a 76x80 hex preview: home north, Mecatol in the middle. */
@@ -114,7 +107,13 @@ export function SetupScreen() {
   const [factions, setFactions] = useState<[FactionId, FactionId]>(['l1z1x', 'letnev'])
   const [colours, setColours] = useState<[Color, Color]>(['blue', 'red'])
   const [minutes, setMinutes] = useState(15)
-  const seatConfigRef = useRef<HTMLDivElement | null>(null)
+  /**
+   * The question the game is opened with, asked here rather than on the first screen of the game: hot-seat
+   * keeps both seats on this device, online keeps one and sends the link on. It is the first control on the
+   * page because it decides what everything under it means, down to who the second name belongs to.
+   */
+  const [mode, setMode] = useState<'hotseat' | 'online'>('hotseat')
+  const [hostSeat, setHostSeat] = useState<Seat>(0)
 
   function setName(seat: Seat, value: string) {
     setNames(seat === 0 ? [value, names[1]] : [names[0], value])
@@ -130,21 +129,20 @@ export function SetupScreen() {
         { faction: factions[1], color: colours[1], name: names[1].trim() || 'Player 2' },
       ],
       speaker: 0,
-    }, seed, minutes)
+    }, seed, minutes, mode === 'hotseat' ? [0, 1] : [hostSeat])
   }
   function forget(code: string) {
     deleteGame(code)
     setSaved({ games: listGames(), now: Date.now() })
   }
-  function goToSeats() {
-    const node = seatConfigRef.current
-    if (node && typeof node.scrollIntoView === 'function') node.scrollIntoView({ behavior: 'smooth' })
-  }
-
-  const pageHeight = saved.games.length === 0
-    ? PAGE_H
-    : PAGE_H + SAVED_BLOCK_H + Math.min(SAVED_LIST_H, SAVED_ROW_H * saved.games.length)
-  const zoom = Math.round(fit * (PAGE_H / pageHeight) * 1000) / 1000
+  /*
+   * The lobby is drawn in a 1440x900 frame and `useFitScale` scales that frame to the viewport, nothing
+   * else: every slot below is drawn whether it holds a game or not, so the page is the same height on
+   * every visit and the screen no longer resizes as games come and go.
+   */
+  const slots = Array.from({ length: MAX_GAMES }, (_, i) => saved.games[i] ?? null)
+  const full = saved.games.length >= MAX_GAMES
+  const zoom = fit
 
   return (
     <div className="setup lobbyui" data-testid="setup-screen" style={{ zoom }}>
@@ -156,89 +154,108 @@ export function SetupScreen() {
         <p className="tagline">Twilight Imperium for two players, thirty minutes</p>
       </header>
 
-      {saved.games.length > 0 ? (
-        <section className="box saved" aria-label="Saved games" data-testid="saved-games">
+      {/*
+        * The two questions a player opens the lobby with, side by side and above everything else: how this
+        * game is played, and which of the games already on this browser to go back to. The mode picker is
+        * first because the answer changes what the seats below mean, and the games block holds a fixed
+        * three slots so the page cannot change height between visits.
+        */}
+      <section className="top" aria-label="Start a game">
+        <div className="box mode" data-testid="mode-picker">
+          <div className="frame panel">
+            <div className="modepick" role="group" aria-label="How to play">
+              {MODES.map(option => (
+                <button
+                  key={option.id} type="button"
+                  className={`modeopt${option.id === mode ? ' on' : ''}`}
+                  data-testid={`mode-${option.id}`} aria-pressed={option.id === mode}
+                  onClick={() => { setMode(option.id) }}
+                >
+                  <span className="mt">{option.title}</span>
+                  <span className="ms">{option.sub}</span>
+                </button>
+              ))}
+            </div>
+
+            <p className="modeline" data-testid="mode-line">
+              {mode === 'hotseat'
+                ? `Both players on this device. It is passed between turns, ${String(minutes)} minutes each on the chess clock.`
+                : `One seat is yours, the link carries the other. Your opponent opens it in any browser, ${String(minutes)} minutes each.`}
+            </p>
+
+            {/* the seat picker shares the foot with the button, so both modes leave the box the same height */}
+            <div className="go">
+              {mode === 'online' ? (
+                <div className="pickseat" data-testid="pick-seat">
+                  <span className="lbl">You play</span>
+                  {([0, 1] as Seat[]).map(seat => (
+                    <button
+                      key={seat} type="button"
+                      className={`seatopt${seat === hostSeat ? ' on' : ''}`}
+                      data-testid={`host-seat-${String(seat)}`} aria-pressed={seat === hostSeat}
+                      onClick={() => { setHostSeat(seat) }}
+                    >
+                      <img src={`/assets/factions/${factions[seat]}.png`} alt="" />
+                      <span>{names[seat].trim() || `Player ${String(seat + 1)}`}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <button
+                type="button" className="btn gold big" data-testid="btn-start" disabled={full} onClick={onStart}
+              >
+                {mode === 'hotseat' ? 'Start hot-seat game' : 'Create the game'}
+              </button>
+              {full || mode === 'hotseat' ? (
+                <span className="note" data-testid="start-note">
+                  {full ? 'Three games is the limit. Delete one to start another.' : 'No account, no network'}
+                </span>
+              ) : null}
+            </div>
+          </div>
+          <div className="tab"><b>Mode</b>&nbsp; {mode === 'hotseat' ? 'This device' : 'Two devices'}</div>
+        </div>
+
+        <div className="box games" data-testid="game-slots">
           <div className="frame panel">
             <div className="glist">
-              {saved.games.map(game => (
-                <div className="gamerow" key={game.code} data-testid={`saved-game-${game.code}`}>
-                  <span className="gcode">{game.code}</span>
-                  <span className="gwho">{game.names[0]}<i className="vs">vs</i>{game.names[1]}</span>
-                  <span className="gmeta">
-                    Round {game.round}<span className="sep" />{relativeTime(game.updatedAt, saved.now)}
-                  </span>
-                  <div className="gacts">
-                    <button
-                      type="button" className="btn ghost sm" data-testid={`btn-resume-${game.code}`}
-                      onClick={() => { navigate(gamePath(game.code)) }}
-                    >
-                      Resume
-                    </button>
-                    <button
-                      type="button" className="btn plain sm" data-testid={`btn-delete-${game.code}`}
-                      onClick={() => { forget(game.code) }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
+              {slots.map((game, i) => (
+                game
+                  ? (
+                    <div className="gamerow" key={game.code} data-testid={`saved-game-${game.code}`}>
+                      <span className="gcode">{game.code}</span>
+                      <span className="gwho">{game.names[0]}<i className="vs">vs</i>{game.names[1]}</span>
+                      <span className="gmeta">
+                        Round {game.round}<span className="sep" />{relativeTime(game.updatedAt, saved.now)}
+                      </span>
+                      <div className="gacts">
+                        <button
+                          type="button" className="btn ghost sm" data-testid={`btn-resume-${game.code}`}
+                          onClick={() => { navigate(gamePath(game.code)) }}
+                        >
+                          Resume
+                        </button>
+                        <button
+                          type="button" className="btn plain sm" data-testid={`btn-delete-${game.code}`}
+                          onClick={() => { forget(game.code) }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                    )
+                  : (
+                    <div className="gamerow empty" key={`empty-${String(i)}`} data-testid={`game-slot-empty-${String(i)}`}>
+                      <span className="gcode">&mdash;</span>
+                      <span className="gwho">Empty slot</span>
+                    </div>
+                    )
               ))}
             </div>
           </div>
-          <div className="tab"><b>Saved games</b>&nbsp; On this device</div>
-        </section>
-      ) : null}
-
-      <section className="menu" aria-label="Game mode">
-        <div className="box" data-testid="landing-hotseat">
-          <div className="frame panel">
-            <div className="lead">
-              <div className="ico">
-                <img src="/assets/tokens/l1z1x_command.png" alt="" />
-                <img src="/assets/tokens/letnev_command.png" alt="" />
-              </div>
-              <p className="line"><span className="lbl">Hot-seat</span>Pass the tablet, chess clock {minutes} minutes each.</p>
-            </div>
-            <div className="foot">
-              <button type="button" className="btn ghost" data-testid="btn-play-device" onClick={goToSeats}>Play hot-seat</button>
-              <span className="note">No account, no network</span>
-            </div>
+          <div className="tab" data-testid="games-tab">
+            <b>Your games</b>&nbsp; {saved.games.length} of {MAX_GAMES}, on this device
           </div>
-          <div className="tab">Play on this device</div>
-        </div>
-
-        <div className="box primary" data-testid="landing-online">
-          <div className="frame panel">
-            <div className="lead">
-              <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="#c9a24d" strokeWidth="1.2" aria-hidden="true">
-                <circle cx="15" cy="15" r="3" fill="#c9a24d" stroke="none" />
-                <circle cx="15" cy="15" r="8" /><circle cx="15" cy="15" r="13" strokeOpacity=".55" />
-                <path d="M3 15h5M22 15h5M15 3v5M15 22v5" strokeOpacity=".8" />
-              </svg>
-              <p className="line"><span className="lbl">Online</span>You get a six-character code and a link. Your opponent joins from any browser.</p>
-            </div>
-            <div className="foot">
-              <button type="button" className="btn gold" data-testid="btn-create-online" disabled>Create lobby</button>
-              <span className="note">coming with online play</span>
-            </div>
-          </div>
-          <div className="tab">Create online lobby</div>
-        </div>
-
-        <div className="box" data-testid="landing-join">
-          <div className="frame panel">
-            <div className="lead">
-              <p className="line"><span className="lbl">Code</span>Enter the six-character code your opponent shared.</p>
-            </div>
-            <div className="code">
-              <div className="codefield">
-                <input type="text" placeholder="K7X2QP" aria-label="Lobby code" disabled />
-              </div>
-              <button type="button" className="btn gold" data-testid="btn-join-code" disabled>Join</button>
-            </div>
-            <span className="note">coming with online play</span>
-          </div>
-          <div className="tab">Join with a code</div>
         </div>
       </section>
 
@@ -247,17 +264,24 @@ export function SetupScreen() {
           <div className="lobby-head">
             <div className="mode">
               <span className="lbl">Mode</span>
-              <div className="linkbox"><span>This device, <b>pass it between turns</b></span></div>
+              <div className="linkbox" data-testid="lobby-mode">
+                {mode === 'hotseat'
+                  ? <span>This device, <b>pass it between turns</b></span>
+                  : <span>Two devices, <b>you take {POSITION[hostSeat].toLowerCase()}</b></span>}
+              </div>
               <button type="button" className="btn ghost sm" data-testid="btn-swap-factions" onClick={() => setFactions([factions[1], factions[0]])}>
                 Swap factions
               </button>
             </div>
             <div className="status" data-testid="lobby-status">
-              <i className="pulse" />Both seats on this device<span className="sep" />2 of 2 seats taken
+              <i className="pulse" />
+              {mode === 'hotseat'
+                ? <>Both seats on this device<span className="sep" />2 of 2 seats taken</>
+                : <>One seat is yours<span className="sep" />1 of 2 seats taken</>}
             </div>
           </div>
 
-          <div className="seats" id="seat-config" ref={seatConfigRef}>
+          <div className="seats" id="seat-config">
             {([0, 1] as Seat[]).map(seat => {
               const factionId = factions[seat]
               const faction = FACTIONS[factionId]
@@ -404,10 +428,9 @@ export function SetupScreen() {
                 <div className="sub">Six strategy cards, no agenda phase, open objectives</div>
               </div>
             </div>
-            <button type="button" className="btn gold big" data-testid="btn-start" onClick={onStart}>Play hot-seat</button>
           </div>
         </div>
-        <div className="tab" data-testid="lobby-tab"><b>Lobby</b>&nbsp; Hot-seat</div>
+        <div className="tab" data-testid="lobby-tab"><b>Lobby</b>&nbsp; {mode === 'hotseat' ? 'Hot-seat' : 'Online'}</div>
       </section>
 
       <p className="legal" data-testid="setup-legal">

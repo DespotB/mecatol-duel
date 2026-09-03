@@ -75,13 +75,52 @@
 .lobbyui .tagline{margin:0;font:600 15px/1 var(--hud);letter-spacing:.14em;text-transform:uppercase;color:var(--gold);opacity:.88}
 .lobbyui .hero .btn{margin-top:16px}
 
-/* the games this browser holds: one row each, newest first */
-.lobbyui .saved{margin-top:30px}
-.lobbyui .saved .panel{padding:22px 22px 14px;display:flex;flex-direction:column}
-/* three and a half rows, then the list scrolls: the page keeps its height however many games are saved */
-.lobbyui .glist{max-height:182px;overflow-y:auto;overscroll-behavior:contain}
-.lobbyui .gamerow{display:flex;align-items:center;gap:16px;padding:11px 2px;border-top:1px solid rgba(201,162,77,.22)}
+/*
+ * The top of the lobby: how this game is played on the left, the games this browser already holds on the
+ * right. The row is a fixed height and the games list draws a fixed three rows, so the page is the same
+ * size whether a browser holds no games or three, and whichever mode is picked. The page scales itself to
+ * its own height, so anything that changes that height resizes the whole screen.
+ */
+.lobbyui .top{display:grid;grid-template-columns:600px 1fr;gap:24px;margin-top:20px;height:146px}
+.lobbyui .top .panel{height:100%;padding:13px 20px 12px;display:flex;flex-direction:column;gap:7px}
+
+/* the mode picker: two answers to one question, and the answer sets what everything below it means */
+.lobbyui .modepick{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.lobbyui .modeopt{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:6px 12px 7px;
+  border:1px solid rgba(201,162,77,.35);background:rgba(0,0,0,.3);cursor:pointer;text-align:left}
+.lobbyui .modeopt .mt{font:700 13px/1 var(--hud);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lobbyui .modeopt .ms{font:500 10.5px/1 var(--hud);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-mute)}
+.lobbyui .modeopt:hover{border-color:var(--gold)}
+.lobbyui .modeopt.on{border-color:var(--gold-hi);background:rgba(201,162,77,.14)}
+.lobbyui .modeopt.on .mt{color:var(--gold-hi)}
+.lobbyui .modeopt.on .ms{color:var(--gold)}
+/* two lines in both modes, so the foot of the box does not move when the mode changes */
+.lobbyui .modeline{margin:0;height:33px;font:400 12.5px/1.3 var(--body);color:var(--ink-dim)}
+
+/* online only: which of the two seats the host keeps, the other one travels with the link */
+.lobbyui .pickseat{display:flex;align-items:center;gap:8px}
+.lobbyui .seatopt{display:flex;align-items:center;gap:7px;padding:4px 10px 4px 6px;
+  border:1px solid rgba(201,162,77,.35);background:rgba(0,0,0,.3);cursor:pointer;
+  font:600 12px/1 var(--hud);letter-spacing:.05em;color:var(--muted)}
+.lobbyui .seatopt img{width:20px;height:20px;object-fit:contain}
+.lobbyui .seatopt .pos{font:500 10px/1 var(--hud);font-style:normal;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-mute)}
+.lobbyui .seatopt:hover{border-color:var(--gold)}
+.lobbyui .seatopt.on{border-color:var(--gold-hi);background:rgba(201,162,77,.14);color:var(--gold-hi)}
+.lobbyui .seatopt.on .pos{color:var(--gold)}
+
+/* the start button sits at the foot of its own box, so it is on the same line in both modes */
+.lobbyui .go{margin-top:auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.lobbyui .note{font:500 11px/1.35 var(--hud);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-mute)}
+
+/* the games this browser holds: three slots, filled or not, newest first */
+.lobbyui .games .panel{padding:9px 20px;justify-content:center}
+/* exactly three rows, so the block cannot change the height of the page */
+.lobbyui .glist{height:117px;overflow:hidden}
+.lobbyui .gamerow{display:flex;align-items:center;gap:16px;height:39px;padding:0 2px;border-top:1px solid rgba(201,162,77,.22)}
 .lobbyui .gamerow:first-child{border-top:0}
+.lobbyui .gamerow.empty{color:var(--ink-mute)}
+.lobbyui .gamerow.empty .gcode{color:rgba(201,162,77,.4)}
+.lobbyui .gamerow.empty .gwho{font-weight:500;color:var(--ink-mute);letter-spacing:.08em;text-transform:uppercase;font-size:12px}
 .lobbyui .gcode{flex:none;width:104px;font:600 15px/1 var(--hud);letter-spacing:.22em;color:var(--gold-hi)}
 .lobbyui .gwho{flex:1;min-width:0;font:600 17px/1.2 var(--hud);letter-spacing:.01em;color:var(--text);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -93,32 +132,8 @@
 .lobbyui .gacts{flex:none;display:flex;align-items:center;gap:8px}
 .lobbyui .btn.plain{background:none;color:var(--ink-mute)}
 .lobbyui .btn.plain:hover{color:var(--gold-hi)}
-
-/* the three menu boxes */
-.lobbyui .menu{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:28px}
-.lobbyui .menu .box{min-height:150px}
-.lobbyui .menu .panel{padding:26px 22px 18px;display:flex;flex-direction:column;gap:10px}
-.lobbyui .menu .lead{display:flex;align-items:center;gap:12px;min-height:34px}
-.lobbyui .menu .lead .ico{display:flex;align-items:center;gap:2px;flex:none}
-.lobbyui .menu .lead .ico img{height:24px;width:auto;filter:drop-shadow(0 1px 1px rgba(0,0,0,.7))}
-.lobbyui .menu .lead svg{flex:none}
-.lobbyui .menu .line{margin:0;font:400 13.5px/1.35 var(--body);color:var(--ink-dim)}
-.lobbyui .menu .line .lbl{display:block;margin-bottom:3px}
-.lobbyui .menu .foot{margin-top:auto;display:flex;align-items:center;gap:10px}
-.lobbyui .note{font:500 11px/1.35 var(--hud);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-mute)}
-.lobbyui .box.primary>.frame{--fill:rgba(16,22,44,.86);border-color:#f3e0a3 #d3ad57 #9a7530 #e0c47c;
-  box-shadow:inset 0 0 44px rgba(0,0,0,.42),inset 0 0 0 1px rgba(201,162,77,.22),inset 0 0 80px rgba(201,162,77,.10)}
-.lobbyui .code{display:flex;align-items:center;gap:10px;margin-top:auto}
-.lobbyui .codefield{position:relative;z-index:0;flex:1;height:36px;background:linear-gradient(160deg,var(--gold-hi) 0%,var(--gold) 45%,var(--gold-sh) 100%);
-  clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)}
-.lobbyui .codefield::before{content:"";position:absolute;inset:1px;z-index:-1;background:#060b18;
-  clip-path:polygon(7.4px 0,100% 0,100% calc(100% - 7.4px),calc(100% - 7.4px) 100%,0 100%,0 7.4px)}
-.lobbyui .codefield input{width:100%;height:34px;margin:1px 0 0;padding-left:14px;border:0;background:none;
-  font:600 20px/34px var(--hud);letter-spacing:.24em;color:var(--text)}
-.lobbyui .codefield input::placeholder{color:var(--ink-dim);opacity:1}
-
 /* the lobby panel */
-.lobbyui .lobby{margin-top:30px}
+.lobbyui .lobby{margin-top:22px}
 .lobbyui .lobby .panel{padding:28px 24px 20px;display:flex;flex-direction:column;gap:16px}
 .lobbyui .lobby-head{display:flex;align-items:center;gap:12px}
 .lobbyui .lobby-head .mode{flex:1;display:flex;align-items:center;gap:12px;min-width:0}
@@ -242,14 +257,14 @@
 .lobbyui .notfound .line{margin:0;font:400 14px/1.5 var(--body);color:var(--ink-dim)}
 .lobbyui .notfound .foot{display:flex;align-items:center;gap:14px;margin-top:6px;flex-wrap:wrap}
 
-.lobbyui .legal{margin:16px 0 0;text-align:center;font:400 11px var(--body);color:rgba(190,184,168,.7);
+.lobbyui .legal{margin:10px 0 0;text-align:center;font:400 11px var(--body);color:rgba(190,184,168,.7);
   letter-spacing:.02em;text-shadow:0 1px 2px rgba(0,0,0,.8)}
 
 @media (max-width:1200px){
   .setup{padding:40px 28px 32px}
   .lobbyui .title{font-size:46px}
   .lobbyui .rule{width:min(560px,100%)}
-  .lobbyui .menu{grid-template-columns:1fr}
+  .lobbyui .top{grid-template-columns:1fr;height:auto}
   .lobbyui .seats{grid-template-columns:1fr}
   .lobbyui .settings{grid-template-columns:1fr 1fr;row-gap:20px}
   .lobbyui .settings .btn.big{grid-column:1/-1;justify-self:start}

@@ -59,13 +59,26 @@ describe('the setup screen', () => {
     expect(screen.getByTestId('round').textContent).toBe('Round 1 of 6, strategy phase')
   })
 
-  it('offers hot-seat play now and disables the two online panels until they ship', () => {
+  it('asks how the game is played before anything else, hot-seat first', () => {
     renderApp()
-    expect(screen.getByTestId('landing-hotseat').querySelector('button')?.hasAttribute('disabled')).toBe(false)
-    expect(screen.getByTestId('landing-online').querySelector('button')?.hasAttribute('disabled')).toBe(true)
-    expect(screen.getByTestId('landing-join').querySelector('button')?.hasAttribute('disabled')).toBe(true)
-    expect(screen.getByTestId('landing-online').textContent).toContain('coming with online play')
-    expect(screen.getByTestId('landing-join').textContent).toContain('coming with online play')
+    expect(screen.getByTestId('mode-hotseat').getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByTestId('mode-online').getAttribute('aria-pressed')).toBe('false')
+    expect(screen.getByTestId('btn-start').textContent).toContain('Start hot-seat game')
+    // the seat picker belongs to the online answer alone
+    expect(screen.queryByTestId('pick-seat')).toBeNull()
+  })
+
+  it('switches to online, offers the two seats and says what the lobby now means', () => {
+    renderApp()
+    fireEvent.click(screen.getByTestId('mode-online'))
+    expect(screen.getByTestId('mode-online').getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByTestId('btn-start').textContent).toContain('Create the game')
+    expect(screen.getByTestId('pick-seat')).toBeTruthy()
+    expect(screen.getByTestId('host-seat-0').getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByTestId('lobby-status').textContent).toContain('1 of 2 seats taken')
+    fireEvent.click(screen.getByTestId('host-seat-1'))
+    expect(screen.getByTestId('host-seat-1').getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByTestId('lobby-mode').textContent).toContain('you take south')
   })
 
   it('lists the starting fleet as a row of unit sprites with counts', () => {
@@ -119,16 +132,36 @@ describe('the setup screen', () => {
     expect(screen.getByTestId('minutes').getAttribute('value')).toBe('15')
   })
 
-  it('keeps the hot-seat blurb in step with the clock', () => {
+  it('keeps the mode blurb in step with the clock', () => {
     renderApp()
-    expect(screen.getByTestId('landing-hotseat').textContent).toContain('chess clock 15 minutes each')
+    expect(screen.getByTestId('mode-line').textContent).toContain('15 minutes each on the chess clock')
     fireEvent.change(screen.getByTestId('minutes'), { target: { value: '20' } })
-    expect(screen.getByTestId('landing-hotseat').textContent).toContain('chess clock 20 minutes each')
+    expect(screen.getByTestId('mode-line').textContent).toContain('20 minutes each on the chess clock')
   })
 
-  it('has no saved-games block until this browser holds a game', () => {
+  it('draws three game slots, empty until this browser holds a game', () => {
     renderApp()
-    expect(screen.queryByTestId('saved-games')).toBeNull()
+    expect(screen.getByTestId('games-tab').textContent).toContain('0 of 3')
+    expect(screen.getByTestId('game-slot-empty-0')).toBeTruthy()
+    expect(screen.getByTestId('game-slot-empty-2')).toBeTruthy()
+    cleanup()
+    savedGame('AAA222', 'Despot', 'Kael')
+    renderApp()
+    expect(screen.getByTestId('games-tab').textContent).toContain('1 of 3')
+    expect(screen.getByTestId('saved-game-AAA222')).toBeTruthy()
+    // the slot the game took is gone, the other two are still drawn
+    expect(screen.queryByTestId('game-slot-empty-0')).toBeNull()
+    expect(screen.getByTestId('game-slot-empty-1')).toBeTruthy()
+  })
+
+  it('refuses a fourth game and says why, rather than dropping the oldest', () => {
+    savedGame('AAA222', 'Despot', 'Kael')
+    savedGame('BBB333', 'Ada', 'Bo')
+    savedGame('CCC444', 'Cy', 'Dee')
+    renderApp()
+    expect(screen.getByTestId('games-tab').textContent).toContain('3 of 3')
+    expect(screen.getByTestId('btn-start').hasAttribute('disabled')).toBe(true)
+    expect(screen.getByTestId('start-note').textContent).toContain('Delete one to start another')
   })
 
   it('lists the saved games newest first and resumes the one that is picked', () => {
@@ -151,19 +184,15 @@ describe('the setup screen', () => {
     expect(screen.getByTestId('player-0').textContent).toContain('Despot')
   })
 
-  it('scales the page down by what the saved-games block adds, rather than scrolling', () => {
+  /** The page scales itself to its own height, so a block that grows with the games would resize the screen. */
+  it('keeps the page the same height however many games are saved', () => {
     renderApp()
     const bare = screen.getByTestId('setup-screen').style.zoom
     cleanup()
     savedGame('AAA222', 'Despot', 'Kael')
-    renderApp()
-    const withOne = screen.getByTestId('setup-screen').style.zoom
-    expect(Number(withOne)).toBeGreaterThan(0)
-    expect(Number(withOne)).toBeLessThan(Number(bare))
-    cleanup()
     savedGame('BBB333', 'Ada', 'Bo')
     renderApp()
-    expect(Number(screen.getByTestId('setup-screen').style.zoom)).toBeLessThan(Number(withOne))
+    expect(screen.getByTestId('setup-screen').style.zoom).toBe(bare)
   })
 
   it('deletes one saved game and leaves the others alone', () => {
