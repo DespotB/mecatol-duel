@@ -75,7 +75,7 @@ Component actions available in v1: Inheritance Systems (L1Z1X), Emergency shipya
 Neutral, grey. Composition rolled from a table so that the total cost is exactly 8: (dreadnought, cruiser, destroyer, 2 fighters), (2 dreadnoughts), (carrier, cruiser, 2 destroyers, 2 fighters), (dreadnought, 2 cruisers), (2 cruisers, 2 destroyers, 4 fighters), (carrier, dreadnought, 2 fighters). Always 2 infantry on Mecatol Rex. Guardian units use level I stats and no technologies. They never move. A new fleet is rolled in every status phase while Mecatol Rex is uncontrolled; once a player controls Mecatol Rex no guardian fleet returns.
 
 ### 4.3 Invasion
-1. Bombardment: each ship with bombardment rolls against a chosen planet; planets with a PDS (planetary shield) cannot be bombarded unless the attacker has Arc Secundus in the system or L4 Disruptors; hits destroy ground forces. Harrow (L1Z1X): bombardment may also be used after each ground combat round.
+1. Bombardment: each ship with bombardment rolls against a chosen planet; planets with a PDS (planetary shield) cannot be bombarded unless the attacker has Arc Secundus in the system (L4 Disruptors does not affect bombardment; it only negates space cannon defense, step 3); hits destroy ground forces. Harrow (L1Z1X): bombardment may also be used after each ground combat round.
 2. Landing: the player commits infantry from ships in the system to planets.
 3. Space cannon defense: PDS on the planet fire at landing infantry (hit 6+), unless the attacker has L4 Disruptors.
 4. Ground combat: infantry roll (I: 8, II: 7), simultaneous, until one side is gone. Infantry II: a destroyed infantry returns on a roll of 6+ to the home system at the start of the player's next turn.
