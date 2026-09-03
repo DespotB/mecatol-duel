@@ -19,49 +19,6 @@
 .lobbyui{--ink-dim:#aaa494;--ink-mute:#948d78}
 .lobbyui>*{position:relative;z-index:1}
 
-/* space background: starfield, nebula veils, two galaxies and the planet limb at the bottom right */
-.lobbyui .space{position:fixed;inset:0;overflow:hidden;background:#05070f;z-index:0}
-.lobbyui .space .base{position:absolute;inset:0;background:linear-gradient(180deg,#05070f 0%,#060a18 40%,#08102a 100%)}
-.lobbyui .space .stars{position:absolute;inset:0;filter:none;opacity:.62;mix-blend-mode:screen;
-  background:url(/assets/misc/starfield.png) center 38%/cover no-repeat}
-.lobbyui .space .veil{position:absolute;inset:0;background:
-  radial-gradient(ellipse 560px 340px at 16% 24%,rgba(70,110,220,.09),transparent 70%),
-  radial-gradient(ellipse 640px 380px at 80% 22%,rgba(122,72,196,.08),transparent 70%),
-  radial-gradient(ellipse 900px 260px at 48% 66%,rgba(46,72,160,.05),transparent 70%)}
-.lobbyui .space .galaxy{position:absolute;border-radius:50%;opacity:.14;filter:blur(2px)}
-.lobbyui .space .galaxy.a{left:-260px;top:120px;width:980px;height:360px;transform:rotate(-16deg);
-  background:radial-gradient(ellipse 50% 50% at 50% 50%,rgba(170,190,255,.22) 0%,rgba(110,130,220,.10) 35%,transparent 70%)}
-.lobbyui .space .galaxy.b{right:-180px;top:-80px;width:760px;height:260px;transform:rotate(22deg);
-  background:radial-gradient(ellipse 50% 50% at 50% 50%,rgba(200,170,255,.16) 0%,rgba(140,100,220,.08) 40%,transparent 70%)}
-.lobbyui .space .dust{position:absolute;inset:0;opacity:1;background-image:
-  radial-gradient(1px 1px at 120px 80px,rgba(255,255,255,.7),transparent 60%),
-  radial-gradient(1px 1px at 300px 640px,rgba(255,255,255,.55),transparent 60%),
-  radial-gradient(1.5px 1.5px at 980px 120px,rgba(255,255,255,.75),transparent 60%),
-  radial-gradient(1px 1px at 1320px 300px,rgba(255,255,255,.6),transparent 60%),
-  radial-gradient(1px 1px at 60px 460px,rgba(255,255,255,.5),transparent 60%),
-  radial-gradient(1.5px 1.5px at 720px 40px,rgba(255,255,255,.8),transparent 60%),
-  radial-gradient(1px 1px at 1120px 860px,rgba(255,255,255,.5),transparent 60%),
-  radial-gradient(1px 1px at 420px 820px,rgba(255,255,255,.6),transparent 60%),
-  radial-gradient(1px 1px at 1400px 700px,rgba(255,255,255,.55),transparent 60%),
-  radial-gradient(1px 1px at 860px 500px,rgba(255,255,255,.45),transparent 60%)}
-/* the mockup anchors the planet at left 700 / top 600 of its 1440x900 canvas; from the bottom right
-   corner that is the same limb at any viewport size */
-.lobbyui .space .limb{left:auto;top:auto;right:-900px;bottom:-1340px;width:1640px;height:1640px;border-radius:50%;
-  background:
-    repeating-linear-gradient(-24deg,rgba(255,255,255,.012) 0 9px,transparent 9px 22px),
-    radial-gradient(circle at 27% 23%,#55648a 0%,#2c3858 14%,#161d36 34%,#090d1a 58%,#05070f 78%);
-  box-shadow:
-    inset 34px 34px 90px rgba(160,185,245,.30),inset 10px 10px 30px rgba(201,162,77,.10),
-    inset -80px -80px 160px rgba(0,0,0,.7),
-    0 0 140px rgba(70,110,220,.16),
-    0 0 1px rgba(210,225,255,.55)}
-.lobbyui .space .limb::after{content:"";position:absolute;inset:-1px;border-radius:50%;border:1px solid rgba(215,222,255,.62);
-  -webkit-mask:linear-gradient(135deg,#000 0%,#000 30%,transparent 52%);mask:linear-gradient(135deg,#000 0%,#000 30%,transparent 52%)}
-.lobbyui .space .limb::before{content:"";position:absolute;inset:-10px;border-radius:50%;
-  background:radial-gradient(circle at 27% 23%,rgba(130,165,255,.30) 0%,rgba(120,160,255,.08) 30%,transparent 55%);
-  -webkit-mask:radial-gradient(circle,transparent 61.5%,#000 62%);mask:radial-gradient(circle,transparent 61.5%,#000 62%)}
-.lobbyui .space .vig{position:absolute;inset:0;background:radial-gradient(ellipse 78% 68% at 50% 44%,transparent 45%,rgba(3,5,12,.72) 100%)}
-
 /* gold primitives: the mockup's cut-corner frame, tab, buttons and labels */
 .lobbyui .frame{--c:14px;--cs:16px;--t0:9.8px;--t1:11px;position:relative;
   border:1px solid var(--gold);border-color:#dcc27a #b8944a #7a5c1e #c9a24d;

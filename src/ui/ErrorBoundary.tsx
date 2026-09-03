@@ -1,6 +1,7 @@
 import { Component } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
 import { clearSession } from './persist'
+import { SpaceBackdrop } from './SpaceBackdrop'
 
 interface ErrorBoundaryState { error: Error | null }
 
@@ -25,7 +26,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBound
     if (error === null) return this.props.children
     return (
       <div className="crash" data-testid="error-boundary">
-        <div className="space"><div className="stars" /><div className="neb" /><div className="limb" /><div className="dust" /></div>
+        <SpaceBackdrop />
         <div className="crashbox cut">
           <div className="in">
             <h1 className="title goldtext">Something broke</h1>

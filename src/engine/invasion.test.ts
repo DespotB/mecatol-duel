@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { applyMove } from './index'
 import { bombardablePlanets, groundCombatPending, landablePlanets } from './invasion'
-import { carriedIds, deepFreeze, hitsIn, toActionPhase, withPlanetOwner, withTactical, withTechs, withUnits } from './testUtils'
+import { carriedIds, deepFreeze, groundIds, hitsIn, shipId, toActionPhase, withPlanetOwner, withTactical, withTechs, withUnits } from './testUtils'
 import type { GameState, Move, Seat, UnitType } from './types'
 
 /** Clears the system, gives the seat ships plus carried infantry and opens the invasion step. */
@@ -207,5 +207,44 @@ describe('R4.3 invasion', () => {
       expect(applyMove(landed, { type: 'land', planetId, infantryIds }, seed).ok).toBe(true)
     }
     expect(applyMove(landed, { type: 'groundCombatRound' }, seed).ok).toBe(groundCombatPending(landed))
+  })
+})
+
+describe('R4.3: the invasion step only opens when there is something to invade', () => {
+  const activate = (state: GameState, systemId: string) => {
+    const r = applyMove(state, { type: 'startTactical', systemId }, 0)
+    if (!r.ok) throw new Error(r.error)
+    return r.value
+  }
+  const step = (state: GameState) => {
+    const r = applyMove(state, { type: 'endMovement' }, 0)
+    if (!r.ok) throw new Error(r.error)
+    return r.value.tactical?.step
+  }
+  it('skips it when only ships arrive and there is nothing on the ground', () => {
+    const moved = activate(toActionPhase(), 'bereg')
+    const carrier = shipId(moved, 'home-n', 'carrier')
+    const r = applyMove(moved, { type: 'moveShips', moves: [{ unitId: carrier, from: 'home-n', carrying: [] }] }, 0)
+    if (!r.ok) throw new Error(r.error)
+    expect(step(r.value)).toBe('done')
+  })
+  it('opens it when infantry came along', () => {
+    const moved = activate(toActionPhase(), 'bereg')
+    const carrier = shipId(moved, 'home-n', 'carrier')
+    const troops = groundIds(moved, 'home-n', '000').slice(0, 2)
+    const r = applyMove(moved, { type: 'moveShips', moves: [{ unitId: carrier, from: 'home-n', carrying: troops }] }, 0)
+    if (!r.ok) throw new Error(r.error)
+    expect(step(r.value)).toBe('invasion')
+  })
+  it('opens it when an enemy planet in the system can be bombarded', () => {
+    const held = withPlanetOwner(withUnits(toActionPhase(), 'bereg', 1, ['infantry'], 'bereg'), 'bereg', 'bereg', 1)
+    const moved = activate(held, 'bereg')
+    const dread = shipId(moved, 'home-n', 'dreadnought')
+    const r = applyMove(moved, { type: 'moveShips', moves: [{ unitId: dread, from: 'home-n', carrying: [] }] }, 0)
+    if (!r.ok) throw new Error(r.error)
+    expect(step(r.value)).toBe('invasion')
+  })
+  it('goes to production when the system has a space dock of yours', () => {
+    expect(step(activate(toActionPhase(), 'home-n'))).toBe('production')
   })
 })

@@ -338,7 +338,8 @@ describe('R4.1 space combat', () => {
   it('R4.1 step 6: the combat ends when one side has no ships and the winner goes on', () => {
     const after = fightToEnd(combat('bereg', ['dreadnought', 'dreadnought', 'cruiser'], ['fighter'], 1), 100)
     const attackerLeft = owned(after, 'bereg', 0).length > 0
-    expect(after.tactical?.step).toBe(attackerLeft ? 'invasion' : 'done')
+    // R4.3: the winner carries no infantry and Bereg holds no enemy ground forces, so there is no invasion to open
+    expect(after.tactical?.step).toBe('done')
     expect(owned(after, 'bereg', 1)).toHaveLength(attackerLeft ? 0 : 1)
   })
   it('R7 Mandate: winning a space combat in Mecatol Rex marks the mandate for the round', () => {
@@ -399,9 +400,8 @@ describe('R4.1 space combat', () => {
     const announced = applyMove(combat('bereg', ['dreadnought', 'dreadnought', 'cruiser'], ['fighter'], 2), { type: 'retreat', to: 'home-n' }, 0)
     if (!announced.ok) throw new Error(announced.error)
     const after = fightToEnd(announced.value, 400)
-    const attackerLeft = owned(after, 'bereg', 0).length > 0
-    const defenderLeft = owned(after, 'bereg', 1).length > 0
-    expect(after.tactical?.step).toBe(attackerLeft && !defenderLeft ? 'invasion' : 'done')
+    // R4.3: whoever is left has nothing to land and nothing to bombard, so the action goes straight to the end
+    expect(after.tactical?.step).toBe('done')
   })
   it('R4.1 step 6: carried infantry are trimmed when the combat ends, not after a single round', () => {
     const base = withUnits(combat('bereg', ['carrier'], ['cruiser', 'cruiser', 'cruiser'], 1), 'bereg', 0, ['infantry', 'infantry'])

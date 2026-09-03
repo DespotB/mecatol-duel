@@ -24,6 +24,7 @@ import { strategicCards } from '../moveOptions'
 import { systemLabel } from '../format'
 import { HandoffOverlay } from '../HandoffOverlay'
 import { LogPanel } from '../LogPanel'
+import { SpaceBackdrop } from '../SpaceBackdrop'
 
 const HINTS: Record<string, string> = {
   tactical: 'Tactical action. Choose a system to activate.',
@@ -71,7 +72,7 @@ export function BoardScreen() {
         className="app" data-testid="board-screen" inert={session.handoff !== null}
         style={{ '--k': k, '--s': s } as CSSProperties}
       >
-        <div className="space"><div className="stars" /><div className="neb" /><div className="swirl" /><div className="limb" /><div className="dust" /></div>
+        <SpaceBackdrop />
         <TopBar state={state} clockMs={session.clockMs} clockMinutes={session.minutes} clockRunning={clockRunning} onPick={onPick} />
         <SidePanel state={state} seat={0} />
         <SidePanel state={state} seat={1} />

@@ -123,8 +123,8 @@ describe('a scripted hot-seat game', () => {
     // turn 7: R4.4 production at the home space dock
     click('btn-tactical')
     click('tile-home-n')
+    // R4.3: nothing to land or bombard at home, so the invasion step is skipped altogether
     click('btn-end-movement')
-    click('btn-end-invasion')
     expect(text('produce-limit')).toBe('7')
     click('step-infantry-plus')
     click('step-infantry-plus')
