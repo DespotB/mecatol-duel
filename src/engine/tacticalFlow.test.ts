@@ -37,7 +37,7 @@ function nextRound(state: GameState): GameState {
   const players = state.players.map(p => ({
     ...p, passed: false, tokens: { ...p.tokens, tactic: 3 }, strategyCards: p.strategyCards.map(c => ({ ...c, used: true })),
   })) as GameState['players']
-  return deepFreeze({ ...state, phase: 'action', round: state.round + 1, players, systems, tactical: null, active: state.speaker })
+  return deepFreeze({ ...state, phase: 'action', round: state.round + 1, players, systems, tactical: null, turnDone: false, active: state.speaker })
 }
 
 function invariants(state: GameState): void {
@@ -160,7 +160,13 @@ describe('tactical legal moves', () => {
       invariants(s)
     }
     expect(s.tactical).toBeNull()
-    expect(s.active).toBe(1)
+    // R3.2: the action is over, the turn is not; the enumerator now offers the handover instead
+    expect(s.active).toBe(0)
+    expect(s.turnDone).toBe(true)
+    expect(legalMoves(s)).toContainEqual({ type: 'endTurn' })
+    const ended = applyMove(s, { type: 'endTurn' }, 99)
+    if (!ended.ok) throw new Error(ended.error)
+    expect(ended.value.active).toBe(1)
   })
   it('a seeded 200-move run keeps every invariant', () => {
     let s = cardsUsed(draft(createGame(DUEL_CONFIG, 9)))

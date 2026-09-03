@@ -1,4 +1,4 @@
-import { endTactical, pass, startTactical } from './actionPhase'
+import { endTactical, endTurn, pass, startTactical } from './actionPhase'
 import { combatRound, retreat } from './combat'
 import { research, shipyard, tradePost } from './componentActions'
 import { bombard, endInvasion, groundCombatRound, land } from './invasion'
@@ -20,6 +20,7 @@ export function applyMove(state: GameState, move: Move, seed: number): Result<Ga
       case 'startTactical': return startTactical(logged, move.systemId)
       case 'pass': return pass(logged)
       case 'endTactical': return endTactical(logged)
+      case 'endTurn': return endTurn(logged)
       case 'moveShips': return moveShips(logged, move.moves)
       case 'endMovement': return endMovement(logged, seed)
       case 'combatRound': return combatRound(logged, move.munitions, seed)
@@ -52,7 +53,7 @@ export { legalMoves, validateMove } from './legalMoves'
 export type * from './types'
 
 // Read-only queries the UI derives its controls from. Re-exports only: no new logic, no behaviour change.
-export { activatableSystems, canPass, otherSeat } from './actionPhase'
+export { ACTION_SPENT, activatableSystems, canPass, otherSeat } from './actionPhase'
 export { canMunitions, retreatTargets } from './combat'
 export { canInheritance, canShipyard, inheritanceTechs, shipyardPlanets, tradePostOptions } from './componentActions'
 export { capacity, cheapestPlanets, fleetPoolLimit, productionCost, productionLimit, readyInfluence, readyResources } from './economy'

@@ -18,6 +18,8 @@ export function ActionBar({ mode, onMode, hint, onLog }: ActionBarProps) {
     strategic: legal.some(m => m.type === 'strategic'),
     component: legal.some(m => m.type === 'research' || m.type === 'shipyard' || m.type === 'tradePost'),
     pass: legal.some(m => m.type === 'pass'),
+    // R3.2: only offered once the action is spent, so the bar shows plainly that the turn is the last thing left
+    endTurn: legal.some(m => m.type === 'endTurn'),
   }
   return (
     <div className="bottombar">
@@ -34,6 +36,10 @@ export function ActionBar({ mode, onMode, hint, onLog }: ActionBarProps) {
           disabled={!can.component} onClick={() => onMode(mode === 'component' ? null : 'component')}>Component action</button>
         <button type="button" className="btn" data-testid="btn-pass"
           disabled={!can.pass} onClick={() => apply({ type: 'pass' })}>Pass</button>
+        {can.endTurn ? (
+          <button type="button" className="btn gold" data-testid="btn-end-turn"
+            onClick={() => apply({ type: 'endTurn' })}>End turn</button>
+        ) : null}
       </div>
       <div className="hintbox">
         {/* the engine's own rejection text; `apply` clears it again on the next move it accepts */}

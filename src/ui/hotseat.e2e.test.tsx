@@ -57,6 +57,9 @@ describe('a scripted hot-seat game', () => {
     expect(screen.getByTestId('planet-0-bereg')).toBeTruthy()
     click('btn-end-invasion')
     click('btn-end-tactical')
+    // R3.2: the action is spent but the turn is not, so the free moves are still open until "End turn"
+    expect(text('turn-0')).toBe('Your turn')
+    click('btn-end-turn')
     handoff()
     expect(text('turn-1')).toBe('Your turn')
 
@@ -128,6 +131,7 @@ describe('a scripted hot-seat game', () => {
     click('btn-produce')
     expect(text('forces-0-infantry')).toBe('7 Infantry I')
     click('btn-end-tactical')
+    click('btn-end-turn')
 
     // turn 8: both have passed, the status phase begins with the speaker
     click('btn-pass')

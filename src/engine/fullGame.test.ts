@@ -9,7 +9,7 @@ import { DUEL_CONFIG, fillTemplate, shuffle, toActionPhase, toStatusPhase, withC
 import type { GameState, Move, Seat, StrategyCardId } from './types'
 
 const MAX_MOVES = 3000
-const CLOSERS: readonly Move['type'][] = ['pass', 'status', 'endTactical', 'endMovement', 'endInvasion', 'secondary']
+const CLOSERS: readonly Move['type'][] = ['pass', 'status', 'endTactical', 'endTurn', 'endMovement', 'endInvasion', 'secondary']
 // the only two kinds legalMoves still leaves as templates (docs/spec/engine-design.md, Contract); every other
 // enumerated move is already concrete, so it must never be rejected by the handler that offered it
 const TEMPLATE_TYPES: readonly Move['type'][] = ['moveShips', 'produce']
@@ -198,14 +198,14 @@ describe('legal moves in every phase', () => {
   })
 })
 
-// seeds 90 and 94 are appended (outside the Fibonacci run) because none of the original ten seeds reaches a
-// bombard or a groundCombatRound once Space Dock I grants its free fighter slots too: the fix shifts the
-// deterministic playthroughs enough that the coverage test below needs two more seeds to still see every
-// move kind at least once.
-const SEEDS: readonly number[] = [1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 90, 94]
+// Seeds 111, 140 and 185 are appended (outside the Fibonacci run) because the original ten reach neither a
+// bombard, nor a groundCombatRound, nor an accepted Trade secondary. Every rule change that adds a move to
+// the flow reshuffles these deterministic playthroughs, so the tail is retuned whenever that happens; it is
+// coverage ballast, nothing about the seeds themselves matters.
+const SEEDS: readonly number[] = [1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 111, 140, 185]
 const RUNS = new Map<number, GameRun>()
 
-/** The eleven smoke games are shared by the tests below, so each seed is actually played only once. */
+/** The smoke games are shared by the tests below, so each seed is actually played only once. */
 function runGame(seed: number): GameRun {
   const cached = RUNS.get(seed)
   if (cached) return cached
@@ -216,8 +216,8 @@ function runGame(seed: number): GameRun {
 
 const ALL_MOVE_TYPES: readonly Move['type'][] = [
   'pickStrategyCard', 'startTactical', 'moveShips', 'endMovement', 'combatRound', 'retreat', 'bombard', 'land',
-  'groundCombatRound', 'endInvasion', 'produce', 'endTactical', 'strategic', 'secondary', 'research', 'shipyard',
-  'tradePost', 'pass', 'status',
+  'groundCombatRound', 'endInvasion', 'produce', 'endTactical', 'endTurn', 'strategic', 'secondary', 'research',
+  'shipyard', 'tradePost', 'pass', 'status',
 ]
 const ALL_CARDS: readonly StrategyCardId[] = ['leadership', 'diplomacy', 'trade', 'warfare', 'technology', 'imperial']
 
@@ -237,8 +237,8 @@ const COUNTERS: readonly [string, RegExp][] = [
 ]
 
 describe('R3.1 to R3.3 full game', () => {
-  // this first test pays for every seed's full playthrough (the rest reuse RUNS); two extra seeds (see SEEDS
-  // above) push it close to the default 5s timeout under parallel load, so it gets a generous one of its own.
+  // this first test pays for every seed's full playthrough (the rest reuse RUNS); the appended coverage seeds
+  // (see SEEDS above) push it close to the default 5s timeout under parallel load, so it gets its own.
   it('plays every seeded game to the end and keeps every invariant', { timeout: 30000 }, () => {
     let byPoints = 0
     let byRound6 = 0

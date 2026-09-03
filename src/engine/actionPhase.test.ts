@@ -47,23 +47,42 @@ describe('R3.2 action phase', () => {
     expect(second.value.phase).toBe('status')
     expect(second.value.active).toBe(second.value.speaker)
   })
-  it('R3.2: after a finished tactical action the other seat is active, unless it has passed', () => {
+  it('R3.2: ending the turn after a finished action gives the other seat the turn, unless it has passed', () => {
     const base = toActionPhase()
     const done: GameState = { ...base, tactical: { systemId: 'bereg', step: 'done' } }
-    const r = applyMove(deepFreeze(done), { type: 'endTactical' }, 0)
+    const spent = applyMove(deepFreeze(done), { type: 'endTactical' }, 0)
+    if (!spent.ok) throw new Error(spent.error)
+    const r = applyMove(spent.value, { type: 'endTurn' }, 0)
     if (!r.ok) throw new Error(r.error)
     expect(r.value.tactical).toBeNull()
     expect(r.value.active).toBe(1)
-    const alone = withPlayer(done, 1, { passed: true })
-    const r2 = applyMove(alone, { type: 'endTactical' }, 0)
+    const alone = withPlayer(spent.value, 1, { passed: true })
+    const r2 = applyMove(alone, { type: 'endTurn' }, 0)
     if (!r2.ok) throw new Error(r2.error)
-    expect(r2.value.active).toBe(0)
+    expect(r2.value.active).toBe(0)         // the opponent has passed, so the turn comes straight back
+    expect(r2.value.turnDone).toBe(false)   // and it is a fresh turn
   })
   it('endTactical is rejected while the tactical action is unfinished and allowed from the production step', () => {
     const base = toActionPhase()
     expect(applyMove({ ...base, tactical: { systemId: 'bereg', step: 'movement' } }, { type: 'endTactical' }, 0).ok).toBe(false)
     expect(applyMove({ ...base, tactical: { systemId: 'bereg', step: 'production' } }, { type: 'endTactical' }, 0).ok).toBe(true)
     expect(applyMove(base, { type: 'endTactical' }, 0).ok).toBe(false)
+  })
+  it('R3.2: ending the tactical action ends the action, not the turn', () => {
+    const base = toActionPhase()
+    const done: GameState = { ...base, tactical: { systemId: 'bereg', step: 'done' } }
+    const r = applyMove(deepFreeze(done), { type: 'endTactical' }, 0)
+    if (!r.ok) throw new Error(r.error)
+    expect(r.value.tactical).toBeNull()
+    expect(r.value.active).toBe(0)          // the acting seat keeps the turn
+    expect(r.value.turnDone).toBe(true)
+    const moves = legalMoves(r.value)
+    expect(moves).toContainEqual({ type: 'endTurn' })
+    expect(moves.some(m => m.type === 'startTactical')).toBe(false)
+    const ended = applyMove(r.value, { type: 'endTurn' }, 0)
+    if (!ended.ok) throw new Error(ended.error)
+    expect(ended.value.active).toBe(1)
+    expect(ended.value.turnDone).toBe(false)
   })
   it('legal moves without a running tactical action are the activations plus pass', () => {
     const s = toActionPhase()
