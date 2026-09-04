@@ -66,9 +66,17 @@ moves   : code (fk), n int, move jsonb, seat int, at timestamptz, primary key (c
 - **Receiving** is a Supabase Realtime subscription on `moves` for that code. A new row arrives, the client
   applies it to its own state, and the board updates. No polling.
 - **Joining** fetches the game row and every move, replays them, and the player is in mid-game.
-- **The clock** runs off the move timestamps the server writes, so neither client can cheat it by pausing.
-  The seat to act is charged the time between the last move and the next one; the UI ticks locally between
-  moves for smoothness and corrects itself on every arriving move.
+- **The clock runs whether anyone is watching or not.** The user's rule: "Die Zeit muss weiterlaufen, auch
+  wenn die Person nicht in der Lobby ist, das muss einfach auf dem Server weiterlaufen, und dann ist man den
+  Zug beendet." That falls out of the log without a server process: the seat to act is charged the time
+  between the last move's timestamp and now, so closing the tab changes nothing, and a client that opens the
+  game an hour later computes the same number as one that never left. The UI ticks locally between moves for
+  smoothness and corrects itself against the server's timestamp on every arriving move.
+- **Running out while away costs the round, not the game** (R6). At zero the seat automatically passes for
+  the rest of the round and gains three minutes at the start of the next one. Nobody has to be online for
+  that: the automatic pass is derived at read time, by whichever client next opens the game, and appended to
+  the log like any other move so both sides see the same history. The player who was away comes back to a
+  round they sat out, not to a loss.
 - **Reconnect and refresh** are the same path as joining, which is what makes this design robust: there is
   no session to keep alive, only a log to replay.
 
