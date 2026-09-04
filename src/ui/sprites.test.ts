@@ -45,6 +45,20 @@ describe('unit sprites', () => {
       expect(max - Math.min(...longest), type).toBeLessThanOrEqual(Math.round(max * 0.55))
     }
   })
+  it('a bigger ship is drawn bigger, in every style', () => {
+    // the counter art is drawn to one scale across the units, the renders share one camera: whichever art a
+    // viewer picks, a fleet has to read the same way, a fighter smallest and a flagship largest.
+    const bySize = ['fighter', 'destroyer', 'cruiser', 'carrier', 'dreadnought', 'flagship'] as const
+    for (const { id } of MODEL_STYLES) {
+      const longest = bySize.map(type => {
+        const size = spriteSize(type, undefined, id)
+        return Math.max(size.width, size.height)
+      })
+      for (let i = 1; i < longest.length; i++) {
+        expect(longest[i], `${id}: ${bySize[i]} next to ${bySize[i - 1]}`).toBeGreaterThan(longest[i - 1])
+      }
+    }
+  })
   it('the world scale reproduces the mockup sizes', () => {
     expect(spriteSize('dreadnought')).toEqual({ width: 44, height: 40 })
     expect(spriteSize('carrier')).toEqual({ width: 36, height: 36 })
