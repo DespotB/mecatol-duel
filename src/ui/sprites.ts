@@ -32,20 +32,21 @@ const TOP_DOWN: Record<UnitType, SpriteDef> = {
 }
 
 /**
- * Copy of public/assets/sprites/counters/manifest.json. The counter art is drawn at its own proportions, so
- * the scale is derived: each unit is set to come out the same size on the board as the top down render.
+ * Copy of public/assets/sprites/counters/manifest.json. The Async counters are already drawn to one scale
+ * across the units, a 128 px fighter next to a 320 px flagship, so they share one pxPerModelUnit: it is set
+ * so a carrier comes out the size it has as a miniature, and the art keeps its own hierarchy from there.
  */
 const COUNTERS: Record<UnitType, SpriteDef> = {
-  dreadnought: { pxPerModelUnit: 113.46, spriteW: 308, spriteH: 308 },
-  carrier: { pxPerModelUnit: 168.17, spriteW: 280, spriteH: 276 },
-  cruiser: { pxPerModelUnit: 186.74, spriteW: 268, spriteH: 268 },
-  destroyer: { pxPerModelUnit: 86.86, spriteW: 204, spriteH: 196 },
-  fighter: { pxPerModelUnit: 69.29, spriteW: 128, spriteH: 124 },
-  flagship: { pxPerModelUnit: 106.68, spriteW: 320, spriteH: 324 },
-  warsun: { pxPerModelUnit: 70.89, spriteW: 224, spriteH: 260 },
-  infantry: { pxPerModelUnit: 73.14, spriteW: 156, spriteH: 172 },
-  spacedock: { pxPerModelUnit: 73.65, spriteW: 168, spriteH: 172 },
-  pds: { pxPerModelUnit: 64.08, spriteW: 132, spriteH: 148 },
+  dreadnought: { pxPerModelUnit: 89, spriteW: 308, spriteH: 308 },
+  carrier: { pxPerModelUnit: 89, spriteW: 280, spriteH: 276 },
+  cruiser: { pxPerModelUnit: 89, spriteW: 268, spriteH: 268 },
+  destroyer: { pxPerModelUnit: 89, spriteW: 204, spriteH: 196 },
+  fighter: { pxPerModelUnit: 89, spriteW: 128, spriteH: 124 },
+  flagship: { pxPerModelUnit: 89, spriteW: 320, spriteH: 324 },
+  warsun: { pxPerModelUnit: 89, spriteW: 224, spriteH: 260 },
+  infantry: { pxPerModelUnit: 89, spriteW: 156, spriteH: 172 },
+  spacedock: { pxPerModelUnit: 89, spriteW: 168, spriteH: 172 },
+  pds: { pxPerModelUnit: 89, spriteW: 132, spriteH: 148 },
 }
 
 export const SPRITE_SETS: Record<ModelStyle, Record<UnitType, SpriteDef>> = {
