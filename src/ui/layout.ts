@@ -240,18 +240,23 @@ export const POST_H = 322
  * The block sits so that the **model** lands on the map's own centre line, level with Mecatol Rex and
  * exactly between the two tiles the post serves. That is what the lanes plug into: a lane leaving the
  * model's own height meets both hexagons on a slanted edge, and it ends at the station rather than in the
- * card's explaining text, which is where it landed while the block hung higher.
+ * card's explaining text.
+ *
+ * The card is above the model and the model sits at the foot of the block, so the block hangs by its
+ * bottom edge: its top is a whole block-height above the centre line, less half a model.
  */
 const POST_CENTRE_Y = 349
+/** The model's own centre, measured from the top of the block. */
+const POST_MODEL_Y = POST_H - POST_ART_H / 2
 export const POST_POS: Record<'west' | 'east', Point> = {
-  west: { left: 0, top: POST_CENTRE_Y - POST_ART_H / 2 },
-  east: { left: MAP_W - POST_W, top: POST_CENTRE_Y - POST_ART_H / 2 },
+  west: { left: 0, top: POST_CENTRE_Y - POST_MODEL_Y },
+  east: { left: MAP_W - POST_W, top: POST_CENTRE_Y - POST_MODEL_Y },
 }
 
 /** Where a hyperlane leaves the post: the inner edge of the block, level with the middle of the model. */
 export function postAnchor(post: 'west' | 'east'): Point {
   const pos = POST_POS[post]
-  return { left: post === 'west' ? pos.left + POST_W : pos.left, top: pos.top + POST_ART_H / 2 }
+  return { left: post === 'west' ? pos.left + POST_W : pos.left, top: pos.top + POST_MODEL_Y }
 }
 
 /** The centre of a tile, which is where a hyperlane ends; the tile art covers the last stretch of it. */

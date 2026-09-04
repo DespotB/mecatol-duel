@@ -37,8 +37,8 @@ function stateLine(state: GameState, seat: Seat, post: 'west' | 'east'): string 
 }
 
 /**
- * R8: two neutral posts outside the map. They are not systems, so they are not hexes: the rendered model
- * floats free the way a ship on a tile does, and a small card sits under it with what can be traded there.
+ * R8: two neutral posts outside the map. They are not systems, so they are not hexes: the card naming what
+ * can be traded there sits on top, and the rendered model floats free under it the way a ship on a tile does.
  * The pair turns over every round, so everything below is read straight off `state.posts`, and the block is
  * keyed on the post's id so a new arrival remounts and plays its entry animation instead of swapping its
  * picture in place.
@@ -55,9 +55,6 @@ export function TradePosts({ state, seat }: { state: GameState; seat: Seat }) {
             key={`${post}-${def.id}`} className={`post ${post}`} style={{ ...POST_POS[post], width: POST_W, height: POST_H }}
             data-testid={`post-${post}`}
           >
-            <div className="model">
-              <img src={def.art} alt={def.name} data-testid={`post-art-${post}`} width={POST_ART_W} height={POST_ART_H} />
-            </div>
             <div className={`postcard cut${used ? ' spent' : ''}`}>
               <div className="in">
                 {/* the pair is redrawn every round, so the card is the board saying that out loud */}
@@ -73,6 +70,9 @@ export function TradePosts({ state, seat }: { state: GameState; seat: Seat }) {
                   {stateLine(state, seat, post)}
                 </span>
               </div>
+            </div>
+            <div className="model">
+              <img src={def.art} alt={def.name} data-testid={`post-art-${post}`} width={POST_ART_W} height={POST_ART_H} />
             </div>
           </div>
         )

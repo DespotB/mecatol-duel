@@ -326,12 +326,13 @@ button{font-family:inherit}
 .guard{position:absolute;left:50%;top:4px;transform:translateX(-50%);white-space:nowrap;font:600 11px/18px var(--hud);text-transform:uppercase;color:var(--gold-hi);padding:0 7px;background:rgba(6,9,20,.82);border:1px solid var(--hair)}
 /*
  * R8: a trade post beside the map. It is not a system, so it is not a hex, and it is not a card either: the
- * rendered model floats free the way a ship on a tile does, and a small card underneath says what can be
- * traded there. The pair turns over every round, so the block is remounted on the post's id and `postin`
+ * card saying what can be traded there sits on top, and the rendered model floats free under it the way a
+ * ship on a tile does. The pair turns over every round, so the block is remounted on the post's id and `postin`
  * plays once as the new one arrives: quiet, half a second, and over.
  */
 .post{position:absolute;display:flex;flex-direction:column;align-items:center;gap:4px;animation:postin .45s ease-out both}
-.post .model{position:relative;display:flex;align-items:center;justify-content:center;width:100%;height:146px}
+/* the card is above; the model hangs at the foot of the block, which is what the lanes plug into */
+.post .model{position:relative;margin-top:auto;display:flex;align-items:center;justify-content:center;width:100%;height:146px}
 .post .model img{object-fit:contain;filter:drop-shadow(0 8px 14px rgba(0,0,0,.8))}
 /* every post faces the map: the renders point right, so the western one is mirrored and the eastern one
    is left as it came out of the renderer. A station has no bow, but the lit side follows the same rule and
